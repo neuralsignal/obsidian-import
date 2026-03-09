@@ -1,0 +1,55 @@
+name: Documentation Freshness Check
+
+on:
+  schedule:
+    - cron: "0 6 1 * *" # Monthly 1st 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  id-token: write
+
+jobs:
+  freshness:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Claude docs freshness check
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          claude_args: "--model claude-haiku-4-5-20251001 --max-turns 10 --allowedTools Read,Glob,Grep,Bash"
+          prompt: |
+            You are a documentation freshness checker.
+            Read CLAUDE.md for project-specific documentation standards.
+
+            Check documentation freshness:
+            1. Read CLAUDE.md to understand documentation standards.
+            2. Find all documentation files:
+               - README.md, CHANGELOG.md, CONTRIBUTING.md, docs/**/*.md
+            3. For each doc file, check last modification date:
+               git log -1 --format="%ai" -- <file>
+            4. Flag files not modified in >90 days as potentially stale.
+            5. Compare README.md against actual CLI/API:
+               - Read README.md and check if documented commands/options match the source.
+               - Look for documented features that no longer exist or new features not documented.
+            6. Check for missing docstrings on public functions (per CLAUDE.md standards).
+
+            For each finding:
+            a. Check for existing open issues:
+               gh issue list --repo ${{ github.repository }} --label source:docs-freshness --state open --json title --jq '.[].title'
+            b. If no matching issue, create one:
+               - Title: "[docs-freshness] <issue type>: <file or description>"
+               - Labels: type:chore, priority:3, source:docs-freshness
+               - NOTE: docs freshness issues do NOT get claude:implement by default
+               - Use --body-file /tmp/issue-<n>.md
+               - Apply labels with separate --add-label flags
+            c. If matching issue exists, add a comment with updated findings.
+
+            Write summary to /tmp/summary.md and post to Factory Dashboard issue if it exists.

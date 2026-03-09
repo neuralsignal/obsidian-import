@@ -1,0 +1,135 @@
+name: Issue Implementer
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+
+concurrency:
+  group: implement-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  implement:
+    if: github.event.label.name == 'claude:implement'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update issue status
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue edit ${{ github.event.issue.number }} \
+            --repo ${{ github.repository }} \
+            --remove-label claude:implement \
+            --add-label status:in-progress
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up pixi
+        uses: prefix-dev/setup-pixi@v0.8.8
+        with:
+          cache: true
+
+      - name: Create implementation branch
+        id: branch
+        run: |
+          SLUG=$(echo "${{ github.event.issue.title }}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | head -c 50)
+          BRANCH="claude/${{ github.event.issue.number }}-${SLUG}"
+          git checkout -b "$BRANCH"
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+
+      - name: Implement changes
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          claude_args: "--model claude-opus-4-6 --max-turns 50 --allowedTools Read,Write,Edit,Glob,Grep,Bash"
+          prompt: |
+            You are implementing a GitHub issue as a code change.
+            Read CLAUDE.md for project conventions, build commands, and standards.
+
+            Issue to implement:
+            - Number: ${{ github.event.issue.number }}
+            - Title: ${{ github.event.issue.title }}
+            - Body: ${{ github.event.issue.body }}
+            - Labels: ${{ join(github.event.issue.labels.*.name, ', ') }}
+
+            Steps:
+            1. Read CLAUDE.md to understand the project structure, build/test commands, and standards.
+            2. Analyze the issue and plan your implementation.
+            3. Implement the changes following project conventions.
+            4. Run tests: pixi run test-cov
+               - If tests fail, fix the issues and re-run (up to 3 attempts).
+               - If tests still fail after 3 attempts, write a failure explanation to /tmp/blocked.md.
+            5. Run lint and format: pixi run lint && pixi run format-check
+            6. Commit your changes with a descriptive message:
+               git add -A && git commit -m "feat: <description> (#${{ github.event.issue.number }})"
+            7. Push the branch:
+               git push origin ${{ steps.branch.outputs.branch }}
+
+            IMPORTANT:
+            - Never modify .github/workflows/ files.
+            - Include "[skip ci]" only in auto-generated doc commits, NOT in implementation commits.
+            - Make minimal, focused changes. Do not refactor unrelated code.
+
+      - name: Create PR
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.FACTORY_PAT }}
+        run: |
+          # Check if branch has commits ahead of main
+          if git log origin/main..${{ steps.branch.outputs.branch }} --oneline | head -1 | grep -q .; then
+            gh pr create \
+              --draft \
+              --title "$(echo '${{ github.event.issue.title }}' | head -c 70)" \
+              --body "Closes #${{ github.event.issue.number }}
+
+          ## Summary
+
+          Auto-implemented by Claude from issue #${{ github.event.issue.number }}.
+
+          ## Test plan
+
+          - [ ] Tests pass in CI
+          - [ ] Code review approved
+          - [ ] Manual verification (if applicable)" \
+              --head "${{ steps.branch.outputs.branch }}" \
+              --base main \
+              --repo ${{ github.repository }}
+
+            gh issue edit ${{ github.event.issue.number }} \
+              --repo ${{ github.repository }} \
+              --remove-label status:in-progress \
+              --add-label status:pr-draft
+          else
+            echo "No commits on branch -- nothing to create PR for."
+          fi
+
+      - name: Handle failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -f /tmp/blocked.md ]; then
+            gh issue comment ${{ github.event.issue.number }} \
+              --repo ${{ github.repository }} \
+              --body-file /tmp/blocked.md
+          else
+            gh issue comment ${{ github.event.issue.number }} \
+              --repo ${{ github.repository }} \
+              --body "Implementation failed. Check the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details."
+          fi
+
+          gh issue edit ${{ github.event.issue.number }} \
+            --repo ${{ github.repository }} \
+            --remove-label status:in-progress \
+            --add-label status:blocked

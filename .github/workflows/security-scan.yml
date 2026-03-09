@@ -1,0 +1,59 @@
+name: Security Scan
+
+on:
+  schedule:
+    - cron: "0 6 * * 3" # Weekly Wednesday 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  id-token: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Run Claude security scan
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          claude_args: "--model claude-sonnet-4-6 --max-turns 20 --allowedTools Read,Glob,Grep,Bash"
+          prompt: |
+            You are a security scanning agent.
+            Read CLAUDE.md for project-specific security standards.
+
+            Perform a security assessment of the codebase:
+            1. Read CLAUDE.md to understand the project structure and security standards.
+            2. Scan for common security issues:
+               - Hardcoded secrets, API keys, tokens, passwords in source files
+               - SQL injection vulnerabilities (string concatenation in queries)
+               - Command injection (shell=True, unsanitized subprocess args)
+               - XSS vulnerabilities (unescaped user input in templates/HTML)
+               - Path traversal (unsanitized file path operations)
+               - Insecure deserialization (pickle.loads, yaml.load without SafeLoader)
+               - Missing input validation at system boundaries
+               - Insecure cryptographic practices
+            3. Use Grep to search for patterns like:
+               - Grep for "password|secret|api_key|token" in source files (exclude tests/docs)
+               - Grep for "shell=True" in Python files
+               - Grep for "eval(" or "exec(" in source files
+               - Grep for ".format(" or "f'" near SQL/query strings
+
+            For each finding above "moderate" severity:
+            a. Check for existing open issues:
+               gh issue list --repo ${{ github.repository }} --label source:security-scan --state open --json title --jq '.[].title'
+            b. If no matching issue, create one:
+               - Title: "[security-scan] <issue type>: <file:line>"
+               - Labels: type:chore, priority:1, claude:implement, source:security-scan
+               - Use --body-file /tmp/issue-<n>.md
+               - Apply labels with separate --add-label flags
+            c. If matching issue exists, add a comment with updated findings.
+
+            Low-severity findings: create issues with type:chore and source:security-scan only.
+
+            Write summary to /tmp/summary.md and post to Factory Dashboard issue if it exists.

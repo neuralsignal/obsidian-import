@@ -1,0 +1,34 @@
+input:
+  directories: []
+
+output:
+  directory: ./extracted
+  frontmatter: true
+  metadata_fields:
+    - title
+    - source
+    - original_path
+    - file_type
+    - extracted_at
+    - page_count
+
+backends:
+  pdf: native
+  docx: native
+  pptx: native
+  xlsx: native
+  default: native
+
+extraction:
+  timeout_seconds: 120
+  max_file_size_mb: 100
+  xlsx_max_rows_per_sheet: 500
+
+# Per-directory defaults: when users add directories, each entry must specify
+# path, extensions, and exclude explicitly. Example:
+#
+# input:
+#   directories:
+#     - path: /home/user/documents
+#       extensions: [".pdf", ".docx", ".pptx", ".xlsx"]
+#       exclude: ["*.tmp", "~$*"]

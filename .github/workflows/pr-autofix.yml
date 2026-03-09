@@ -1,0 +1,260 @@
+name: PR Auto-Fix
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: read
+  id-token: write
+
+concurrency:
+  group: autofix-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+
+jobs:
+  fix:
+    name: Auto-fix CI failures
+    if: >-
+      github.event.workflow_run.conclusion == 'failure' &&
+      startsWith(github.event.workflow_run.head_branch, 'claude/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Find associated PR
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="${{ github.event.workflow_run.head_branch }}"
+          PR_JSON=$(gh pr list \
+            --repo ${{ github.repository }} \
+            --head "$BRANCH" \
+            --state open \
+            --json number,headRefName \
+            --jq '.[0]')
+
+          if [ -z "$PR_JSON" ] || [ "$PR_JSON" = "null" ]; then
+            echo "No open PR found for branch $BRANCH. Skipping."
+            echo "skip=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          PR_NUMBER=$(echo "$PR_JSON" | jq -r '.number')
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          echo "skip=false" >> $GITHUB_OUTPUT
+          echo "Found PR #$PR_NUMBER for branch $BRANCH"
+
+      - name: Check retry count
+        if: steps.pr.outputs.skip != 'true'
+        id: retry
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER="${{ steps.pr.outputs.pr_number }}"
+          LABELS=$(gh pr view "$PR_NUMBER" \
+            --repo ${{ github.repository }} \
+            --json labels \
+            --jq '[.labels[].name] | join(",")')
+
+          ATTEMPT=1
+          if echo "$LABELS" | grep -q "autofix:3"; then
+            echo "Already at max retries (autofix:3). Marking blocked."
+            echo "exhausted=true" >> $GITHUB_OUTPUT
+            exit 0
+          elif echo "$LABELS" | grep -q "autofix:2"; then
+            ATTEMPT=3
+          elif echo "$LABELS" | grep -q "autofix:1"; then
+            ATTEMPT=2
+          fi
+
+          echo "attempt=$ATTEMPT" >> $GITHUB_OUTPUT
+          echo "exhausted=false" >> $GITHUB_OUTPUT
+          echo "Auto-fix attempt $ATTEMPT"
+
+      - name: Mark blocked (max retries)
+        if: steps.pr.outputs.skip != 'true' && steps.retry.outputs.exhausted == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER="${{ steps.pr.outputs.pr_number }}"
+
+          ISSUE_NUMBER=$(gh pr view "$PR_NUMBER" \
+            --repo ${{ github.repository }} \
+            --json body \
+            --jq '.body' | grep -oP 'Closes #\K\d+' | head -1)
+
+          gh pr comment "$PR_NUMBER" \
+            --repo ${{ github.repository }} \
+            --body "Auto-fix exhausted after 3 attempts. Marking as blocked for human review.
+
+          [Failed CI run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }})"
+
+          if [ -n "$ISSUE_NUMBER" ]; then
+            gh issue edit "$ISSUE_NUMBER" \
+              --repo ${{ github.repository }} \
+              --remove-label "status:pr-draft" \
+              --add-label "status:blocked" 2>/dev/null || true
+          fi
+
+      - name: Checkout PR branch
+        if: steps.pr.outputs.skip != 'true' && steps.retry.outputs.exhausted != 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+          fetch-depth: 0
+
+      - name: Set up pixi
+        if: steps.pr.outputs.skip != 'true' && steps.retry.outputs.exhausted != 'true'
+        uses: prefix-dev/setup-pixi@v0.8.8
+        with:
+          cache: true
+
+      - name: Download CI failure logs
+        if: steps.pr.outputs.skip != 'true' && steps.retry.outputs.exhausted != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          RUN_ID="${{ github.event.workflow_run.id }}"
+
+          gh api "repos/${{ github.repository }}/actions/runs/${RUN_ID}/jobs" \
+            --jq '.jobs[] | select(.conclusion == "failure") | {name: .name, id: .id}' > /tmp/failed_jobs.json
+
+          echo "Failed jobs:"
+          cat /tmp/failed_jobs.json
+
+          echo "" > /tmp/ci_failure_logs.txt
+          for JOB_ID in $(jq -r '.id' /tmp/failed_jobs.json); do
+            JOB_NAME=$(jq -r "select(.id == $JOB_ID) | .name" /tmp/failed_jobs.json)
+            echo "=== Job: $JOB_NAME (ID: $JOB_ID) ===" >> /tmp/ci_failure_logs.txt
+            gh api "repos/${{ github.repository }}/actions/jobs/${JOB_ID}/logs" >> /tmp/ci_failure_logs.txt 2>/dev/null || true
+            echo "" >> /tmp/ci_failure_logs.txt
+          done
+
+          tail -n 2000 /tmp/ci_failure_logs.txt > /tmp/ci_logs_truncated.txt
+          mv /tmp/ci_logs_truncated.txt /tmp/ci_failure_logs.txt
+
+      - name: Apply auto-fix label
+        if: steps.pr.outputs.skip != 'true' && steps.retry.outputs.exhausted != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ATTEMPT="${{ steps.retry.outputs.attempt }}"
+          PR_NUMBER="${{ steps.pr.outputs.pr_number }}"
+
+          if [ "$ATTEMPT" -eq 2 ]; then
+            gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --remove-label "autofix:1" 2>/dev/null || true
+          elif [ "$ATTEMPT" -eq 3 ]; then
+            gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --remove-label "autofix:2" 2>/dev/null || true
+          fi
+
+          gh pr edit "$PR_NUMBER" --repo ${{ github.repository }} --add-label "autofix:$ATTEMPT"
+
+      - name: Fix CI failures with Claude
+        if: steps.pr.outputs.skip != 'true' && steps.retry.outputs.exhausted != 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          claude_args: "--model claude-sonnet-4-6 --max-turns 30 --allowedTools Read,Write,Edit,Glob,Grep,Bash"
+          prompt: |
+            You are fixing CI failures on a pull request.
+            Read CLAUDE.md for project conventions, build commands, and standards.
+
+            This is auto-fix attempt ${{ steps.retry.outputs.attempt }} of 3.
+
+            PR: #${{ steps.pr.outputs.pr_number }}
+            Branch: ${{ github.event.workflow_run.head_branch }}
+            Failed CI run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}
+
+            CI failure logs:
+            ```
+            $(cat /tmp/ci_failure_logs.txt)
+            ```
+
+            Steps:
+            1. Read CLAUDE.md to understand the project's build/test/lint commands.
+            2. Analyze the CI failure logs above to identify what failed and why.
+            3. Fix the issues in the code (lint errors, test failures, type errors, etc.).
+            4. Run the project's test command: pixi run test-cov
+            5. Run lint/format: pixi run lint && pixi run format-check
+            6. Commit and push:
+               git add -A && git commit -m "fix: auto-fix CI failures (attempt ${{ steps.retry.outputs.attempt }})"
+               git push origin ${{ github.event.workflow_run.head_branch }}
+
+            IMPORTANT:
+            - Never modify .github/workflows/ files.
+            - Focus ONLY on fixing the CI failures. Do not refactor or improve unrelated code.
+            - If you cannot fix the issue, write a clear explanation to /tmp/blocked.md.
+
+      - name: Comment on failure
+        if: failure() && steps.pr.outputs.skip != 'true' && steps.retry.outputs.exhausted != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER="${{ steps.pr.outputs.pr_number }}"
+          ATTEMPT="${{ steps.retry.outputs.attempt }}"
+
+          if [ -f /tmp/blocked.md ]; then
+            gh pr comment "$PR_NUMBER" \
+              --repo ${{ github.repository }} \
+              --body "$(cat /tmp/blocked.md)
+
+          (auto-fix attempt $ATTEMPT)"
+          else
+            gh pr comment "$PR_NUMBER" \
+              --repo ${{ github.repository }} \
+              --body "Auto-fix attempt $ATTEMPT failed. Check the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details."
+          fi
+
+  ready:
+    name: Promote draft PR on CI pass
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      startsWith(github.event.workflow_run.head_branch, 'claude/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Find and promote draft PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="${{ github.event.workflow_run.head_branch }}"
+          PR_JSON=$(gh pr list \
+            --repo ${{ github.repository }} \
+            --head "$BRANCH" \
+            --state open \
+            --json number,isDraft \
+            --jq '.[0]')
+
+          if [ -z "$PR_JSON" ] || [ "$PR_JSON" = "null" ]; then
+            echo "No open PR found for branch $BRANCH. Skipping."
+            exit 0
+          fi
+
+          PR_NUMBER=$(echo "$PR_JSON" | jq -r '.number')
+          IS_DRAFT=$(echo "$PR_JSON" | jq -r '.isDraft')
+
+          if [ "$IS_DRAFT" != "true" ]; then
+            echo "PR #$PR_NUMBER is already ready for review. Skipping."
+            exit 0
+          fi
+
+          echo "Promoting PR #$PR_NUMBER from draft to ready for review..."
+          gh pr ready "$PR_NUMBER" --repo ${{ github.repository }}
+
+          ISSUE_NUMBER=$(gh pr view "$PR_NUMBER" \
+            --repo ${{ github.repository }} \
+            --json body \
+            --jq '.body' | grep -oP 'Closes #\K\d+' | head -1)
+
+          if [ -n "$ISSUE_NUMBER" ]; then
+            gh issue edit "$ISSUE_NUMBER" \
+              --repo ${{ github.repository }} \
+              --remove-label "status:pr-draft" \
+              --add-label "status:pr-created" 2>/dev/null || true
+          fi
+
+          echo "PR #$PR_NUMBER promoted to ready for review."

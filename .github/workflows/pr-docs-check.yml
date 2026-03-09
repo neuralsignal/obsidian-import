@@ -1,0 +1,65 @@
+name: PR Documentation Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
+
+jobs:
+  docs-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Run Claude docs check
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          claude_args: "--model claude-sonnet-4-6 --max-turns 12 --allowedTools Bash,Read,Write,Glob,Grep"
+          prompt: |
+            You are a documentation compliance checker.
+            Read CLAUDE.md for project-specific documentation standards.
+
+            Review the changes in this PR for documentation compliance.
+
+            Use `git diff HEAD^1 HEAD --name-only` to find changed files, then
+            read each changed file.
+
+            Check:
+            1. If public API functions were added/changed: do they have docstrings and type hints?
+            2. If user-facing behavior changed: does README.md need updating?
+            3. If a new feature was added: is CHANGELOG.md updated (if the project uses one)?
+            4. Are there any TODO/FIXME/HACK comments that should be tracked as issues?
+
+            Write your review to /tmp/docs-review.md using the Write tool in this format:
+
+            ## Documentation Review
+
+            **Files reviewed:** <comma-separated list>
+
+            **Issues:** <bullet list, or "None">
+
+            **Verdict:** LGTM / Needs Docs Updates
+
+            Keep it concise. Only flag real documentation gaps.
+
+      - name: Post docs review comment
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -f /tmp/docs-review.md ]; then
+            gh pr comment ${{ github.event.pull_request.number }} \
+              --repo ${{ github.repository }} \
+              --body-file /tmp/docs-review.md
+          else
+            echo "No review file found -- Claude did not produce output."
+          fi

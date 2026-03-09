@@ -1,0 +1,146 @@
+name: Factory Orchestrator
+
+on:
+  schedule:
+    - cron: "0 * * * *" # Hourly
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  sweep:
+    name: Sweep orphaned issues
+    runs-on: ubuntu-latest
+    steps:
+      - name: Find and re-label orphaned issues
+        env:
+          GH_TOKEN: ${{ secrets.FACTORY_PAT }}
+        run: |
+          # Find open issues with claude:implement but no in-progress/pr-created status.
+          ISSUES=$(gh issue list \
+            --repo ${{ github.repository }} \
+            --label "claude:implement" \
+            --state open \
+            --json number,labels \
+            --jq '[.[] | select(
+              (.labels | map(.name) | index("status:in-progress") | not) and
+              (.labels | map(.name) | index("status:pr-created") | not) and
+              (.labels | map(.name) | index("status:pr-draft") | not)
+            ) | .number] | .[]')
+
+          if [ -z "$ISSUES" ]; then
+            echo "No orphaned issues found."
+            exit 0
+          fi
+
+          for ISSUE in $ISSUES; do
+            echo "Re-labeling issue #$ISSUE..."
+            gh issue edit "$ISSUE" \
+              --repo ${{ github.repository }} \
+              --remove-label "claude:implement"
+            sleep 2
+            gh issue edit "$ISSUE" \
+              --repo ${{ github.repository }} \
+              --add-label "claude:implement"
+            echo "  Swept issue #$ISSUE"
+          done
+
+  retry-blocked:
+    name: Retry blocked issues
+    runs-on: ubuntu-latest
+    steps:
+      - name: Retry issues blocked for 3+ days
+        env:
+          GH_TOKEN: ${{ secrets.FACTORY_PAT }}
+        run: |
+          BLOCKED=$(gh issue list \
+            --repo ${{ github.repository }} \
+            --label "status:blocked" \
+            --state open \
+            --json number,updatedAt \
+            --jq '[.[] | select(
+              (.updatedAt | fromdateiso8601) < (now - 259200)
+            ) | .number] | .[]')
+
+          if [ -z "$BLOCKED" ]; then
+            echo "No blocked issues eligible for retry."
+            exit 0
+          fi
+
+          for ISSUE in $BLOCKED; do
+            TODAY=$(date -u +%Y-%m-%d)
+            RETRIED=$(gh issue view "$ISSUE" \
+              --repo ${{ github.repository }} \
+              --json comments \
+              --jq "[.comments[] | select(.body | contains(\"auto-retry by orchestrator\")) | select(.createdAt | startswith(\"$TODAY\"))] | length")
+
+            if [ "$RETRIED" -gt 0 ]; then
+              echo "Issue #$ISSUE already retried today, skipping."
+              continue
+            fi
+
+            echo "Retrying blocked issue #$ISSUE..."
+            gh issue edit "$ISSUE" \
+              --repo ${{ github.repository }} \
+              --remove-label "status:blocked"
+            sleep 2
+            gh issue edit "$ISSUE" \
+              --repo ${{ github.repository }} \
+              --add-label "claude:implement"
+            gh issue comment "$ISSUE" \
+              --repo ${{ github.repository }} \
+              --body "Retrying implementation (auto-retry by orchestrator)."
+            echo "  Retried issue #$ISSUE"
+          done
+
+  dashboard:
+    name: Update Factory Dashboard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post status summary
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          REPO="${{ github.repository }}"
+
+          DASHBOARD=$(gh issue list --repo "$REPO" \
+            --search "[Factory Dashboard]" \
+            --state open \
+            --json number \
+            --jq '.[0].number')
+
+          if [ -z "$DASHBOARD" ]; then
+            echo "No [Factory Dashboard] issue found. Skipping."
+            exit 0
+          fi
+
+          QUEUED=$(gh issue list --repo "$REPO" --label "claude:implement" --state open --json number --jq 'length')
+          IN_PROGRESS=$(gh issue list --repo "$REPO" --label "status:in-progress" --state open --json number --jq 'length')
+          PR_DRAFT=$(gh issue list --repo "$REPO" --label "status:pr-draft" --state open --json number --jq 'length')
+          PR_CREATED=$(gh issue list --repo "$REPO" --label "status:pr-created" --state open --json number --jq 'length')
+          BLOCKED=$(gh issue list --repo "$REPO" --label "status:blocked" --state open --json number --jq 'length')
+          AUTOFIX_1=$(gh issue list --repo "$REPO" --label "autofix:1" --state open --json number --jq 'length')
+          AUTOFIX_2=$(gh issue list --repo "$REPO" --label "autofix:2" --state open --json number --jq 'length')
+          AUTOFIX_3=$(gh issue list --repo "$REPO" --label "autofix:3" --state open --json number --jq 'length')
+
+          cat > /tmp/dashboard.md << EOF
+          ## Factory Status ($(date -u '+%Y-%m-%d %H:%M UTC'))
+
+          | Status | Count |
+          |--------|-------|
+          | Queued (claude:implement) | $QUEUED |
+          | In Progress | $IN_PROGRESS |
+          | Draft PR (CI pending) | $PR_DRAFT |
+          | PR Created (awaiting review) | $PR_CREATED |
+          | Auto-fix (attempt 1/2/3) | $AUTOFIX_1 / $AUTOFIX_2 / $AUTOFIX_3 |
+          | Blocked | $BLOCKED |
+
+          *Updated by factory-orchestrator (run [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}))*
+          EOF
+
+          sed -i 's/^          //' /tmp/dashboard.md
+
+          gh issue comment "$DASHBOARD" --repo "$REPO" --body-file /tmp/dashboard.md
+          echo "Dashboard updated."

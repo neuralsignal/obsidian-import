@@ -1,0 +1,60 @@
+name: Dependency Audit
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Weekly Monday 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  id-token: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up pixi
+        uses: prefix-dev/setup-pixi@v0.8.8
+        with:
+          cache: true
+
+      - name: Run Claude dependency audit
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          claude_args: "--model claude-sonnet-4-6 --max-turns 30 --allowedTools Read,Glob,Grep,Bash"
+          prompt: |
+            You are a dependency audit agent.
+            Read CLAUDE.md for project-specific dependency tooling and standards.
+
+            Perform a comprehensive dependency audit:
+            1. Read CLAUDE.md to find the dependency audit command, lockfile path, and package manager.
+            2. Run: pixi run pip audit (inside pixi shell)
+            3. Check pixi.toml and pyproject.toml for outdated or loosely pinned dependencies.
+            4. Check for version pin issues (unpinned deps, wide version ranges).
+
+            For each finding above "moderate" severity:
+            a. Check if an open issue already exists:
+               gh issue list --repo ${{ github.repository }} --label source:dep-audit --state open --json title --jq '.[].title'
+            b. If no matching issue exists, create one:
+               - Title format: "[dep-audit] <finding type>: <package-name>"
+               - Labels: type:chore, priority:2, claude:implement, source:dep-audit
+               - Body: describe the vulnerability/issue, current version, recommended fix
+               - Apply labels with separate --add-label flags, NO QUOTES
+               - Use --body-file /tmp/issue-<n>.md instead of --body
+            c. If a matching issue exists, add a comment with updated findings.
+
+            For low-severity findings, create issues with type:chore and source:dep-audit only (no claude:implement).
+
+            After processing all findings, write a summary to /tmp/summary.md.
+
+            Post the summary as a comment on issue titled "[Factory Dashboard]" if it exists:
+              DASHBOARD=$(gh issue list --repo ${{ github.repository }} --search "[Factory Dashboard]" --state open --json number --jq '.[0].number')
+              if [ -n "$DASHBOARD" ]; then
+                gh issue comment "$DASHBOARD" --repo ${{ github.repository }} --body-file /tmp/summary.md
+              fi

@@ -1,0 +1,49 @@
+name: Workflow Upgrade Check
+
+on:
+  schedule:
+    - cron: "0 7 1 * *" # Monthly 1st 07:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  id-token: write
+
+jobs:
+  upgrade:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Run Claude workflow upgrade check
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          claude_args: "--model claude-haiku-4-5-20251001 --max-turns 8 --allowedTools Read,Glob,Grep,Bash"
+          prompt: |
+            You are a GitHub Actions version checker.
+
+            Check all workflow files for outdated actions:
+            1. Find all workflow files: .github/workflows/*.yml
+            2. For each action reference (uses: owner/action@version):
+               - Check the latest release: gh api repos/<owner>/<action>/releases/latest --jq '.tag_name'
+               - Compare with the current pinned version
+               - Flag if a newer major or minor version is available
+            3. Check for deprecated action inputs by reading action.yml from the repo:
+               gh api repos/<owner>/<action>/contents/action.yml --jq '.content' | base64 -d
+
+            For each outdated action:
+            a. Check for existing open issues:
+               gh issue list --repo ${{ github.repository }} --label source:workflow-upgrade --state open --json title --jq '.[].title'
+            b. If no matching issue, create one:
+               - Title: "[workflow-upgrade] <action>: <current> -> <latest>"
+               - Labels: type:chore, priority:3, source:workflow-upgrade
+               - NOTE: workflow upgrade issues do NOT get claude:implement (agents must not self-modify workflows)
+               - Use --body-file /tmp/issue-<n>.md
+               - Apply labels with separate --add-label flags
+            c. If matching issue exists, add a comment with updated version info.
+
+            Write summary to /tmp/summary.md and post to Factory Dashboard issue if it exists.

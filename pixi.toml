@@ -1,0 +1,32 @@
+[workspace]
+channels = ["conda-forge"]
+name = "obsidian-import"
+platforms = ["linux-64", "osx-arm64"]
+version = "0.1.0"
+
+[dependencies]
+python = ">=3.12,<3.15"
+python-build = ">=1.4.0,<2"
+hatchling = ">=1.28.0,<2"
+
+[pypi-dependencies]
+obsidian-import = {path = ".", editable = true}
+pyyaml = ">=6.0,<7"
+click = ">=8.0,<9"
+pdfplumber = ">=0.11,<1"
+pypdf = ">=5.0,<6"
+defusedxml = ">=0.7,<1"
+python-pptx = ">=1.0,<2"
+openpyxl = ">=3.1,<4"
+pytest = ">=8.0,<9"
+hypothesis = ">=6.0,<7"
+ruff = ">=0.11,<1"
+pytest-cov = ">=5.0,<6"
+pre-commit = ">=4.0,<5"
+
+[tasks]
+lint = "ruff check obsidian_import/ tests/"
+format-check = "ruff format --check obsidian_import/ tests/"
+format = "ruff format obsidian_import/ tests/"
+test = "pytest tests/ -v --tb=short"
+test-cov = "pytest tests/ -v --tb=short --cov=obsidian_import --cov-report=term-missing"

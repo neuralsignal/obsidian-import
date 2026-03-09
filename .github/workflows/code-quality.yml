@@ -1,0 +1,55 @@
+name: Code Quality Check
+
+on:
+  schedule:
+    - cron: "0 6 * * 5" # Weekly Friday 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  id-token: write
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Run Claude code quality check
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          claude_args: "--model claude-sonnet-4-6 --max-turns 20 --allowedTools Read,Glob,Grep,Bash"
+          prompt: |
+            You are a code quality assessment agent.
+            Read CLAUDE.md for project-specific quality standards.
+
+            Perform a code quality assessment:
+            1. Read CLAUDE.md to understand the project structure and quality standards.
+            2. Check for code quality issues:
+               - Files exceeding maximum line count (default: 300 lines, check CLAUDE.md for override)
+               - Functions with high cyclomatic complexity (deeply nested logic, many branches)
+               - Code duplication (similar logic repeated across files)
+               - Dead code (unused imports, unreachable branches, commented-out code)
+               - Missing type hints on public functions (for typed languages)
+               - Functions with too many parameters (>5)
+               - God classes/modules (single file doing too many things)
+            3. Use wc -l on source files to check lengths.
+            4. Use Grep to find patterns like unused imports, bare except, etc.
+
+            For each finding:
+            a. Check for existing open issues:
+               gh issue list --repo ${{ github.repository }} --label source:code-quality --state open --json title --jq '.[].title'
+            b. If no matching issue, create one:
+               - Title: "[code-quality] <issue type>: <file or description>"
+               - Labels: type:chore, priority:2, claude:implement, source:code-quality
+               - Use --body-file /tmp/issue-<n>.md
+               - Apply labels with separate --add-label flags
+            c. If matching issue exists, add a comment with updated findings.
+
+            Low-severity findings (style-only): create issues with type:chore and source:code-quality only.
+
+            Write summary to /tmp/summary.md and post to Factory Dashboard issue if it exists.

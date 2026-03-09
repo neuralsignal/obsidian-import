@@ -1,0 +1,46 @@
+name: Issue Auto-Triage
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  issues: write
+  id-token: write
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Run Claude triage
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          claude_args: "--model claude-haiku-4-5-20251001 --max-turns 5 --allowedTools Bash,Read,Write,Glob,Grep"
+          prompt: |
+            You are an issue triage assistant.
+            Read the CLAUDE.md file using the Read tool for full context on labels and conventions.
+
+            Issue to triage:
+            - Number: ${{ github.event.issue.number }}
+            - Title: ${{ github.event.issue.title }}
+            - Body: ${{ github.event.issue.body }}
+            - Current labels: ${{ join(github.event.issue.labels.*.name, ', ') }}
+
+            Steps:
+            1. Read CLAUDE.md to understand the label taxonomy and project structure.
+            2. Determine: type:* (bug/feat/chore), priority (default: priority:2), status:triaged.
+            3. Apply each label separately -- one --add-label per label, NO QUOTES around label names:
+               gh issue edit ${{ github.event.issue.number }} --repo ${{ github.repository }} --add-label type:bug --add-label priority:2 --add-label status:triaged
+            4. Write a brief triage comment to /tmp/triage-comment.md using the Write tool.
+               Include: classification rationale, suggested priority, next steps.
+            5. Post it:
+               gh issue comment ${{ github.event.issue.number }} --repo ${{ github.repository }} --body-file /tmp/triage-comment.md
+
+            IMPORTANT: Do NOT use quotes around label names. Use --body-file instead of --body.
+            Do not apply labels already present on the issue.
