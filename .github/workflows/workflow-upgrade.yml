@@ -46,4 +46,19 @@ jobs:
                - Apply labels with separate --add-label flags
             c. If matching issue exists, add a comment with updated version info.
 
-            Write summary to /tmp/summary.md and post to Factory Dashboard issue if it exists.
+            Write summary to /tmp/summary.md.
+
+            Post the summary as a sticky comment on the "[Factory Dashboard]" issue (find-or-create pattern):
+              MARKER="<!-- factory:workflow-upgrade -->"
+              DASHBOARD=$(gh issue list --repo ${{ github.repository }} --search "[Factory Dashboard]" --state open --json number --jq '.[0].number')
+              if [ -n "$DASHBOARD" ]; then
+                COMMENT_ID=$(gh api repos/${{ github.repository }}/issues/$DASHBOARD/comments \
+                  --jq ".[] | select(.body | contains(\"$MARKER\")) | .id" | head -1)
+                echo "$MARKER" | cat - /tmp/summary.md > /tmp/summary-marked.md
+                if [ -n "$COMMENT_ID" ]; then
+                  gh api repos/${{ github.repository }}/issues/comments/$COMMENT_ID \
+                    -X PATCH -f body=@/tmp/summary-marked.md
+                else
+                  gh issue comment "$DASHBOARD" --repo ${{ github.repository }} --body-file /tmp/summary-marked.md
+                fi
+              fi
