@@ -99,7 +99,7 @@ jobs:
     name: Update Factory Dashboard
     runs-on: ubuntu-latest
     steps:
-      - name: Post status summary
+      - name: Edit dashboard issue body
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -125,11 +125,21 @@ jobs:
           AUTOFIX_2=$(gh issue list --repo "$REPO" --label "autofix:2" --state open --json number --jq 'length')
           AUTOFIX_3=$(gh issue list --repo "$REPO" --label "autofix:3" --state open --json number --jq 'length')
 
-          cat > /tmp/dashboard.md << EOF
-          ## Factory Status ($(date -u '+%Y-%m-%d %H:%M UTC'))
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-          | Status | Count |
-          |--------|-------|
+          cat > /tmp/dashboard.md << EOF
+          # Factory Dashboard
+
+          Status aggregation for the dark factory autonomous engineering loop.
+
+          **Legend:** Queued → In Progress → Draft PR → PR Created → Human Review & Merge
+
+          ---
+
+          ## Status ($(date -u '+%Y-%m-%d %H:%M UTC'))
+
+          | Stage | Count |
+          |-------|-------|
           | Queued (claude:implement) | $QUEUED |
           | In Progress | $IN_PROGRESS |
           | Draft PR (CI pending) | $PR_DRAFT |
@@ -137,10 +147,10 @@ jobs:
           | Auto-fix (attempt 1/2/3) | $AUTOFIX_1 / $AUTOFIX_2 / $AUTOFIX_3 |
           | Blocked | $BLOCKED |
 
-          *Updated by factory-orchestrator (run [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}))*
+          *Updated by factory-orchestrator ([run ${{ github.run_id }}]($RUN_URL))*
           EOF
 
           sed -i 's/^          //' /tmp/dashboard.md
 
-          gh issue comment "$DASHBOARD" --repo "$REPO" --body-file /tmp/dashboard.md
-          echo "Dashboard updated."
+          gh issue edit "$DASHBOARD" --repo "$REPO" --body-file /tmp/dashboard.md
+          echo "Dashboard updated (issue body edited)."
