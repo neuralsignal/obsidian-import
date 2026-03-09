@@ -1,0 +1,132 @@
+name: Docs Update
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"    # Weekly Monday 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+concurrency:
+  group: docs-update
+  cancel-in-progress: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for existing docs-update PR
+        id: existing
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          OPEN_PR=$(gh pr list \
+            --repo ${{ github.repository }} \
+            --head "claude/docs-update" \
+            --state open \
+            --json number \
+            --jq '.[0].number // empty')
+          if [ -n "$OPEN_PR" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "Existing docs-update PR #${OPEN_PR} is open. Skipping."
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create branch
+        if: steps.existing.outputs.skip != 'true'
+        id: branch
+        run: |
+          BRANCH="claude/docs-update"
+          git checkout -b "$BRANCH"
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+
+      - uses: actions/setup-python@v5
+        if: steps.existing.outputs.skip != 'true'
+        with:
+          python-version: "3.12"
+
+      - name: Install docs toolchain
+        if: steps.existing.outputs.skip != 'true'
+        run: |
+          pip install -e .
+          pip install "mkdocs>=1.6,<2" "mkdocs-material>=9.5,<10" "mkdocstrings[python]>=0.29,<1"
+
+      - uses: anthropics/claude-code-action@v1
+        if: steps.existing.outputs.skip != 'true'
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          claude_args: "--model claude-sonnet-4-6 --max-turns 20 --allowedTools Read,Write,Edit,Glob,Grep,Bash"
+          prompt: |
+            You are a documentation updater for obsidian-import, a Python package that extracts
+            files (PDF, DOCX, PPTX, XLSX) into Obsidian-flavored Markdown.
+
+            Read CLAUDE.md for project conventions.
+
+            Steps:
+            1. Read CLAUDE.md and mkdocs.yml to understand the project and docs structure.
+            2. Read all files in docs/ to understand current documentation.
+            3. Read source code in obsidian_import/: module docstrings, function signatures,
+               CLI commands (cli.py), config dataclasses (config.py), backends, discovery,
+               registry, output, exceptions.
+            4. Compare docs against code. Look for:
+               a. New public functions/classes not in API reference pages
+               b. Changed function signatures not reflected in user-facing docs
+               c. New CLI commands or options not documented
+               d. README content that has drifted from docs/ pages (installation, quick start,
+                  configuration, backends)
+               e. Outdated examples, config keys, or default values
+               f. CHANGELOG entries not reflected in docs/changelog.md
+               g. Missing or broken cross-references between pages
+            5. Update docs/ files to match current code. Maintain existing style and structure.
+            6. Run: mkdocs build --strict
+               Fix any broken links or warnings the build reports.
+            7. If you made no changes, exit without committing.
+            8. If you made changes:
+               a. Stage only docs/ files: git add docs/
+               b. Commit: git commit -m "docs: sync documentation with codebase changes"
+               c. Push: git push origin ${{ steps.branch.outputs.branch }}
+
+            IMPORTANT:
+            - Only modify files in docs/. Never modify source code or workflows.
+            - Keep the same writing style and structure as existing docs.
+            - Do not add unnecessary content or over-document internal details.
+            - Preserve mkdocstrings directives (::: module.path) in API reference pages.
+            - The docs/changelog.md uses a snippet include (--8<-- "CHANGELOG.md"). Do not
+              duplicate CHANGELOG content — it is auto-included from the root file.
+
+      - name: Create PR
+        if: steps.existing.outputs.skip != 'true' && success()
+        env:
+          GH_TOKEN: ${{ secrets.FACTORY_PAT }}
+        run: |
+          if git log origin/main..${{ steps.branch.outputs.branch }} --oneline | head -1 | grep -q .; then
+            gh pr create \
+              --draft \
+              --title "docs: sync documentation with codebase" \
+              --body-file /dev/stdin \
+              --head "${{ steps.branch.outputs.branch }}" \
+              --base main <<'EOF'
+          ## Summary
+
+          Automated documentation update triggered by source code changes.
+
+          ## What changed
+
+          Documentation pages in `docs/` were updated to match the current state of the codebase.
+
+          ## Test plan
+
+          - [ ] `mkdocs build --strict` passes
+          - [ ] All nav links resolve
+          - [ ] API reference reflects current code
+          EOF
+          fi

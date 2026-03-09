@@ -1,0 +1,15 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.5
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+  - repo: local
+    hooks:
+      - id: pixi-lock
+        name: pixi lock
+        entry: bash -c 'pixi install --locked 2>/dev/null || { pixi lock && git add pixi.lock; }'
+        language: system
+        files: pixi\.toml$
+        pass_filenames: false
