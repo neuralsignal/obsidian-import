@@ -11,6 +11,7 @@ from obsidian_import import discover_files, extract_file
 from obsidian_import.config import default_config, load_config
 from obsidian_import.exceptions import ObsidianImportError
 from obsidian_import.output import format_output, output_path_for
+from obsidian_import.passthrough import copy_passthrough, matches_passthrough
 from obsidian_import.registry import check_backend_available
 
 
@@ -42,6 +43,7 @@ def convert(path: str, output_path: str | None, config_path: str | None) -> None
         out = Path(output_path)
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(formatted, encoding="utf-8")
+        _copy_associated_files(doc.associated_files, out.parent)
         click.echo(f"Extracted: {source} -> {out}")
     else:
         click.echo(formatted)
@@ -70,25 +72,38 @@ def batch(config_path: str, output_dir: str | None) -> None:
     config = load_config(Path(config_path))
 
     target_dir = output_dir if output_dir else config.output.directory
-    Path(target_dir).mkdir(parents=True, exist_ok=True)
+    out_dir = Path(target_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
 
     success = 0
     failed = 0
+    passthrough_count = 0
 
     for discovered in discover_files(config):
+        if matches_passthrough(discovered.path, config.passthrough):
+            try:
+                dest = copy_passthrough(discovered.path, out_dir)
+                click.echo(f"  COPY  {discovered.path} -> {dest}")
+                passthrough_count += 1
+            except ObsidianImportError as exc:
+                click.echo(f"  FAIL  {discovered.path}: {exc}", err=True)
+                failed += 1
+            continue
+
         try:
             doc = extract_file(discovered.path, config)
             formatted = format_output(doc, config.output)
             out_path = output_path_for(discovered.path, target_dir)
             out_path.parent.mkdir(parents=True, exist_ok=True)
             out_path.write_text(formatted, encoding="utf-8")
+            _copy_associated_files(doc.associated_files, out_path.parent)
             click.echo(f"  OK  {discovered.path} -> {out_path}")
             success += 1
         except ObsidianImportError as exc:
             click.echo(f"  FAIL  {discovered.path}: {exc}", err=True)
             failed += 1
 
-    click.echo(f"\nDone: {success} extracted, {failed} failed.")
+    click.echo(f"\nDone: {success} extracted, {passthrough_count} copied, {failed} failed.")
 
 
 @main.command()
@@ -99,6 +114,10 @@ def doctor() -> None:
         ("native (docx)", "native", ".docx"),
         ("native (pptx)", "native", ".pptx"),
         ("native (xlsx)", "native", ".xlsx"),
+        ("native (csv)", "native", ".csv"),
+        ("native (json)", "native", ".json"),
+        ("native (yaml)", "native", ".yaml"),
+        ("native (image)", "native", ".png"),
         ("markitdown", "markitdown", ".pdf"),
         ("docling", "docling", ".pdf"),
     ]
@@ -133,3 +152,13 @@ def doctor() -> None:
     else:
         click.echo("\nSome required backends are missing.")
         raise SystemExit(1)
+
+
+def _copy_associated_files(files: tuple[Path, ...], dest_dir: Path) -> None:
+    """Copy associated files (e.g. images) to the output directory.
+
+    Delegates to copy_passthrough for each file, raising OutputConflictError
+    if a destination file already exists.
+    """
+    for src in files:
+        copy_passthrough(src, dest_dir)

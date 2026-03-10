@@ -1,6 +1,6 @@
 # obsidian-import
 
-Extract files (PDF, DOCX, PPTX, XLSX) into Obsidian-flavored Markdown.
+Extract files (PDF, DOCX, PPTX, XLSX, CSV, JSON, YAML, images) into Obsidian-flavored Markdown.
 
 The mirror of [obsidian-export](https://github.com/neuralsignal/obsidian-export): where obsidian-export converts Obsidian notes to PDF/DOCX, obsidian-import converts external documents into Obsidian-ready markdown with YAML frontmatter.
 
@@ -13,7 +13,7 @@ pip install obsidian-import
 With optional backends:
 
 ```bash
-pip install obsidian-import[markitdown]    # fallback for HTML, CSV, etc.
+pip install obsidian-import[markitdown]    # fallback for HTML, etc.
 pip install obsidian-import[docling]       # high-quality ML-based extraction
 ```
 
@@ -64,7 +64,7 @@ Create a `config.yaml`:
 input:
   directories:
     - path: /path/to/documents
-      extensions: [".pdf", ".docx", ".pptx", ".xlsx"]
+      extensions: [".pdf", ".docx", ".pptx", ".xlsx", ".csv", ".json", ".yaml", ".png", ".jpg"]
       exclude: ["*.tmp", "~$*"]
 
 output:
@@ -83,21 +83,93 @@ backends:
   docx: native       # defusedxml
   pptx: native       # python-pptx
   xlsx: native       # openpyxl
+  csv: native        # stdlib csv -> GFM table
+  json: native       # stdlib json -> fenced code block
+  yaml: native       # PyYAML -> fenced code block
+  image: native      # Obsidian ![[wikilink]] embed
   default: native    # fallback for unknown extensions
 
 extraction:
   timeout_seconds: 120
   max_file_size_mb: 100
   xlsx_max_rows_per_sheet: 500
+
+# Pass-through: copy files as-is without extraction
+passthrough:
+  extensions: [".md", ".markdown", ".canvas"]
+  paths: ["raw/**"]
+  patterns: []
 ```
 
 ## Backend Selection
 
 | Backend | Extensions | Dependencies | Quality |
 |---------|-----------|--------------|---------|
-| `native` | .pdf, .docx, .pptx, .xlsx | Core (included) | Good for text-heavy documents |
-| `markitdown` | Any | `[markitdown]` extra | Good fallback for HTML, CSV, etc. |
+| `native` | .pdf, .docx, .pptx, .xlsx, .csv, .json, .yaml/.yml, images | Core (included) | Good for text-heavy documents |
+| `markitdown` | Any | `[markitdown]` extra | Good fallback for HTML, etc. |
 | `docling` | Any | `[docling]` extra | Best for complex layouts, tables |
+
+### Format-Specific Behavior
+
+| Format | Native Backend Output |
+|--------|----------------------|
+| PDF | Page-by-page markdown with tables and metadata |
+| DOCX | Headings, paragraphs, and tables from XML |
+| PPTX | Slide-by-slide with titles, body text, and notes |
+| XLSX | Sheet-by-sheet GFM markdown tables |
+| CSV | GFM markdown table |
+| JSON | Pretty-printed fenced code block |
+| YAML/YML | Fenced code block |
+| Images (PNG, JPG, GIF, SVG, WEBP, BMP, TIFF) | Obsidian wikilink embed `![[image.png]]` |
+
+## Pass-Through Mode
+
+Files matching pass-through rules are copied to the output directory as-is, without extraction or conversion. This is useful for:
+
+- `.md` files that are already Obsidian-ready
+- `.csv`, `.json`, `.yaml` files used by Obsidian plugins (e.g., Dataview)
+- Any file type where transformation is unwanted
+
+Pass-through rules are evaluated before backend dispatch. A file matches if it hits **any** rule (OR logic):
+
+```yaml
+passthrough:
+  # Extension list (cheapest check, runs first)
+  extensions: [".md", ".markdown", ".canvas"]
+
+  # fnmatch patterns (matched against full source path string;
+  # '*' matches '/', so '**/' is not needed for directory traversal)
+  paths: ["notes/raw/**", "**/*.template.*"]
+
+  # Regex patterns (matched against full source path string)
+  patterns: [".*\\.generated\\..*"]
+```
+
+Decision tree:
+
+```
+File discovered
+  |
+  +- matches passthrough? -> COPY as-is (no .md wrapper)
+  |
+  +- NO -> backend dispatch -> extract -> write .md
+```
+
+## Image Handling
+
+Images are handled differently from text documents. The native image backend generates an Obsidian wikilink embed:
+
+```markdown
+---
+title: diagram
+source: obsidian-import
+file_type: png
+---
+
+![[diagram.png]]
+```
+
+The image file is automatically copied alongside the `.md` output so Obsidian can render it inline. Supported formats: PNG, JPG, JPEG, GIF, SVG, WEBP, BMP, TIFF.
 
 ## CLI Reference
 
@@ -105,7 +177,7 @@ extraction:
 |---------|-------------|
 | `obsidian-import convert <path>` | Extract a single file |
 | `obsidian-import discover --config <yaml>` | List matching files |
-| `obsidian-import batch --config <yaml>` | Extract all discovered files |
+| `obsidian-import batch --config <yaml>` | Extract all discovered files (with pass-through) |
 | `obsidian-import doctor` | Check backend availability |
 
 ## Output Format
@@ -131,8 +203,8 @@ Content extracted from the first page...
 
 ## Related Packages
 
-- [obsidian-export](https://github.com/neuralsignal/obsidian-export) — Convert Obsidian notes to PDF/DOCX
-- [agentic-brain](https://github.com/neuralsignal/agentic-brain) — Agentic knowledge management (consumes both packages)
+- [obsidian-export](https://github.com/neuralsignal/obsidian-export) -- Convert Obsidian notes to PDF/DOCX
+- [agentic-brain](https://github.com/neuralsignal/agentic-brain) -- Agentic knowledge management (consumes both packages)
 
 ## License
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
@@ -37,7 +38,18 @@ class BackendsConfig:
     docx: str
     pptx: str
     xlsx: str
+    csv: str
+    json: str
+    yaml: str
+    image: str
     default: str
+
+
+@dataclass(frozen=True)
+class PassthroughConfig:
+    extensions: tuple[str, ...]
+    paths: tuple[str, ...]
+    patterns: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -53,6 +65,7 @@ class ImportConfig:
     output: OutputConfig
     backends: BackendsConfig
     extraction: ExtractionConfig
+    passthrough: PassthroughConfig
 
 
 def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
@@ -85,6 +98,8 @@ def _build_config(raw: dict[str, Any], config_dir: Path | None) -> ImportConfig:
     except KeyError as exc:
         raise ConfigError(f"Missing required config section: {exc}") from exc
 
+    passthrough_raw = raw.get("passthrough", {})
+
     directories: list[DirectoryConfig] = []
     for d in input_raw.get("directories", []):
         if isinstance(d, str):
@@ -106,6 +121,13 @@ def _build_config(raw: dict[str, Any], config_dir: Path | None) -> ImportConfig:
                 "Each directory must have 'path', 'extensions', and 'exclude'."
             ) from exc
 
+    passthrough_patterns = tuple(passthrough_raw.get("patterns", ()))
+    for pattern in passthrough_patterns:
+        try:
+            re.compile(pattern)
+        except re.error as exc:
+            raise ConfigError(f"Invalid regex in passthrough.patterns: '{pattern}': {exc}") from exc
+
     return ImportConfig(
         input=InputConfig(directories=tuple(directories)),
         output=OutputConfig(
@@ -118,12 +140,21 @@ def _build_config(raw: dict[str, Any], config_dir: Path | None) -> ImportConfig:
             docx=backends_raw["docx"],
             pptx=backends_raw["pptx"],
             xlsx=backends_raw["xlsx"],
+            csv=backends_raw.get("csv", backends_raw["default"]),
+            json=backends_raw.get("json", backends_raw["default"]),
+            yaml=backends_raw.get("yaml", backends_raw["default"]),
+            image=backends_raw.get("image", backends_raw["default"]),
             default=backends_raw["default"],
         ),
         extraction=ExtractionConfig(
             timeout_seconds=int(extraction_raw["timeout_seconds"]),
             max_file_size_mb=int(extraction_raw["max_file_size_mb"]),
             xlsx_max_rows_per_sheet=int(extraction_raw["xlsx_max_rows_per_sheet"]),
+        ),
+        passthrough=PassthroughConfig(
+            extensions=tuple(passthrough_raw.get("extensions", ())),
+            paths=tuple(passthrough_raw.get("paths", ())),
+            patterns=passthrough_patterns,
         ),
     )
 

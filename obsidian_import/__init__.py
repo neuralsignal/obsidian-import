@@ -11,6 +11,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from pathlib import Path
 
+from obsidian_import.backends.native_image import is_image_extension
 from obsidian_import.config import ImportConfig
 from obsidian_import.discovery import DiscoveredFile
 from obsidian_import.discovery import discover_files as _discover_files
@@ -23,6 +24,7 @@ def extract_file(path: Path, config: ImportConfig) -> ExtractedDocument:
 
     Uses the configured backend for the file's extension.
     Returns an ExtractedDocument with the extracted markdown and metadata.
+    For image files, the source image is listed in associated_files for copying.
     """
     extension = path.suffix.lower()
     extra_kwargs: dict[str, object] = {}
@@ -39,12 +41,17 @@ def extract_file(path: Path, config: ImportConfig) -> ExtractedDocument:
 
     page_count = _estimate_page_count(markdown, extension)
 
+    associated: tuple[Path, ...] = ()
+    if is_image_extension(extension):
+        associated = (path,)
+
     return ExtractedDocument(
         source_path=path,
         markdown=markdown,
         title=path.stem,
         file_type=extension.lstrip("."),
         page_count=page_count,
+        associated_files=associated,
     )
 
 

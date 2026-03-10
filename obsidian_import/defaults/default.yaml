@@ -17,12 +17,21 @@ backends:
   docx: native
   pptx: native
   xlsx: native
+  csv: native
+  json: native
+  yaml: native
+  image: native
   default: native
 
 extraction:
   timeout_seconds: 120
   max_file_size_mb: 100
   xlsx_max_rows_per_sheet: 500
+
+passthrough:
+  extensions: []
+  paths: []
+  patterns: []
 
 # Per-directory defaults: when users add directories, each entry must specify
 # path, extensions, and exclude explicitly. Example:
@@ -32,3 +41,11 @@ extraction:
 #     - path: /home/user/documents
 #       extensions: [".pdf", ".docx", ".pptx", ".xlsx"]
 #       exclude: ["*.tmp", "~$*"]
+#
+# Passthrough: files matching any rule are copied as-is, no extraction.
+# Rules are OR'd: a file matching any extension, path glob, or regex is passed through.
+#
+# passthrough:
+#   extensions: [".md", ".markdown", ".canvas"]
+#   paths: ["notes/raw/**"]
+#   patterns: [".*\\.generated\\..*"]

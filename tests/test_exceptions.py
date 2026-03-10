@@ -6,6 +6,7 @@ from obsidian_import.exceptions import (
     ExtractionError,
     ExtractionTimeoutError,
     ObsidianImportError,
+    OutputConflictError,
     UnsupportedFormatError,
 )
 
@@ -21,6 +22,7 @@ def test_all_exceptions_inherit_from_base():
         ExtractionTimeoutError,
         BackendNotAvailableError,
         ConfigError,
+        OutputConflictError,
     ]:
         assert issubclass(exc_class, ObsidianImportError)
 

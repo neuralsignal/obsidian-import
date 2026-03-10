@@ -63,6 +63,16 @@ class TestDefaultConfig:
         assert config.backends.docx == "native"
         assert config.backends.pptx == "native"
         assert config.backends.xlsx == "native"
+        assert config.backends.csv == "native"
+        assert config.backends.json == "native"
+        assert config.backends.yaml == "native"
+        assert config.backends.image == "native"
+
+    def test_default_passthrough_empty(self):
+        config = default_config()
+        assert config.passthrough.extensions == ()
+        assert config.passthrough.paths == ()
+        assert config.passthrough.patterns == ()
 
     def test_default_timeout(self):
         config = default_config()
@@ -145,3 +155,51 @@ extraction:
         config_file.write_text("")
         config = load_config(config_file)
         assert isinstance(config, ImportConfig)
+
+    def test_passthrough_config_from_file(self, tmp_path):
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text("""
+passthrough:
+  extensions: [".md", ".canvas"]
+  paths: ["raw/**"]
+  patterns: [".*\\\\.generated\\\\..*"]
+""")
+        config = load_config(config_file)
+        assert config.passthrough.extensions == (".md", ".canvas")
+        assert config.passthrough.paths == ("raw/**",)
+        assert len(config.passthrough.patterns) == 1
+
+    def test_invalid_passthrough_regex_raises(self, tmp_path):
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text("""
+passthrough:
+  extensions: []
+  paths: []
+  patterns: ["[invalid"]
+""")
+        with pytest.raises(ConfigError, match="Invalid regex"):
+            load_config(config_file)
+
+    def test_new_backend_keys_override(self, tmp_path):
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text("""
+backends:
+  csv: markitdown
+  json: markitdown
+  yaml: markitdown
+  image: markitdown
+""")
+        config = load_config(config_file)
+        assert config.backends.csv == "markitdown"
+        assert config.backends.json == "markitdown"
+        assert config.backends.yaml == "markitdown"
+        assert config.backends.image == "markitdown"
+
+    def test_new_backend_keys_default_to_native(self, tmp_path):
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text("")
+        config = load_config(config_file)
+        assert config.backends.csv == "native"
+        assert config.backends.json == "native"
+        assert config.backends.yaml == "native"
+        assert config.backends.image == "native"
