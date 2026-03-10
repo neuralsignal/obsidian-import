@@ -6,23 +6,48 @@ on:
 
 jobs:
   review:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
-      issues: read
       id-token: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
 
       - name: Run Claude Code Review
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          plugin_marketplaces: "https://github.com/anthropics/claude-code.git"
-          plugins: "code-review@claude-code-plugins"
-          prompt: "/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
-          allowed_bots: "*"
+          claude_args: |
+            --model claude-sonnet-4-6
+            --max-turns 12
+            --allowedTools Read,Glob,Grep,Bash
+          prompt: |
+            Review the changes in this pull request. Read CLAUDE.md for project standards.
+
+            Steps:
+            1. Run `git diff origin/main...HEAD` to see the changes.
+            2. Read changed files for context as needed.
+            3. Write a concise review to /tmp/review.md covering:
+               - Correctness of the implementation
+               - Compliance with project standards from CLAUDE.md
+               - Test coverage for new code paths
+               - Any security or reliability concerns
+
+            Be direct and concise. Skip stylistic nitpicks. Flag real issues clearly.
+            If the changes look good, say so briefly.
+
+      - name: Post review comment
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -f /tmp/review.md ]; then
+            gh pr comment ${{ github.event.pull_request.number }} \
+              --repo ${{ github.repository }} \
+              --body-file /tmp/review.md
+          fi
