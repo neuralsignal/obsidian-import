@@ -28,6 +28,12 @@ extraction:
   max_file_size_mb: 100
   xlsx_max_rows_per_sheet: 500
 
+media:
+  extract_images: true
+  image_format: png
+  image_max_dimension: 0
+  media_subfolder: media
+
 passthrough:
   extensions: []
   paths: []

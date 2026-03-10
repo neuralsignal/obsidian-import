@@ -6,9 +6,13 @@ from unittest.mock import patch
 
 import pytest
 
-from obsidian_import.config import BackendsConfig
+from obsidian_import.config import BackendsConfig, MediaConfig
 from obsidian_import.exceptions import UnsupportedFormatError
 from obsidian_import.registry import check_backend_available, extract_with_backend, get_backend_module
+
+_TEST_MEDIA_CONFIG = MediaConfig(
+    extract_images=True, image_format="png", image_max_dimension=0, media_subfolder="media"
+)
 
 
 def _native_backends() -> BackendsConfig:
@@ -125,16 +129,20 @@ class TestExtractWithBackend:
         fake_module.extract = lambda path, timeout_seconds: "extracted"  # type: ignore[attr-defined]
 
         import logging
-        with patch("obsidian_import.registry.get_backend_module", return_value=fake_module), \
-                caplog.at_level(logging.WARNING, logger="obsidian_import.registry"):
-            result = extract_with_backend(
-                    xlsx_file,
-                    backends=self._markitdown_backends(),
-                    timeout_seconds=30,
-                    max_rows_per_sheet=100,
-                )
 
-        assert result == "extracted"
+        with (
+            patch("obsidian_import.registry.get_backend_module", return_value=fake_module),
+            caplog.at_level(logging.WARNING, logger="obsidian_import.registry"),
+        ):
+            result = extract_with_backend(
+                xlsx_file,
+                backends=self._markitdown_backends(),
+                timeout_seconds=30,
+                media_config=_TEST_MEDIA_CONFIG,
+                max_rows_per_sheet=100,
+            )
+
+        assert result.markdown == "extracted"
         assert any("max_rows_per_sheet" in r.message for r in caplog.records)
 
     def test_supported_kwarg_is_forwarded(self, tmp_path: Path) -> None:
@@ -156,6 +164,7 @@ class TestExtractWithBackend:
                 xlsx_file,
                 backends=_native_backends(),
                 timeout_seconds=30,
+                media_config=_TEST_MEDIA_CONFIG,
                 max_rows_per_sheet=42,
             )
 

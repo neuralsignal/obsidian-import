@@ -9,6 +9,7 @@ from importlib.metadata import metadata
 from pathlib import Path
 
 from obsidian_import.config import OutputConfig
+from obsidian_import.extraction_result import MediaFile
 
 _PACKAGE_NAME: str = metadata("obsidian-import")["Name"]
 
@@ -23,6 +24,7 @@ class ExtractedDocument:
     file_type: str
     page_count: int | None
     associated_files: tuple[Path, ...]
+    media_files: tuple[MediaFile, ...]
 
 
 def format_output(doc: ExtractedDocument, config: OutputConfig) -> str:

@@ -14,6 +14,7 @@ def _make_doc(title: str, markdown: str) -> ExtractedDocument:
         file_type="pdf",
         page_count=3,
         associated_files=(),
+        media_files=(),
     )
 
 
@@ -51,6 +52,7 @@ class TestFormatOutput:
             file_type="docx",
             page_count=None,
             associated_files=(),
+            media_files=(),
         )
         result = format_output(doc, _make_config(True))
         assert "page_count" not in result

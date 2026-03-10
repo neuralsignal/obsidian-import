@@ -9,23 +9,23 @@ from pathlib import Path
 from obsidian_import.exceptions import ExtractionError, ExtractionTimeoutError
 
 
-def run_with_timeout(fn: Callable[[], str], timeout_seconds: int, label: str, path: Path) -> str:
+def run_with_timeout[T](fn: Callable[[], T], timeout_seconds: int, label: str, path: Path) -> T:
     """Run an extraction function in a thread with a timeout.
 
     Args:
-        fn: Zero-argument callable that returns extracted markdown text.
+        fn: Zero-argument callable that returns a result.
         timeout_seconds: Maximum seconds to wait before raising timeout.
         label: Human-readable backend name for error messages (e.g. "PDF", "DOCX").
         path: Source file path for error messages.
 
     Returns:
-        The extracted markdown string.
+        The result from fn.
 
     Raises:
         ExtractionTimeoutError: If the function does not complete within timeout.
         ExtractionError: If the function raises or returns no result.
     """
-    result: list[str | None] = [None]
+    result: list[T | None] = [None]
     error: list[BaseException | None] = [None]
 
     def _worker() -> None:

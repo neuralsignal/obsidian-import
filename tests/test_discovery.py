@@ -6,6 +6,7 @@ from obsidian_import.config import (
     ExtractionConfig,
     ImportConfig,
     InputConfig,
+    MediaConfig,
     OutputConfig,
     PassthroughConfig,
 )
@@ -33,6 +34,7 @@ def _make_config(directories: tuple[DirectoryConfig, ...]) -> ImportConfig:
         ),
         extraction=ExtractionConfig(timeout_seconds=120, max_file_size_mb=100, xlsx_max_rows_per_sheet=500),
         passthrough=PassthroughConfig(extensions=(), paths=(), patterns=()),
+        media=MediaConfig(extract_images=True, image_format="png", image_max_dimension=0, media_subfolder="media"),
     )
 
 
@@ -79,6 +81,7 @@ class TestDiscoverFiles:
             ),
             extraction=ExtractionConfig(timeout_seconds=120, max_file_size_mb=1, xlsx_max_rows_per_sheet=500),
             passthrough=PassthroughConfig(extensions=(), paths=(), patterns=()),
+            media=MediaConfig(extract_images=True, image_format="png", image_max_dimension=0, media_subfolder="media"),
         )
 
         files = list(discover_files(config))
