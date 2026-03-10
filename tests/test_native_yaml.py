@@ -46,7 +46,11 @@ class TestNativeYamlExtract:
 
 
 class TestNativeYamlProperties:
-    @given(data=st.dictionaries(st.text(min_size=1, max_size=10, alphabet=st.characters(whitelist_categories=("L", "N"))), st.integers()))
+    @given(
+        data=st.dictionaries(
+            st.text(min_size=1, max_size=10, alphabet=st.characters(whitelist_categories=("L", "N"))), st.integers()
+        )
+    )
     @settings(max_examples=50)
     def test_output_ends_with_closing_fence(self, data: dict) -> None:
         import tempfile
