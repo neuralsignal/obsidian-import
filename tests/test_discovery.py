@@ -7,6 +7,7 @@ from obsidian_import.config import (
     ImportConfig,
     InputConfig,
     OutputConfig,
+    PassthroughConfig,
 )
 from obsidian_import.discovery import DiscoveredFile, discover_files
 
@@ -19,8 +20,19 @@ def _make_config(directories: tuple[DirectoryConfig, ...]) -> ImportConfig:
             frontmatter=True,
             metadata_fields=("title",),
         ),
-        backends=BackendsConfig(pdf="native", docx="native", pptx="native", xlsx="native", default="native"),
+        backends=BackendsConfig(
+            pdf="native",
+            docx="native",
+            pptx="native",
+            xlsx="native",
+            csv="native",
+            json="native",
+            yaml="native",
+            image="native",
+            default="native",
+        ),
         extraction=ExtractionConfig(timeout_seconds=120, max_file_size_mb=100, xlsx_max_rows_per_sheet=500),
+        passthrough=PassthroughConfig(extensions=(), paths=(), patterns=()),
     )
 
 
@@ -54,8 +66,19 @@ class TestDiscoverFiles:
         config = ImportConfig(
             input=InputConfig(directories=(DirectoryConfig(path=str(tmp_path), extensions=(".pdf",), exclude=()),)),
             output=OutputConfig(directory="./out", frontmatter=True, metadata_fields=("title",)),
-            backends=BackendsConfig(pdf="native", docx="native", pptx="native", xlsx="native", default="native"),
+            backends=BackendsConfig(
+                pdf="native",
+                docx="native",
+                pptx="native",
+                xlsx="native",
+                csv="native",
+                json="native",
+                yaml="native",
+                image="native",
+                default="native",
+            ),
             extraction=ExtractionConfig(timeout_seconds=120, max_file_size_mb=1, xlsx_max_rows_per_sheet=500),
+            passthrough=PassthroughConfig(extensions=(), paths=(), patterns=()),
         )
 
         files = list(discover_files(config))

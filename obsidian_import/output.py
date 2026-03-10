@@ -22,6 +22,7 @@ class ExtractedDocument:
     title: str
     file_type: str
     page_count: int | None
+    associated_files: tuple[Path, ...] = ()
 
 
 def format_output(doc: ExtractedDocument, config: OutputConfig) -> str:

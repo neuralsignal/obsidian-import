@@ -23,3 +23,7 @@ class BackendNotAvailableError(ObsidianImportError):
 
 class ConfigError(ObsidianImportError):
     """Configuration is invalid or missing required fields."""
+
+
+class OutputConflictError(ObsidianImportError):
+    """Output file would overwrite an existing file."""
