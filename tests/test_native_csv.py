@@ -1,6 +1,9 @@
 """Tests for native CSV backend."""
 
-from obsidian_import.backends.native_csv import extract
+from hypothesis import given, settings
+from hypothesis import strategies as st
+
+from obsidian_import.backends.native_csv import _escape_cell, extract
 
 
 class TestNativeCsvExtract:
@@ -39,3 +42,18 @@ class TestNativeCsvExtract:
         csv_file.write_text("A,B,C\n1,2\n")
         result = extract(csv_file, timeout_seconds=10)
         assert "| 1 | 2 |  |" in result
+
+
+class TestEscapeCellProperties:
+    @given(value=st.text())
+    @settings(max_examples=100)
+    def test_no_unescaped_pipes(self, value: str) -> None:
+        result = _escape_cell(value)
+        stripped = result.replace("\\|", "")
+        assert "|" not in stripped
+
+    @given(value=st.text())
+    @settings(max_examples=100)
+    def test_no_newlines_in_output(self, value: str) -> None:
+        result = _escape_cell(value)
+        assert "\n" not in result

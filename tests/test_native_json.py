@@ -1,6 +1,10 @@
 """Tests for native JSON backend."""
 
+import json
+
 import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from obsidian_import.backends.native_json import extract
 from obsidian_import.exceptions import ExtractionError
@@ -42,3 +46,18 @@ class TestNativeJsonExtract:
         result = extract(json_file, timeout_seconds=10)
         assert "\u2764\ufe0f" in result
         assert "\u6f22\u5b57" in result
+
+
+class TestNativeJsonProperties:
+    @given(data=st.dictionaries(st.text(min_size=1, max_size=10), st.integers()))
+    @settings(max_examples=50)
+    def test_output_contains_fenced_code_block(self, data: dict) -> None:
+        import tempfile
+        from pathlib import Path
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            json.dump(data, f)
+            f.flush()
+            result = extract(Path(f.name), timeout_seconds=10)
+        assert "```json" in result
+        assert result.rstrip().endswith("```")

@@ -9,7 +9,7 @@ import click
 
 from obsidian_import import discover_files, extract_file
 from obsidian_import.config import default_config, load_config
-from obsidian_import.exceptions import ObsidianImportError, OutputConflictError
+from obsidian_import.exceptions import ObsidianImportError
 from obsidian_import.output import format_output, output_path_for
 from obsidian_import.passthrough import copy_passthrough, matches_passthrough
 from obsidian_import.registry import check_backend_available
@@ -157,13 +157,8 @@ def doctor() -> None:
 def _copy_associated_files(files: tuple[Path, ...], dest_dir: Path) -> None:
     """Copy associated files (e.g. images) to the output directory.
 
-    Raises OutputConflictError if a destination file already exists,
-    consistent with copy_passthrough behavior.
+    Delegates to copy_passthrough for each file, raising OutputConflictError
+    if a destination file already exists.
     """
     for src in files:
-        dest = dest_dir / src.name
-        if dest.exists():
-            raise OutputConflictError(
-                f"Associated file already exists: {dest.name}. Source: {src}, destination: {dest}"
-            )
-        shutil.copy2(src, dest)
+        copy_passthrough(src, dest_dir)

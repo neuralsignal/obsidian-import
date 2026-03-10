@@ -137,7 +137,8 @@ passthrough:
   # Extension list (cheapest check, runs first)
   extensions: [".md", ".markdown", ".canvas"]
 
-  # Glob path patterns (matched against full source path)
+  # fnmatch patterns (matched against full source path string;
+  # '*' matches '/', so '**/' is not needed for directory traversal)
   paths: ["notes/raw/**", "**/*.template.*"]
 
   # Regex patterns (matched against full source path string)

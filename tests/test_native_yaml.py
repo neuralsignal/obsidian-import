@@ -1,6 +1,8 @@
 """Tests for native YAML backend."""
 
 import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from obsidian_import.backends.native_yaml import extract
 from obsidian_import.exceptions import ExtractionError
@@ -41,3 +43,20 @@ class TestNativeYamlExtract:
         yaml_file.write_text("greeting: \u3053\u3093\u306b\u3061\u306f\n")
         result = extract(yaml_file, timeout_seconds=10)
         assert "\u3053\u3093\u306b\u3061\u306f" in result
+
+
+class TestNativeYamlProperties:
+    @given(data=st.dictionaries(st.text(min_size=1, max_size=10, alphabet=st.characters(whitelist_categories=("L", "N"))), st.integers()))
+    @settings(max_examples=50)
+    def test_output_ends_with_closing_fence(self, data: dict) -> None:
+        import tempfile
+        from pathlib import Path
+
+        import yaml
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            yaml.dump(data, f)
+            f.flush()
+            result = extract(Path(f.name), timeout_seconds=10)
+        assert "```yaml" in result
+        assert result.rstrip().endswith("```")

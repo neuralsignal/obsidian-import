@@ -22,6 +22,6 @@ def _extract_yaml(path: Path) -> str:
     """Internal YAML extraction logic."""
     raw = path.read_text(encoding="utf-8")
     parsed = yaml.safe_load(raw)
-    formatted = yaml.dump(parsed, default_flow_style=False, allow_unicode=True)
+    formatted = yaml.dump(parsed, default_flow_style=False, allow_unicode=True).rstrip("\n")
 
-    return f"# {path.stem}\n\n```yaml\n{formatted}```"
+    return f"# {path.stem}\n\n```yaml\n{formatted}\n```"
