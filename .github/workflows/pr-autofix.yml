@@ -159,7 +159,7 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          claude_args: "--model claude-sonnet-4-6 --max-turns 30 --allowedTools Read,Write,Edit,Glob,Grep,Bash"
+          claude_args: "--model claude-opus-4-6 --max-turns 100 --allowedTools Read,Write,Edit,Glob,Grep,Bash"
           prompt: |
             You are fixing CI failures on a pull request.
             Read CLAUDE.md for project conventions, build commands, and standards.
