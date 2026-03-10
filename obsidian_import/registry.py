@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import importlib
+import inspect
+import logging
 import types
 from pathlib import Path
 
 from obsidian_import.config import BackendsConfig
 from obsidian_import.exceptions import BackendNotAvailableError, UnsupportedFormatError
+
+log = logging.getLogger(__name__)
 
 _EXTENSION_TO_CONFIG_KEY: dict[str, str] = {
     ".pdf": "pdf",
@@ -86,11 +90,27 @@ def extract_with_backend(path: Path, backends: BackendsConfig, timeout_seconds: 
     """Extract a file using the appropriate backend.
 
     Dispatches to the configured backend based on file extension.
+    Format-specific kwargs (e.g. max_rows_per_sheet for xlsx) are filtered to
+    only those the chosen backend's extract() function accepts. If a kwarg is
+    dropped, a warning is emitted so the capability gap is visible.
     """
     extension = path.suffix.lower()
     module = get_backend_module(extension, backends)
 
-    return module.extract(path, timeout_seconds=timeout_seconds, **kwargs)
+    sig = inspect.signature(module.extract)
+    accepted = set(sig.parameters.keys()) - {"path", "timeout_seconds"}
+    unsupported = {k for k in kwargs if k not in accepted}
+    if unsupported:
+        backend_name = module.__name__.split(".")[-1]
+        log.warning(
+            "backend '%s' does not support %s for %s; these options are ignored",
+            backend_name,
+            sorted(unsupported),
+            extension,
+        )
+    filtered_kwargs = {k: v for k, v in kwargs.items() if k not in unsupported}
+
+    return module.extract(path, timeout_seconds=timeout_seconds, **filtered_kwargs)
 
 
 def check_backend_available(backend_name: str, extension: str) -> tuple[bool, str]:
