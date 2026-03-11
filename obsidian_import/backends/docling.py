@@ -45,10 +45,11 @@ def extract(path: Path, timeout_seconds: int, media_config: MediaConfig) -> Extr
         if not text or not text.strip():
             text = f"*No text content extracted from `{path.name}`.*"
 
+        result_media = tuple(media_files)
         if media_files:
             text = _replace_image_refs_with_wikilinks(text, media_files, media_config)
 
-        return ExtractionResult(markdown=text, media_files=tuple(media_files))
+        return ExtractionResult(markdown=text, media_files=result_media)
 
     return run_with_timeout(_do_extract, timeout_seconds, "docling", path)
 
