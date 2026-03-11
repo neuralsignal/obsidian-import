@@ -64,7 +64,7 @@ def _build_frontmatter(doc: ExtractedDocument, config: OutputConfig) -> str:
     lines = ["---"]
     for key, value in fields.items():
         if "\n" in value or ":" in value or '"' in value:
-            escaped = value.replace('"', '\\"')
+            escaped = value.replace("\\", "\\\\").replace('"', '\\"')
             lines.append(f'{key}: "{escaped}"')
         else:
             lines.append(f"{key}: {value}")
