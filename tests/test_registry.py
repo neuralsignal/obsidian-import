@@ -125,14 +125,17 @@ class TestExtractWithBackend:
         fake_module.extract = lambda path, timeout_seconds: "extracted"  # type: ignore[attr-defined]
 
         import logging
-        with patch("obsidian_import.registry.get_backend_module", return_value=fake_module), \
-                caplog.at_level(logging.WARNING, logger="obsidian_import.registry"):
+
+        with (
+            patch("obsidian_import.registry.get_backend_module", return_value=fake_module),
+            caplog.at_level(logging.WARNING, logger="obsidian_import.registry"),
+        ):
             result = extract_with_backend(
-                    xlsx_file,
-                    backends=self._markitdown_backends(),
-                    timeout_seconds=30,
-                    max_rows_per_sheet=100,
-                )
+                xlsx_file,
+                backends=self._markitdown_backends(),
+                timeout_seconds=30,
+                max_rows_per_sheet=100,
+            )
 
         assert result == "extracted"
         assert any("max_rows_per_sheet" in r.message for r in caplog.records)

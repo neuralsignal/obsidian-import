@@ -69,6 +69,21 @@ class TestFormatOutput:
         result = format_output(doc, _make_config(True))
         assert 'title: "Title' in result
 
+    def test_backslash_escaped_in_quoted_value(self):
+        doc = _make_doc('Report: "Sales\\Revenue"', "# Hello")
+        result = format_output(doc, _make_config(True))
+        assert 'title: "Report: \\"Sales\\\\Revenue\\""' in result
+
+    def test_backslash_only_no_quoting_needed(self):
+        doc = _make_doc("plain title", "# Hello")
+        result = format_output(doc, _make_config(True))
+        assert "title: plain title" in result
+
+    def test_backslash_with_colon_triggers_escaping(self):
+        doc = _make_doc("C:\\Users\\report: final", "# Hello")
+        result = format_output(doc, _make_config(True))
+        assert 'title: "C:\\\\Users\\\\report: final"' in result
+
 
 class TestOutputPathFor:
     def test_computes_md_extension(self):
