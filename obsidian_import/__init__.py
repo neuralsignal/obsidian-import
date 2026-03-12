@@ -13,6 +13,7 @@ from pathlib import Path
 
 from obsidian_import.backends.native_image import is_image_extension
 from obsidian_import.config import ImportConfig
+from obsidian_import.config import config_for_backend as config_for_backend
 from obsidian_import.discovery import DiscoveredFile
 from obsidian_import.discovery import discover_files as _discover_files
 from obsidian_import.output import ExtractedDocument

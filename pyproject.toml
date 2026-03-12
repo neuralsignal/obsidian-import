@@ -1,6 +1,6 @@
 [project]
 name = "obsidian-import"
-version = "0.1.0"
+version = "1.0.0"
 description = "Extract files (PDF, DOCX, PPTX, XLSX) into Obsidian-flavored Markdown"
 readme = "README.md"
 license = "MIT"
@@ -10,7 +10,7 @@ authors = [
 ]
 keywords = ["obsidian", "markdown", "pdf", "docx", "pptx", "xlsx", "import", "extraction"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: End Users/Desktop",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
