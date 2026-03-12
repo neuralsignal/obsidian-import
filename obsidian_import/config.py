@@ -60,12 +60,20 @@ class ExtractionConfig:
 
 
 @dataclass(frozen=True)
+class MediaConfig:
+    extract_images: bool
+    image_format: str
+    image_max_dimension: int
+
+
+@dataclass(frozen=True)
 class ImportConfig:
     input: InputConfig
     output: OutputConfig
     backends: BackendsConfig
     extraction: ExtractionConfig
     passthrough: PassthroughConfig
+    media: MediaConfig
 
 
 def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
@@ -99,6 +107,7 @@ def _build_config(raw: dict[str, Any], config_dir: Path | None) -> ImportConfig:
         raise ConfigError(f"Missing required config section: {exc}") from exc
 
     passthrough_raw = raw.get("passthrough", {})
+    media_raw = raw.get("media", {})
 
     directories: list[DirectoryConfig] = []
     for d in input_raw.get("directories", []):
@@ -156,7 +165,33 @@ def _build_config(raw: dict[str, Any], config_dir: Path | None) -> ImportConfig:
             paths=tuple(passthrough_raw.get("paths", ())),
             patterns=passthrough_patterns,
         ),
+        media=MediaConfig(
+            extract_images=bool(media_raw.get("extract_images", True)),
+            image_format=str(media_raw.get("image_format", "png")),
+            image_max_dimension=int(media_raw.get("image_max_dimension", 0)),
+        ),
     )
+
+
+def config_for_backend(
+    backend: str,
+    timeout_seconds: int,
+    max_file_size_mb: int,
+    xlsx_max_rows_per_sheet: int,
+) -> ImportConfig:
+    """Create an ImportConfig with all backends set to a single backend name.
+
+    Useful for consumers that just need quick extraction without managing
+    the full config surface. Media extraction is disabled by default.
+    """
+    base = _load_default_yaml()
+    for key in base["backends"]:
+        base["backends"][key] = backend
+    base["extraction"]["timeout_seconds"] = timeout_seconds
+    base["extraction"]["max_file_size_mb"] = max_file_size_mb
+    base["extraction"]["xlsx_max_rows_per_sheet"] = xlsx_max_rows_per_sheet
+    base["media"]["extract_images"] = False
+    return _build_config(base, config_dir=None)
 
 
 def default_config() -> ImportConfig:

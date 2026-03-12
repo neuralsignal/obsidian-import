@@ -8,8 +8,9 @@ import logging
 import types
 from pathlib import Path
 
-from obsidian_import.config import BackendsConfig
+from obsidian_import.config import BackendsConfig, MediaConfig
 from obsidian_import.exceptions import BackendNotAvailableError, UnsupportedFormatError
+from obsidian_import.extraction_result import ExtractionResult
 
 log = logging.getLogger(__name__)
 
@@ -86,7 +87,13 @@ def get_backend_module(extension: str, backends: BackendsConfig) -> types.Module
     return importlib.import_module(module_path)
 
 
-def extract_with_backend(path: Path, backends: BackendsConfig, timeout_seconds: int, **kwargs: object) -> str:
+def extract_with_backend(
+    path: Path,
+    backends: BackendsConfig,
+    timeout_seconds: int,
+    media_config: MediaConfig,
+    **kwargs: object,
+) -> ExtractionResult:
     """Extract a file using the appropriate backend.
 
     Dispatches to the configured backend based on file extension.
@@ -98,7 +105,7 @@ def extract_with_backend(path: Path, backends: BackendsConfig, timeout_seconds: 
     module = get_backend_module(extension, backends)
 
     sig = inspect.signature(module.extract)
-    accepted = set(sig.parameters.keys()) - {"path", "timeout_seconds"}
+    accepted = set(sig.parameters.keys()) - {"path", "timeout_seconds", "media_config"}
     unsupported = {k for k in kwargs if k not in accepted}
     if unsupported:
         backend_name = module.__name__.split(".")[-1]
@@ -110,7 +117,14 @@ def extract_with_backend(path: Path, backends: BackendsConfig, timeout_seconds: 
         )
     filtered_kwargs = {k: v for k, v in kwargs.items() if k not in unsupported}
 
-    return module.extract(path, timeout_seconds=timeout_seconds, **filtered_kwargs)
+    if "media_config" in sig.parameters:
+        result = module.extract(path, timeout_seconds=timeout_seconds, media_config=media_config, **filtered_kwargs)
+    else:
+        result = module.extract(path, timeout_seconds=timeout_seconds, **filtered_kwargs)
+
+    if isinstance(result, str):
+        return ExtractionResult(markdown=result, media_files=())
+    return result
 
 
 def check_backend_available(backend_name: str, extension: str) -> tuple[bool, str]:

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.0 (2026-03-12)
+
+- feat: embedded media extraction for PDF, DOCX, PPTX (per-document media folders with wikilinks)
+- feat: `config_for_backend()` convenience API for quick single-backend configuration
+- feat: `MediaConfig` for image extraction settings (format, max dimension, enable/disable)
+- deps: added Pillow>=10.0,<12
+- BREAKING: `ImportConfig` requires `media: MediaConfig` field
+- BREAKING: backend `extract()` returns `ExtractionResult` (with `.markdown` and `.media_files`) instead of `str`
+
 ## 0.2.0 (2026-03-10)
 
 - Native backends for CSV, JSON, YAML, and image files

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import shutil
 from pathlib import Path
 
@@ -10,9 +11,12 @@ import click
 from obsidian_import import discover_files, extract_file
 from obsidian_import.config import default_config, load_config
 from obsidian_import.exceptions import ObsidianImportError
-from obsidian_import.output import format_output, output_path_for
+from obsidian_import.media import copy_media_files
+from obsidian_import.output import format_output, media_dir_for, output_path_for
 from obsidian_import.passthrough import copy_passthrough, matches_passthrough
 from obsidian_import.registry import check_backend_available
+
+log = logging.getLogger(__name__)
 
 
 def _resolve_config(config_path: str | None) -> object:
@@ -44,8 +48,17 @@ def convert(path: str, output_path: str | None, config_path: str | None) -> None
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(formatted, encoding="utf-8")
         _copy_associated_files(doc.associated_files, out.parent)
+        if doc.media_files:
+            media_dir = media_dir_for(source, out.parent)
+            copy_media_files(doc.media_files, media_dir)
         click.echo(f"Extracted: {source} -> {out}")
     else:
+        if doc.media_files:
+            log.warning(
+                "Media files extracted but no output directory specified; "
+                "%d media files cannot be copied to stdout mode",
+                len(doc.media_files),
+            )
         click.echo(formatted)
 
 
@@ -93,10 +106,14 @@ def batch(config_path: str, output_dir: str | None) -> None:
         try:
             doc = extract_file(discovered.path, config)
             formatted = format_output(doc, config.output)
-            out_path = output_path_for(discovered.path, target_dir)
+            source_root = Path(discovered.source_directory)
+            out_path = output_path_for(discovered.path, target_dir, source_root)
             out_path.parent.mkdir(parents=True, exist_ok=True)
             out_path.write_text(formatted, encoding="utf-8")
             _copy_associated_files(doc.associated_files, out_path.parent)
+            if doc.media_files:
+                media_dir = media_dir_for(discovered.path, out_path.parent)
+                copy_media_files(doc.media_files, media_dir)
             click.echo(f"  OK  {discovered.path} -> {out_path}")
             success += 1
         except ObsidianImportError as exc:

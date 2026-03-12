@@ -7,6 +7,7 @@ from obsidian_import.config import (
     _build_config,
     _deep_merge,
     _load_default_yaml,
+    config_for_backend,
     default_config,
     load_config,
 )
@@ -84,6 +85,39 @@ class TestDefaultConfig:
 
     def test_frozen(self):
         config = default_config()
+        with pytest.raises(AttributeError):
+            config.extraction = None  # type: ignore[misc]
+
+
+class TestConfigForBackend:
+    def test_returns_import_config(self):
+        config = config_for_backend("markitdown", 60, 50, 200)
+        assert isinstance(config, ImportConfig)
+
+    def test_all_backends_match(self):
+        config = config_for_backend("markitdown", 60, 50, 200)
+        assert config.backends.pdf == "markitdown"
+        assert config.backends.docx == "markitdown"
+        assert config.backends.pptx == "markitdown"
+        assert config.backends.xlsx == "markitdown"
+        assert config.backends.csv == "markitdown"
+        assert config.backends.json == "markitdown"
+        assert config.backends.yaml == "markitdown"
+        assert config.backends.image == "markitdown"
+        assert config.backends.default == "markitdown"
+
+    def test_extraction_params_match(self):
+        config = config_for_backend("native", 90, 75, 300)
+        assert config.extraction.timeout_seconds == 90
+        assert config.extraction.max_file_size_mb == 75
+        assert config.extraction.xlsx_max_rows_per_sheet == 300
+
+    def test_media_disabled(self):
+        config = config_for_backend("native", 60, 50, 200)
+        assert config.media.extract_images is False
+
+    def test_frozen(self):
+        config = config_for_backend("native", 60, 50, 200)
         with pytest.raises(AttributeError):
             config.extraction = None  # type: ignore[misc]
 

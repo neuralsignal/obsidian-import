@@ -13,6 +13,7 @@ from pathlib import Path
 
 from obsidian_import.backends.native_image import is_image_extension
 from obsidian_import.config import ImportConfig
+from obsidian_import.config import config_for_backend as config_for_backend
 from obsidian_import.discovery import DiscoveredFile
 from obsidian_import.discovery import discover_files as _discover_files
 from obsidian_import.output import ExtractedDocument
@@ -32,18 +33,27 @@ def extract_file(path: Path, config: ImportConfig) -> ExtractedDocument:
     if extension == ".xlsx":
         extra_kwargs["max_rows_per_sheet"] = config.extraction.xlsx_max_rows_per_sheet
 
-    markdown = extract_with_backend(
+    result = extract_with_backend(
         path,
         backends=config.backends,
         timeout_seconds=config.extraction.timeout_seconds,
+        media_config=config.media,
         **extra_kwargs,
     )
 
-    page_count = _estimate_page_count(markdown, extension)
+    page_count = _estimate_page_count(result.markdown, extension)
 
     associated: tuple[Path, ...] = ()
     if is_image_extension(extension):
         associated = (path,)
+
+    doc_stem = path.stem
+    markdown = result.markdown
+    if result.media_files:
+        for mf in result.media_files:
+            wikilink = f"![[{doc_stem}/{mf.filename}]]"
+            if wikilink not in markdown:
+                markdown += f"\n\n{wikilink}"
 
     return ExtractedDocument(
         source_path=path,
@@ -52,6 +62,7 @@ def extract_file(path: Path, config: ImportConfig) -> ExtractedDocument:
         file_type=extension.lstrip("."),
         page_count=page_count,
         associated_files=associated,
+        media_files=result.media_files,
     )
 
 
@@ -66,12 +77,14 @@ def extract_text(path: Path, config: ImportConfig) -> str:
     extra_kwargs: dict[str, object] = {}
     if extension == ".xlsx":
         extra_kwargs["max_rows_per_sheet"] = config.extraction.xlsx_max_rows_per_sheet
-    return extract_with_backend(
+    result = extract_with_backend(
         path,
         backends=config.backends,
         timeout_seconds=config.extraction.timeout_seconds,
+        media_config=config.media,
         **extra_kwargs,
     )
+    return result.markdown
 
 
 def _estimate_page_count(markdown: str, extension: str) -> int | None:

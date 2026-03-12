@@ -1,27 +1,37 @@
 """PPTX text extraction using python-pptx.
 
-Extracts per-slide text, speaker notes, and tables.
+Extracts per-slide text, speaker notes, tables, and embedded images.
 """
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
+from obsidian_import.config import MediaConfig
+from obsidian_import.exceptions import ExtractionError
+from obsidian_import.extraction_result import ExtractionResult, MediaFile
+from obsidian_import.media import generate_media_filename, save_media_to_temp
 from obsidian_import.timeout import run_with_timeout
 
+log = logging.getLogger(__name__)
 
-def extract(path: Path, timeout_seconds: int) -> str:
-    """Extract text from a PPTX file, returning markdown."""
-    return run_with_timeout(lambda: _extract_pptx(path), timeout_seconds, "PPTX", path)
+_PICTURE_SHAPE_TYPE = 13
 
 
-def _extract_pptx(path: Path) -> str:
+def extract(path: Path, timeout_seconds: int, media_config: MediaConfig) -> ExtractionResult:
+    """Extract text and images from a PPTX file, returning ExtractionResult."""
+    return run_with_timeout(lambda: _extract_pptx(path, media_config), timeout_seconds, "PPTX", path)
+
+
+def _extract_pptx(path: Path, media_config: MediaConfig) -> ExtractionResult:
     """Internal PPTX extraction logic."""
     from pptx import Presentation
     from pptx.util import Inches
 
     prs = Presentation(str(path))
     sections: list[str] = [f"# {path.stem}"]
+    media_files: list[MediaFile] = []
 
     slide_width = prs.slide_width
     slide_height = prs.slide_height
@@ -43,6 +53,7 @@ def _extract_pptx(path: Path) -> str:
             slide_sections.append(f"## Slide {i}")
 
         body_texts: list[str] = []
+        image_index = 0
         for shape in slide.shapes:
             if shape.has_text_frame:
                 if shape == slide.shapes.title:
@@ -61,6 +72,20 @@ def _extract_pptx(path: Path) -> str:
                 if table_md:
                     body_texts.append(table_md)
 
+            if media_config.extract_images and shape.shape_type == _PICTURE_SHAPE_TYPE:
+                try:
+                    image = shape.image
+                    img_bytes = image.blob
+                    content_type = image.content_type
+                    ext = _mime_to_extension(content_type)
+                    image_index += 1
+                    filename = generate_media_filename(f"slide{i}", image_index, ext)
+                    mf = save_media_to_temp(img_bytes, filename, media_config)
+                    media_files.append(mf)
+                    body_texts.append(f"![[{path.stem}/{mf.filename}]]")
+                except (ExtractionError, AttributeError, ValueError):
+                    log.warning("Failed to extract image from slide %d of %s", i, path)
+
         if body_texts:
             slide_sections.append("\n".join(body_texts))
 
@@ -75,7 +100,24 @@ def _extract_pptx(path: Path) -> str:
         else:
             sections.append(slide_sections[0])
 
-    return "\n\n".join(sections)
+    return ExtractionResult(
+        markdown="\n\n".join(sections),
+        media_files=tuple(media_files),
+    )
+
+
+def _mime_to_extension(content_type: str) -> str:
+    """Convert MIME type to file extension."""
+    mime_map = {
+        "image/png": ".png",
+        "image/jpeg": ".jpeg",
+        "image/gif": ".gif",
+        "image/bmp": ".bmp",
+        "image/tiff": ".tiff",
+        "image/svg+xml": ".svg",
+        "image/webp": ".webp",
+    }
+    return mime_map.get(content_type, ".png")
 
 
 def _extract_table(table: object) -> str:

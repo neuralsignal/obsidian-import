@@ -41,20 +41,42 @@ obsidian-import doctor
 
 ```python
 from pathlib import Path
-from obsidian_import import extract_file, discover_files
+from obsidian_import import extract_file, extract_text, discover_files, config_for_backend
 from obsidian_import.config import load_config
 from obsidian_import.output import format_output
 
 config = load_config(Path("config.yaml"))
 
-# Single file
+# Single file (full document with frontmatter)
 doc = extract_file(Path("report.pdf"), config)
 markdown = format_output(doc, config.output)
+
+# Quick text extraction (no config file needed)
+config = config_for_backend("markitdown", timeout_seconds=60, max_file_size_mb=50, xlsx_max_rows_per_sheet=500)
+text = extract_text(Path("report.pdf"), config)
 
 # Batch discovery
 for file in discover_files(config):
     print(f"{file.extension}  {file.size_bytes:,} bytes  {file.path}")
 ```
+
+### `config_for_backend()` — Quick Configuration
+
+For consumers that just need text extraction without managing the full config surface:
+
+```python
+from obsidian_import import extract_text, config_for_backend
+
+config = config_for_backend(
+    backend="markitdown",
+    timeout_seconds=60,
+    max_file_size_mb=50,
+    xlsx_max_rows_per_sheet=500,
+)
+text = extract_text(Path("document.docx"), config)
+```
+
+This sets all backends to the specified backend name and disables media extraction. All parameters are required — no hidden defaults.
 
 ## Configuration
 
@@ -154,6 +176,21 @@ File discovered
   |
   +- NO -> backend dispatch -> extract -> write .md
 ```
+
+## Media Extraction
+
+PDF, DOCX, and PPTX files can contain embedded images. Enable media extraction to save these as separate files alongside the markdown output:
+
+```yaml
+media:
+  extract_images: true     # enable/disable embedded image extraction
+  image_format: png        # output format: png, jpg, webp
+  image_max_dimension: 0   # max width/height in px (0 = no resize)
+```
+
+Extracted images are saved in per-document media folders (`<doc-stem>/`) and referenced via Obsidian wikilinks (`![[doc-stem/image_001.png]]`).
+
+To disable media extraction (e.g., for text-only pipelines), set `extract_images: false` or use `config_for_backend()` which disables it by default.
 
 ## Image Handling
 
