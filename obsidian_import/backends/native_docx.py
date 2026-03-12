@@ -88,14 +88,14 @@ def _extract_docx(path: Path, media_config: MediaConfig) -> ExtractionResult:
                                     image_index += 1
                                     img_bytes = zf.read(media_path)
                                     orig_ext = Path(media_path).suffix
-                                    filename = generate_media_filename(path.stem, "doc", image_index, orig_ext)
+                                    filename = generate_media_filename("doc", image_index, orig_ext)
                                     try:
                                         mf = save_media_to_temp(img_bytes, filename, media_config)
                                         media_files.append(mf)
                                         if text:
-                                            text += f"\n\n![[{media_config.media_subfolder}/{mf.filename}]]"
+                                            text += f"\n\n![[{path.stem}/{mf.filename}]]"
                                         else:
-                                            text = f"![[{media_config.media_subfolder}/{mf.filename}]]"
+                                            text = f"![[{path.stem}/{mf.filename}]]"
                                     except ExtractionError:
                                         log.warning(
                                             "Failed to extract image %s from %s",

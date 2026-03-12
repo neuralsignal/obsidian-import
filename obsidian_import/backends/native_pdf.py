@@ -81,7 +81,7 @@ def _extract_pdf(path: Path, media_config: MediaConfig) -> ExtractionResult:
                 page_images = _extract_page_images(reader, i - 1, path, media_config)
                 for mf in page_images:
                     media_files.append(mf)
-                    page_sections.append(f"![[{media_config.media_subfolder}/{mf.filename}]]")
+                    page_sections.append(f"![[{path.stem}/{mf.filename}]]")
 
             if len(page_sections) > 1:
                 sections.append("\n".join(page_sections))
@@ -122,7 +122,7 @@ def _extract_page_images(
             try:
                 img_bytes = xobj.get_data()
                 ext = _pdf_image_extension(xobj)
-                filename = generate_media_filename(path.stem, f"page{page_index + 1}", image_index, ext)
+                filename = generate_media_filename(f"page{page_index + 1}", image_index, ext)
                 mf = save_media_to_temp(img_bytes, filename, media_config)
                 media_files.append(mf)
             except (ExtractionError, ValueError, KeyError):

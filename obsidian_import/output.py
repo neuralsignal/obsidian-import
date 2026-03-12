@@ -75,7 +75,25 @@ def _build_frontmatter(doc: ExtractedDocument, config: OutputConfig) -> str:
     return "\n".join(lines)
 
 
-def output_path_for(source_path: Path, output_directory: str) -> Path:
-    """Compute the output path for a source file."""
+def output_path_for(source_path: Path, output_directory: str, source_root: Path | None) -> Path:
+    """Compute the output path for a source file.
+
+    When source_root is provided, the relative directory structure from
+    source_root to source_path is preserved under output_directory.
+    When source_root is None (single-file mode), the file is placed
+    directly in output_directory.
+    """
     out_dir = Path(output_directory)
+    if source_root is not None:
+        relative = source_path.relative_to(source_root)
+        return out_dir / relative.with_suffix(".md")
     return out_dir / f"{source_path.stem}.md"
+
+
+def media_dir_for(source_path: Path, output_directory: Path) -> Path:
+    """Compute the per-document media directory for a source file.
+
+    Returns output_directory / <source_stem>, so each document's
+    extracted media lives in its own folder named after the document.
+    """
+    return output_directory / source_path.stem

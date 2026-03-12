@@ -11,17 +11,18 @@ from obsidian_import.exceptions import ExtractionError
 from obsidian_import.extraction_result import MediaFile
 
 
-def generate_media_filename(stem: str, context: str, index: int, extension: str) -> str:
+def generate_media_filename(context: str, index: int, extension: str) -> str:
     """Generate a deterministic filename for an extracted media file.
 
+    The filename does not include the document stem because media files
+    live in a per-document folder that already provides the namespace.
+
     Args:
-        stem: Document stem name (e.g. "report").
         context: Location context (e.g. "page3", "slide2").
         index: Image index within that context.
         extension: File extension including dot (e.g. ".png").
     """
-    safe_stem = stem.replace(" ", "_")
-    return f"{safe_stem}_{context}_img{index}{extension}"
+    return f"{context}_img{index}{extension}"
 
 
 def save_media_to_temp(
@@ -77,10 +78,13 @@ def _process_image_bytes(image_bytes: bytes, media_config: MediaConfig) -> bytes
 
 def copy_media_files(
     media_files: tuple[MediaFile, ...],
-    output_directory: Path,
-    media_subfolder: str,
+    media_dir: Path,
 ) -> list[Path]:
-    """Copy extracted media files to the output directory's media subfolder.
+    """Copy extracted media files to a per-document media directory.
+
+    Args:
+        media_files: Tuple of MediaFile objects to copy.
+        media_dir: Destination directory for media files.
 
     Returns the list of destination paths.
     """
@@ -89,7 +93,6 @@ def copy_media_files(
     if not media_files:
         return []
 
-    media_dir = output_directory / media_subfolder
     media_dir.mkdir(parents=True, exist_ok=True)
 
     destinations: list[Path] = []

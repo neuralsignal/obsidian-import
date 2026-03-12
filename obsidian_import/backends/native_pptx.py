@@ -79,10 +79,10 @@ def _extract_pptx(path: Path, media_config: MediaConfig) -> ExtractionResult:
                     content_type = image.content_type
                     ext = _mime_to_extension(content_type)
                     image_index += 1
-                    filename = generate_media_filename(path.stem, f"slide{i}", image_index, ext)
+                    filename = generate_media_filename(f"slide{i}", image_index, ext)
                     mf = save_media_to_temp(img_bytes, filename, media_config)
                     media_files.append(mf)
-                    body_texts.append(f"![[{media_config.media_subfolder}/{mf.filename}]]")
+                    body_texts.append(f"![[{path.stem}/{mf.filename}]]")
                 except (ExtractionError, AttributeError, ValueError):
                     log.warning("Failed to extract image from slide %d of %s", i, path)
 

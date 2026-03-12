@@ -85,7 +85,7 @@ class TestOutputPathForProperties:
     def test_always_produces_md_suffix(self, stem: str, ext: str) -> None:
         """Output path always has .md extension."""
         source = Path(f"/data/{stem}{ext}")
-        result = output_path_for(source, "/out")
+        result = output_path_for(source, "/out", source_root=None)
         assert result.suffix == ".md"
 
     @given(
@@ -96,5 +96,5 @@ class TestOutputPathForProperties:
     def test_preserves_stem(self, stem: str, ext: str) -> None:
         """Output path preserves the original file stem."""
         source = Path(f"/data/{stem}{ext}")
-        result = output_path_for(source, "/out")
+        result = output_path_for(source, "/out", source_root=None)
         assert result.stem == stem

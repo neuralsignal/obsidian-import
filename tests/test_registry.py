@@ -10,9 +10,7 @@ from obsidian_import.config import BackendsConfig, MediaConfig
 from obsidian_import.exceptions import UnsupportedFormatError
 from obsidian_import.registry import check_backend_available, extract_with_backend, get_backend_module
 
-_TEST_MEDIA_CONFIG = MediaConfig(
-    extract_images=True, image_format="png", image_max_dimension=0, media_subfolder="media"
-)
+_TEST_MEDIA_CONFIG = MediaConfig(extract_images=True, image_format="png", image_max_dimension=0)
 
 
 def _native_backends() -> BackendsConfig:

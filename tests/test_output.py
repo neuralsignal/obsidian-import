@@ -1,9 +1,12 @@
-"""Tests for frontmatter formatting and metadata."""
+"""Tests for frontmatter formatting, output path computation, and media dir."""
 
 from pathlib import Path
 
+from hypothesis import given, settings
+from hypothesis import strategies as st
+
 from obsidian_import.config import OutputConfig
-from obsidian_import.output import ExtractedDocument, format_output, output_path_for
+from obsidian_import.output import ExtractedDocument, format_output, media_dir_for, output_path_for
 
 
 def _make_doc(title: str, markdown: str) -> ExtractedDocument:
@@ -88,11 +91,87 @@ class TestFormatOutput:
 
 
 class TestOutputPathFor:
-    def test_computes_md_extension(self):
-        path = output_path_for(Path("/data/report.pdf"), "./extracted")
+    def test_computes_md_extension_no_source_root(self):
+        path = output_path_for(Path("/data/report.pdf"), "./extracted", source_root=None)
         assert path == Path("extracted/report.md")
 
-    def test_preserves_stem(self):
-        path = output_path_for(Path("/some/file.docx"), "/out")
+    def test_preserves_stem_no_source_root(self):
+        path = output_path_for(Path("/some/file.docx"), "/out", source_root=None)
         assert path.stem == "file"
         assert path.suffix == ".md"
+
+    def test_preserves_relative_structure_with_source_root(self):
+        source = Path("/docs/projects/report.pdf")
+        root = Path("/docs")
+        path = output_path_for(source, "/vault", source_root=root)
+        assert path == Path("/vault/projects/report.md")
+
+    def test_nested_directory_preservation(self):
+        source = Path("/input/a/b/c/deep.docx")
+        root = Path("/input")
+        path = output_path_for(source, "/output", source_root=root)
+        assert path == Path("/output/a/b/c/deep.md")
+
+    def test_file_at_root_level(self):
+        source = Path("/input/toplevel.pdf")
+        root = Path("/input")
+        path = output_path_for(source, "/output", source_root=root)
+        assert path == Path("/output/toplevel.md")
+
+
+class TestOutputPathForProperties:
+    @given(
+        stem=st.text(min_size=1, max_size=20, alphabet=st.characters(whitelist_categories=("L", "N"))),
+        ext=st.sampled_from([".pdf", ".docx", ".pptx", ".xlsx"]),
+    )
+    @settings(max_examples=50)
+    def test_output_always_has_md_extension(self, stem: str, ext: str) -> None:
+        source = Path(f"/input/{stem}{ext}")
+        path = output_path_for(source, "/output", source_root=None)
+        assert path.suffix == ".md"
+
+    @given(
+        stem=st.text(min_size=1, max_size=20, alphabet=st.characters(whitelist_categories=("L", "N"))),
+        ext=st.sampled_from([".pdf", ".docx", ".pptx"]),
+    )
+    @settings(max_examples=50)
+    def test_output_preserves_stem(self, stem: str, ext: str) -> None:
+        source = Path(f"/input/{stem}{ext}")
+        path = output_path_for(source, "/output", source_root=None)
+        assert path.stem == stem
+
+    @given(
+        subdir=st.text(min_size=1, max_size=10, alphabet=st.characters(whitelist_categories=("L", "N"))),
+        stem=st.text(min_size=1, max_size=10, alphabet=st.characters(whitelist_categories=("L", "N"))),
+    )
+    @settings(max_examples=50)
+    def test_source_root_preserves_subdirectory(self, subdir: str, stem: str) -> None:
+        source = Path(f"/input/{subdir}/{stem}.pdf")
+        root = Path("/input")
+        path = output_path_for(source, "/output", source_root=root)
+        assert subdir in str(path)
+        assert path.suffix == ".md"
+
+
+class TestMediaDirFor:
+    def test_returns_stem_named_directory(self):
+        source = Path("/docs/report.pdf")
+        result = media_dir_for(source, Path("/vault"))
+        assert result == Path("/vault/report")
+
+    def test_different_stems(self):
+        assert media_dir_for(Path("/a/slides.pptx"), Path("/out")) == Path("/out/slides")
+        assert media_dir_for(Path("/b/notes.docx"), Path("/out")) == Path("/out/notes")
+
+
+class TestMediaDirForProperties:
+    @given(
+        stem=st.text(min_size=1, max_size=20, alphabet=st.characters(whitelist_categories=("L", "N"))),
+        ext=st.sampled_from([".pdf", ".docx", ".pptx"]),
+    )
+    @settings(max_examples=50)
+    def test_media_dir_uses_document_stem(self, stem: str, ext: str) -> None:
+        source = Path(f"/input/{stem}{ext}")
+        result = media_dir_for(source, Path("/output"))
+        assert result.name == stem
+        assert result.parent == Path("/output")

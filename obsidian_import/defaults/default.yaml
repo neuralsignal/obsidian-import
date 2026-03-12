@@ -32,7 +32,6 @@ media:
   extract_images: true
   image_format: png
   image_max_dimension: 0
-  media_subfolder: media
 
 passthrough:
   extensions: []

@@ -46,11 +46,11 @@ def extract_file(path: Path, config: ImportConfig) -> ExtractedDocument:
     if is_image_extension(extension):
         associated = (path,)
 
-    media_subfolder = config.media.media_subfolder
+    doc_stem = path.stem
     markdown = result.markdown
     if result.media_files:
         for mf in result.media_files:
-            wikilink = f"![[{media_subfolder}/{mf.filename}]]"
+            wikilink = f"![[{doc_stem}/{mf.filename}]]"
             if wikilink not in markdown:
                 markdown += f"\n\n{wikilink}"
 

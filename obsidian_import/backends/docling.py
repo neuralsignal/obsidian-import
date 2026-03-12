@@ -47,7 +47,7 @@ def extract(path: Path, timeout_seconds: int, media_config: MediaConfig) -> Extr
 
         result_media = tuple(media_files)
         if media_files:
-            text = _replace_image_refs_with_wikilinks(text, media_files, media_config)
+            text = _replace_image_refs_with_wikilinks(text, media_files, path.stem)
 
         return ExtractionResult(markdown=text, media_files=result_media)
 
@@ -95,7 +95,7 @@ def _extract_docling_images(doc: object, path: Path, media_config: MediaConfig) 
             pil_image.save(buf, format="PNG")
             img_bytes = buf.getvalue()
 
-            filename = generate_media_filename(path.stem, "fig", i, ".png")
+            filename = generate_media_filename("fig", i, ".png")
             mf = save_media_to_temp(img_bytes, filename, media_config)
             media_files.append(mf)
         except (ExtractionError, AttributeError, ValueError):
@@ -104,11 +104,11 @@ def _extract_docling_images(doc: object, path: Path, media_config: MediaConfig) 
     return media_files
 
 
-def _replace_image_refs_with_wikilinks(markdown: str, media_files: list[MediaFile], media_config: MediaConfig) -> str:
+def _replace_image_refs_with_wikilinks(markdown: str, media_files: list[MediaFile], doc_stem: str) -> str:
     """Replace standard markdown image references with Obsidian wikilinks."""
     result = re.sub(
         r"!\[([^\]]*)\]\([^)]+\)",
-        lambda m: _match_image_ref(m, media_files, media_config),
+        lambda m: _match_image_ref(m, media_files, doc_stem),
         markdown,
     )
     return result
@@ -117,11 +117,11 @@ def _replace_image_refs_with_wikilinks(markdown: str, media_files: list[MediaFil
 def _match_image_ref(
     match: re.Match[str],
     media_files: list[MediaFile],
-    media_config: MediaConfig,
+    doc_stem: str,
 ) -> str:
     """Replace a single markdown image ref with the corresponding wikilink."""
     if media_files:
         mf = media_files[0]
         media_files.pop(0)
-        return f"![[{media_config.media_subfolder}/{mf.filename}]]"
+        return f"![[{doc_stem}/{mf.filename}]]"
     return match.group(0)

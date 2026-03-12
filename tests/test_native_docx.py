@@ -1,17 +1,17 @@
 """Tests for DOCX extraction (mock defusedxml)."""
 
+import io
 import zipfile
 from pathlib import Path
 
 import pytest
+from PIL import Image
 
 from obsidian_import.backends.native_docx import extract
 from obsidian_import.config import MediaConfig
 from obsidian_import.exceptions import ExtractionError
 
-_TEST_MEDIA_CONFIG = MediaConfig(
-    extract_images=True, image_format="png", image_max_dimension=0, media_subfolder="media"
-)
+_TEST_MEDIA_CONFIG = MediaConfig(extract_images=True, image_format="png", image_max_dimension=0)
 
 
 def _make_docx(tmp_path: Path, name: str, xml_content: str) -> Path:
@@ -103,7 +103,7 @@ class TestNativeDocxExtract:
         assert "No body content" in result.markdown
 
     def test_extracts_embedded_images(self, tmp_path):
-        """DOCX with an embedded image extracts the image and adds wikilink."""
+        """DOCX with an embedded image extracts it and adds per-document wikilink."""
         xml = """<?xml version="1.0" encoding="UTF-8"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
             xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
@@ -133,10 +133,6 @@ class TestNativeDocxExtract:
     Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"/>
 </Relationships>"""
 
-        import io
-
-        from PIL import Image
-
         img = Image.new("RGB", (10, 10), color="red")
         buf = io.BytesIO()
         img.save(buf, format="PNG")
@@ -150,12 +146,13 @@ class TestNativeDocxExtract:
 
         result = extract(docx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG)
         assert len(result.media_files) == 1
-        assert "![[media/" in result.markdown
+        assert "![[withimage/" in result.markdown
+        assert "![[media/" not in result.markdown
         assert result.media_files[0].media_type == "image"
 
     def test_no_images_when_disabled(self, tmp_path):
         """When extract_images=False, no images should be extracted."""
         docx = _make_docx(tmp_path, "simple.docx", _SIMPLE_DOC)
-        config = MediaConfig(extract_images=False, image_format="png", image_max_dimension=0, media_subfolder="media")
+        config = MediaConfig(extract_images=False, image_format="png", image_max_dimension=0)
         result = extract(docx, timeout_seconds=30, media_config=config)
         assert result.media_files == ()
