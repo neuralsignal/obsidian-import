@@ -3,7 +3,8 @@
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from obsidian_import.backends.native_csv import _escape_cell, extract
+from obsidian_import.backends.native_csv import extract
+from obsidian_import.formatting import _escape_cell
 
 
 class TestNativeCsvExtract:

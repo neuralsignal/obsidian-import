@@ -12,6 +12,7 @@ from pathlib import Path
 from obsidian_import.config import MediaConfig
 from obsidian_import.exceptions import ExtractionError
 from obsidian_import.extraction_result import ExtractionResult, MediaFile
+from obsidian_import.formatting import render_markdown_table
 from obsidian_import.media import generate_media_filename, save_media_to_temp
 from obsidian_import.timeout import run_with_timeout
 
@@ -62,16 +63,8 @@ def _extract_pdf(path: Path, media_config: MediaConfig) -> ExtractionResult:
                 for table in tables:
                     if not table or not table[0]:
                         continue
-                    headers = [str(cell or "").strip() for cell in table[0]]
-                    md_table = ["| " + " | ".join(headers) + " |"]
-                    md_table.append("| " + " | ".join(["---"] * len(headers)) + " |")
-                    for row in table[1:]:
-                        cells = [str(cell or "").strip().replace("\n", " ") for cell in row]
-                        while len(cells) < len(headers):
-                            cells.append("")
-                        cells = cells[: len(headers)]
-                        md_table.append("| " + " | ".join(cells) + " |")
-                    page_sections.append("\n".join(md_table))
+                    cleaned = [[str(cell or "").strip() for cell in row] for row in table]
+                    page_sections.append(render_markdown_table(cleaned))
 
             text = page.extract_text()
             if text:

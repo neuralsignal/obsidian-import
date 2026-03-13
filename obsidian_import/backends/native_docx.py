@@ -15,6 +15,7 @@ from xml.etree.ElementTree import Element
 from obsidian_import.config import MediaConfig
 from obsidian_import.exceptions import ExtractionError
 from obsidian_import.extraction_result import ExtractionResult, MediaFile
+from obsidian_import.formatting import render_markdown_table
 from obsidian_import.media import generate_media_filename, save_media_to_temp
 from obsidian_import.timeout import run_with_timeout
 
@@ -174,15 +175,4 @@ def _extract_table(tbl: Element) -> str:
     if not rows:
         return ""
 
-    max_cols = max(len(row) for row in rows)
-    for row in rows:
-        while len(row) < max_cols:
-            row.append("")
-
-    headers = rows[0]
-    md = ["| " + " | ".join(headers) + " |"]
-    md.append("| " + " | ".join(["---"] * max_cols) + " |")
-    for row in rows[1:]:
-        md.append("| " + " | ".join(row) + " |")
-
-    return "\n".join(md)
+    return render_markdown_table(rows)
