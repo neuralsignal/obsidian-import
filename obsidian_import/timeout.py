@@ -31,7 +31,7 @@ def run_with_timeout[T](fn: Callable[[], T], timeout_seconds: int, label: str, p
     def _worker() -> None:
         try:
             result[0] = fn()
-        except Exception as exc:
+        except BaseException as exc:  # noqa: BLE001 — thread boundary: re-raised below
             error[0] = exc
 
     thread = threading.Thread(target=_worker, daemon=True)
