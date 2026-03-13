@@ -127,6 +127,12 @@ class TestBuildConfig:
         with pytest.raises(ConfigError, match="Missing required config section"):
             _build_config({"input": {}, "output": {}, "backends": {}}, config_dir=None)
 
+    def test_missing_media_section_raises_config_error(self):
+        raw = _load_default_yaml()
+        del raw["media"]
+        with pytest.raises(ConfigError, match="Missing required config section"):
+            _build_config(raw, config_dir=None)
+
     def test_string_directory_raises_config_error(self):
         raw = _load_default_yaml()
         raw["input"]["directories"] = ["/tmp/docs"]

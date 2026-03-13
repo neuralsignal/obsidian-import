@@ -103,11 +103,11 @@ def _build_config(raw: dict[str, Any], config_dir: Path | None) -> ImportConfig:
         output_raw = raw["output"]
         backends_raw = raw["backends"]
         extraction_raw = raw["extraction"]
+        media_raw = raw["media"]
     except KeyError as exc:
         raise ConfigError(f"Missing required config section: {exc}") from exc
 
     passthrough_raw = raw.get("passthrough", {})
-    media_raw = raw.get("media", {})
 
     directories: list[DirectoryConfig] = []
     for d in input_raw.get("directories", []):
@@ -166,9 +166,9 @@ def _build_config(raw: dict[str, Any], config_dir: Path | None) -> ImportConfig:
             patterns=passthrough_patterns,
         ),
         media=MediaConfig(
-            extract_images=bool(media_raw.get("extract_images", True)),
-            image_format=str(media_raw.get("image_format", "png")),
-            image_max_dimension=int(media_raw.get("image_max_dimension", 0)),
+            extract_images=bool(media_raw["extract_images"]),
+            image_format=str(media_raw["image_format"]),
+            image_max_dimension=int(media_raw["image_max_dimension"]),
         ),
     )
 
