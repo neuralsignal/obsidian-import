@@ -10,7 +10,10 @@ from __future__ import annotations
 import logging
 import zipfile
 from pathlib import Path
-from xml.etree.ElementTree import Element
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from xml.etree.ElementTree import Element
 
 from obsidian_import.config import MediaConfig
 from obsidian_import.exceptions import ExtractionError
