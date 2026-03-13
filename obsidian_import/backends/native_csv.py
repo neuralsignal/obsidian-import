@@ -8,6 +8,7 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
+from obsidian_import.formatting import render_markdown_table
 from obsidian_import.timeout import run_with_timeout
 
 
@@ -27,23 +28,5 @@ def _extract_csv(path: Path) -> str:
 
     sections: list[str] = [f"# {path.stem}"]
 
-    max_cols = max(len(row) for row in rows)
-    for row in rows:
-        while len(row) < max_cols:
-            row.append("")
-
-    headers = rows[0]
-    md_lines = [
-        "| " + " | ".join(_escape_cell(h) for h in headers) + " |",
-        "| " + " | ".join(["---"] * max_cols) + " |",
-    ]
-    for row in rows[1:]:
-        md_lines.append("| " + " | ".join(_escape_cell(c) for c in row) + " |")
-
-    sections.append("\n".join(md_lines))
+    sections.append(render_markdown_table(rows))
     return "\n\n".join(sections)
-
-
-def _escape_cell(value: str) -> str:
-    """Escape pipe characters and newlines in table cells."""
-    return value.replace("|", "\\|").replace("\n", " ")

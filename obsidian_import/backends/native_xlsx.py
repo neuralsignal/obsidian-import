@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from obsidian_import.formatting import render_markdown_table
 from obsidian_import.timeout import run_with_timeout
 
 
@@ -40,19 +41,7 @@ def _extract_xlsx(path: Path, max_rows_per_sheet: int) -> str:
 
         sheet_sections: list[str] = [f"## Sheet: {sheet_name}"]
 
-        max_cols = max(len(row) for row in rows)
-        for row in rows:
-            while len(row) < max_cols:
-                row.append("")
-
-        headers = rows[0]
-        md = ["| " + " | ".join(h.replace("|", "\\|").replace("\n", " ") for h in headers) + " |"]
-        md.append("| " + " | ".join(["---"] * max_cols) + " |")
-        for row in rows[1:]:
-            cells = [c.replace("|", "\\|").replace("\n", " ") for c in row]
-            md.append("| " + " | ".join(cells) + " |")
-
-        sheet_sections.append("\n".join(md))
+        sheet_sections.append(render_markdown_table(rows))
 
         if truncated:
             sheet_sections.append(f"\n*Truncated: sheet has more than {max_rows_per_sheet} rows.*")
