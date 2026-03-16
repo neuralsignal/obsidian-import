@@ -27,7 +27,7 @@ pre-commit = ">=4.0,<5"
 mkdocs = ">=1.6,<2"
 mkdocs-material = ">=9.5,<10"
 mkdocstrings = {version = ">=0.29,<1", extras = ["python"]}
-docling = ">=2.0"
+docling = ">=2.0,<3"
 
 [tasks]
 lint = "ruff check obsidian_import/ tests/"

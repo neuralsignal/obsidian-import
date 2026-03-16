@@ -1944,7 +1944,7 @@ packages:
 - pypi: ./
   name: obsidian-import
   version: 1.0.0
-  sha256: 4cc4dd93a00d9a6cbd2e04fa90f80eb4a4d560c8bc96c1601d6f074e9b13a1a1
+  sha256: 75f97dd52722ab2ce3e06159dcb9ce93a190aaf695227831719a076426425881
   requires_dist:
   - pyyaml>=6.0,<7
   - click>=8.0,<9
@@ -1954,8 +1954,8 @@ packages:
   - python-pptx>=1.0,<2
   - openpyxl>=3.1,<4
   - pillow>=12.1,<13
-  - markitdown[all]>=0.1 ; extra == 'markitdown'
-  - docling>=2.0 ; extra == 'docling'
+  - markitdown[all]>=0.1,<0.2 ; extra == 'markitdown'
+  - docling>=2.0,<3 ; extra == 'docling'
   - pytest>=8.0,<9 ; extra == 'dev'
   - hypothesis>=6.0,<7 ; extra == 'dev'
   - pytest-cov>=5.0,<6 ; extra == 'dev'
