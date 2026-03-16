@@ -7,3 +7,10 @@
         - extract_file
         - extract_text
         - discover_files
+
+::: obsidian_import.config
+    options:
+      show_root_heading: true
+      members:
+        - config_for_backend
+        - load_config
