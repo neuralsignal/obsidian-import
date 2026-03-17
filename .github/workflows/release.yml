@@ -11,7 +11,34 @@ permissions:
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    outputs:
+      pr: ${{ steps.rp.outputs.pr }}
+      pr-branch: ${{ steps.rp.outputs.prs_created == 'true' && fromJSON(steps.rp.outputs.pr).headBranchName || '' }}
     steps:
       - uses: googleapis/release-please-action@v4
+        id: rp
         with:
           token: ${{ secrets.FACTORY_PAT }}
+
+  update-lockfile:
+    needs: release-please
+    if: needs.release-please.outputs.pr-branch != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.pr-branch }}
+          token: ${{ secrets.FACTORY_PAT }}
+
+      - uses: prefix-dev/setup-pixi@v0.8.8
+
+      - name: Regenerate pixi.lock
+        run: pixi install
+
+      - name: Commit updated pixi.lock
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pixi.lock
+          git diff --staged --quiet || git commit -m "chore: update pixi.lock"
+          git push
