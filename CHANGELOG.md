@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.0.1](https://github.com/neuralsignal/obsidian-import/compare/v1.0.0...v1.0.1) (2026-03-17)
+
+
+### Bug Fixes
+
+* add upper-bound version pins for markitdown and docling optional deps ([ef63111](https://github.com/neuralsignal/obsidian-import/commit/ef6311154ed6cf98ea79025b39268974646baf05)), closes [#30](https://github.com/neuralsignal/obsidian-import/issues/30)
+* add upper-bound version pins for markitdown and docling optional… ([4471a29](https://github.com/neuralsignal/obsidian-import/commit/4471a293b4a3534d6e285f131d9bc849b561f489))
+* bump Pillow to &gt;=12.1,&lt;13 to address CVE-2026-25990 ([#29](https://github.com/neuralsignal/obsidian-import/issues/29)) ([ee2cc8e](https://github.com/neuralsignal/obsidian-import/commit/ee2cc8e4b69d2fbf261860f29996693f9ecbb2fe))
+* move stdlib xml.etree.ElementTree import to TYPE_CHECKING block ([#17](https://github.com/neuralsignal/obsidian-import/issues/17)) ([829cea3](https://github.com/neuralsignal/obsidian-import/commit/829cea3c440ac591aa791d79b4edd5325e1e4b6d))
+* regenerate pixi.lock in release-please PR ([c4f6c76](https://github.com/neuralsignal/obsidian-import/commit/c4f6c76f0fd977797bae2ad7d945745418c806c7))
+* regenerate pixi.lock in release-please PR ([1ea1ccb](https://github.com/neuralsignal/obsidian-import/commit/1ea1ccb19ab2bf7dcc610c57e6057372ba21167d))
+
 ## 1.0.0 (2026-03-12)
 
 - feat: embedded media extraction for PDF, DOCX, PPTX (per-document media folders with wikilinks)
