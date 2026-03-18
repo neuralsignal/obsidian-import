@@ -31,6 +31,8 @@ jobs:
           token: ${{ secrets.FACTORY_PAT }}
 
       - uses: prefix-dev/setup-pixi@v0.8.8
+        with:
+          locked: false
 
       - name: Regenerate pixi.lock
         run: pixi install
