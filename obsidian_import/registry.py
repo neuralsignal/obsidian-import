@@ -57,18 +57,11 @@ _BACKEND_MODULES: dict[str, str | dict[str, str]] = {
 }
 
 
-def get_backend_module(extension: str, backends: BackendsConfig) -> types.ModuleType:
-    """Resolve the backend module for a given file extension.
+def _resolve_module_path(backend_name: str, extension: str) -> str:
+    """Resolve the dotted module path for a backend and extension.
 
-    Returns the module object with an `extract()` function.
-    Raises UnsupportedFormatError if no backend is available.
+    Raises UnsupportedFormatError if the backend name or extension is invalid.
     """
-    config_key = _EXTENSION_TO_CONFIG_KEY.get(extension)
-    if config_key is not None:
-        backend_name = getattr(backends, config_key)
-    else:
-        backend_name = backends.default
-
     if backend_name == "native":
         native_map = _BACKEND_MODULES["native"]
         if not isinstance(native_map, dict) or extension not in native_map:
@@ -84,6 +77,22 @@ def get_backend_module(extension: str, backends: BackendsConfig) -> types.Module
     else:
         raise UnsupportedFormatError(f"Unknown backend '{backend_name}' for extension '{extension}'")
 
+    return module_path
+
+
+def get_backend_module(extension: str, backends: BackendsConfig) -> types.ModuleType:
+    """Resolve the backend module for a given file extension.
+
+    Returns the module object with an `extract()` function.
+    Raises UnsupportedFormatError if no backend is available.
+    """
+    config_key = _EXTENSION_TO_CONFIG_KEY.get(extension)
+    if config_key is not None:
+        backend_name = getattr(backends, config_key)
+    else:
+        backend_name = backends.default
+
+    module_path = _resolve_module_path(backend_name, extension)
     return importlib.import_module(module_path)
 
 
@@ -132,18 +141,10 @@ def check_backend_available(backend_name: str, extension: str) -> tuple[bool, st
 
     Returns (available, message).
     """
-    if backend_name == "native":
-        native_map = _BACKEND_MODULES["native"]
-        if not isinstance(native_map, dict) or extension not in native_map:
-            return False, f"No native backend for {extension}"
-        module_path = native_map[extension]
-    elif backend_name in ("markitdown", "docling"):
-        module_path = _BACKEND_MODULES[backend_name]
-    else:
-        return False, f"Unknown backend: {backend_name}"
-
-    if not isinstance(module_path, str):
-        return False, f"Invalid backend module config for '{backend_name}'"
+    try:
+        module_path = _resolve_module_path(backend_name, extension)
+    except UnsupportedFormatError as exc:
+        return False, str(exc)
 
     try:
         importlib.import_module(module_path)
