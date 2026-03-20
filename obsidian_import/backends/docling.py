@@ -106,22 +106,12 @@ def _extract_docling_images(doc: object, path: Path, media_config: MediaConfig) 
 
 def _replace_image_refs_with_wikilinks(markdown: str, media_files: list[MediaFile], doc_stem: str) -> str:
     """Replace standard markdown image references with Obsidian wikilinks."""
-    result = re.sub(
-        r"!\[([^\]]*)\]\([^)]+\)",
-        lambda m: _match_image_ref(m, media_files, doc_stem),
-        markdown,
-    )
-    return result
+    media_iter = iter(media_files)
 
+    def _match_image_ref(match: re.Match[str]) -> str:
+        mf = next(media_iter, None)
+        if mf is not None:
+            return f"![[{doc_stem}/{mf.filename}]]"
+        return match.group(0)
 
-def _match_image_ref(
-    match: re.Match[str],
-    media_files: list[MediaFile],
-    doc_stem: str,
-) -> str:
-    """Replace a single markdown image ref with the corresponding wikilink."""
-    if media_files:
-        mf = media_files[0]
-        media_files.pop(0)
-        return f"![[{doc_stem}/{mf.filename}]]"
-    return match.group(0)
+    return re.sub(r"!\[([^\]]*)\]\([^)]+\)", _match_image_ref, markdown)
