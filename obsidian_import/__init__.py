@@ -16,8 +16,30 @@ from obsidian_import.config import ImportConfig
 from obsidian_import.config import config_for_backend as config_for_backend
 from obsidian_import.discovery import DiscoveredFile
 from obsidian_import.discovery import discover_files as _discover_files
+from obsidian_import.extraction_result import ExtractionResult
 from obsidian_import.output import ExtractedDocument
 from obsidian_import.registry import extract_with_backend
+
+
+def _build_extra_kwargs(extension: str, config: ImportConfig) -> dict[str, object]:
+    """Build format-specific keyword arguments for backend extraction."""
+    extra_kwargs: dict[str, object] = {}
+    if extension == ".xlsx":
+        extra_kwargs["max_rows_per_sheet"] = config.extraction.xlsx_max_rows_per_sheet
+    return extra_kwargs
+
+
+def _call_backend(path: Path, config: ImportConfig) -> ExtractionResult:
+    """Run the configured backend on a file, including format-specific kwargs."""
+    extension = path.suffix.lower()
+    extra_kwargs = _build_extra_kwargs(extension, config)
+    return extract_with_backend(
+        path,
+        backends=config.backends,
+        timeout_seconds=config.extraction.timeout_seconds,
+        media_config=config.media,
+        **extra_kwargs,
+    )
 
 
 def extract_file(path: Path, config: ImportConfig) -> ExtractedDocument:
@@ -28,18 +50,7 @@ def extract_file(path: Path, config: ImportConfig) -> ExtractedDocument:
     For image files, the source image is listed in associated_files for copying.
     """
     extension = path.suffix.lower()
-    extra_kwargs: dict[str, object] = {}
-
-    if extension == ".xlsx":
-        extra_kwargs["max_rows_per_sheet"] = config.extraction.xlsx_max_rows_per_sheet
-
-    result = extract_with_backend(
-        path,
-        backends=config.backends,
-        timeout_seconds=config.extraction.timeout_seconds,
-        media_config=config.media,
-        **extra_kwargs,
-    )
+    result = _call_backend(path, config)
 
     page_count = _estimate_page_count(result.markdown, extension)
 
@@ -73,17 +84,7 @@ def discover_files(config: ImportConfig) -> Iterator[DiscoveredFile]:
 
 def extract_text(path: Path, config: ImportConfig) -> str:
     """Extract raw markdown text from a file. No frontmatter, no metadata wrapping."""
-    extension = path.suffix.lower()
-    extra_kwargs: dict[str, object] = {}
-    if extension == ".xlsx":
-        extra_kwargs["max_rows_per_sheet"] = config.extraction.xlsx_max_rows_per_sheet
-    result = extract_with_backend(
-        path,
-        backends=config.backends,
-        timeout_seconds=config.extraction.timeout_seconds,
-        media_config=config.media,
-        **extra_kwargs,
-    )
+    result = _call_backend(path, config)
     return result.markdown
 
 
