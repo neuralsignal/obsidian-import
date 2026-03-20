@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.2](https://github.com/neuralsignal/obsidian-import/compare/v1.0.1...v1.0.2) (2026-03-20)
+
+
+### Bug Fixes
+
+* eliminate hidden mutation side-effect in _match_image_ref ([#41](https://github.com/neuralsignal/obsidian-import/issues/41)) ([e6dc690](https://github.com/neuralsignal/obsidian-import/commit/e6dc690d45ed3c0ce79e2604095dfcb4b7f6e49b))
+
 ## [1.0.1](https://github.com/neuralsignal/obsidian-import/compare/v1.0.0...v1.0.1) (2026-03-17)
 
 
