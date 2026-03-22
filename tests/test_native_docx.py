@@ -1,13 +1,23 @@
 """Tests for DOCX extraction (mock defusedxml)."""
 
 import io
+import logging
 import zipfile
 from pathlib import Path
+from unittest.mock import patch
+from xml.etree.ElementTree import Element, SubElement
 
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 from PIL import Image
 
-from obsidian_import.backends.native_docx import extract
+from obsidian_import.backends.native_docx import (
+    _extract_paragraph,
+    _extract_table,
+    _local_name,
+    extract,
+)
 from obsidian_import.config import MediaConfig
 from obsidian_import.exceptions import ExtractionError
 
@@ -156,3 +166,124 @@ class TestNativeDocxExtract:
         config = MediaConfig(extract_images=False, image_format="png", image_max_dimension=0)
         result = extract(docx, timeout_seconds=30, media_config=config)
         assert result.media_files == ()
+
+    def test_image_extraction_error_logs_warning(self, tmp_path, caplog):
+        """When save_media_to_temp raises ExtractionError, warning is logged and extraction continues."""
+        xml = """<?xml version="1.0" encoding="UTF-8"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+            xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+            xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+            xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+  <w:body>
+    <w:p>
+      <w:r><w:t>Text with broken image</w:t></w:r>
+      <w:r>
+        <w:drawing>
+          <wp:inline>
+            <a:graphic>
+              <a:graphicData>
+                <a:blip r:embed="rId1"/>
+              </a:graphicData>
+            </a:graphic>
+          </wp:inline>
+        </w:drawing>
+      </w:r>
+    </w:p>
+  </w:body>
+</w:document>"""
+
+        rels_xml = """<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Target="media/image1.png"
+    Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"/>
+</Relationships>"""
+
+        docx_path = tmp_path / "broken_img.docx"
+        with zipfile.ZipFile(str(docx_path), "w") as zf:
+            zf.writestr("word/document.xml", xml)
+            zf.writestr("word/_rels/document.xml.rels", rels_xml)
+            zf.writestr("word/media/image1.png", b"not valid image bytes")
+
+        with (
+            patch(
+                "obsidian_import.backends.native_docx.save_media_to_temp",
+                side_effect=ExtractionError("PIL failed"),
+            ),
+            caplog.at_level(logging.WARNING),
+        ):
+            result = extract(docx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG)
+
+        assert result.media_files == ()
+        assert "Text with broken image" in result.markdown
+        assert "Failed to extract image" in caplog.text
+
+    def test_extract_table_empty_rows(self):
+        """A w:tbl with no w:tr children returns empty string."""
+        ns = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+        tbl = Element(f"{{{ns}}}tbl")
+        assert _extract_table(tbl) == ""
+
+    def test_extract_paragraph_non_numeric_heading(self):
+        """HeadingCustom style falls back to plain text (no # prefix)."""
+        ns = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+        para = Element(f"{{{ns}}}p")
+        ppr = SubElement(para, f"{{{ns}}}pPr")
+        pstyle = SubElement(ppr, f"{{{ns}}}pStyle")
+        pstyle.set(f"{{{ns}}}val", "HeadingCustom")
+        run = SubElement(para, f"{{{ns}}}r")
+        t = SubElement(run, f"{{{ns}}}t")
+        t.text = "Custom heading text"
+
+        result = _extract_paragraph(para)
+        assert result == "Custom heading text"
+        assert not result.startswith("#")
+
+
+class TestLocalName:
+    def test_with_namespace(self):
+        elem = Element("{http://example.com}body")
+        assert _local_name(elem) == "body"
+
+    def test_without_namespace(self):
+        elem = Element("plainTag")
+        assert _local_name(elem) == "plainTag"
+
+    @given(tag=st.text(min_size=1).filter(lambda s: "}" not in s))
+    def test_no_namespace_returns_tag_unchanged(self, tag):
+        elem = Element(tag)
+        assert _local_name(elem) == tag
+
+    @given(
+        ns=st.text(min_size=1).filter(lambda s: "}" not in s),
+        local=st.text(min_size=1).filter(lambda s: "}" not in s),
+    )
+    def test_namespace_stripped(self, ns, local):
+        elem = Element(f"{{{ns}}}{local}")
+        assert _local_name(elem) == local
+
+
+class TestExtractParagraphEdgeCases:
+    def test_runs_with_whitespace_only_text(self):
+        """Paragraph with runs containing only whitespace returns empty string."""
+        ns = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+        para = Element(f"{{{ns}}}p")
+        run = SubElement(para, f"{{{ns}}}r")
+        t = SubElement(run, f"{{{ns}}}t")
+        t.text = "   "
+
+        assert _extract_paragraph(para) == ""
+
+    @given(level=st.integers(min_value=1, max_value=6))
+    def test_heading_levels(self, level):
+        """Valid heading levels produce correct markdown prefix."""
+        ns = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+        para = Element(f"{{{ns}}}p")
+        ppr = SubElement(para, f"{{{ns}}}pPr")
+        pstyle = SubElement(ppr, f"{{{ns}}}pStyle")
+        pstyle.set(f"{{{ns}}}val", f"Heading{level}")
+        run = SubElement(para, f"{{{ns}}}r")
+        t = SubElement(run, f"{{{ns}}}t")
+        t.text = "Text"
+
+        result = _extract_paragraph(para)
+        assert result == f"{'#' * (level + 1)} Text"
