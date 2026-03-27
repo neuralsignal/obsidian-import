@@ -27,7 +27,11 @@ def extract(path: Path, timeout_seconds: int, **kwargs: object) -> str:
 
     Returns markdown with a wikilink embed (![[filename]]).
     The image file itself must be copied to the vault separately.
+
+    timeout_seconds is accepted for backend interface compatibility
+    but not applied, as this function performs no blocking I/O.
     """
+    _ = timeout_seconds
     return f"![[{path.name}]]"
 
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import shutil
 import tempfile
 from pathlib import Path
 
@@ -88,8 +89,6 @@ def copy_media_files(
 
     Returns the list of destination paths.
     """
-    import shutil
-
     if not media_files:
         return []
 

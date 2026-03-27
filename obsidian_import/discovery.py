@@ -32,8 +32,16 @@ def discover_files(config: ImportConfig) -> Iterator[DiscoveredFile]:
         if not directory.is_dir():
             continue
 
+        base_resolved = directory.resolve()
+
         for file_path in directory.rglob("*"):
+            if file_path.is_symlink():
+                continue
+
             if not file_path.is_file():
+                continue
+
+            if not file_path.resolve().is_relative_to(base_resolved):
                 continue
 
             extension = file_path.suffix.lower()

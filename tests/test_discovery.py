@@ -115,3 +115,20 @@ class TestDiscoverFiles:
 
         files = list(discover_files(config))
         assert len(files) == 2
+
+    def test_skips_symlinks(self, tmp_path):
+        """Symlinks are skipped to prevent traversal outside input directory."""
+        (tmp_path / "real.pdf").write_bytes(b"pdf")
+
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        (outside / "secret.pdf").write_bytes(b"secret")
+
+        (tmp_path / "link.pdf").symlink_to(outside / "secret.pdf")
+
+        config = _make_config((DirectoryConfig(path=str(tmp_path), extensions=(".pdf",), exclude=()),))
+
+        files = list(discover_files(config))
+        names = {f.path.name for f in files}
+        assert "real.pdf" in names
+        assert "link.pdf" not in names
