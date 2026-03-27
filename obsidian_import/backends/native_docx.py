@@ -88,6 +88,10 @@ def _extract_docx(path: Path, media_config: MediaConfig) -> ExtractionResult:
                             if embed_id and embed_id in rel_map:
                                 target = rel_map[embed_id]
                                 media_path = f"word/{target}" if not target.startswith("word/") else target
+                                if ".." in Path(media_path).parts:
+                                    continue
+                                if not media_path.startswith("word/media/"):
+                                    continue
                                 if media_path in zf.namelist():
                                     image_index += 1
                                     img_bytes = zf.read(media_path)

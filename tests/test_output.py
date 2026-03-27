@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
@@ -88,6 +89,52 @@ class TestFormatOutput:
         doc = _make_doc("C:\\Users\\report: final", "# Hello")
         result = format_output(doc, _make_config(True))
         assert 'title: "C:\\\\Users\\\\report: final"' in result
+
+    def test_newlines_escaped_in_frontmatter(self):
+        """Literal newlines in values are escaped to prevent YAML injection."""
+        doc = ExtractedDocument(
+            source_path=Path("/tmp/file\ninjected: evil"),
+            markdown="# Hello",
+            title="safe",
+            file_type="pdf",
+            page_count=None,
+            associated_files=(),
+            media_files=(),
+        )
+        config = OutputConfig(
+            directory="./out",
+            frontmatter=True,
+            metadata_fields=("original_path",),
+        )
+        result = format_output(doc, config)
+        lines = result.split("\n")
+        for line in lines:
+            if line.startswith("original_path:"):
+                assert "\\n" in line
+                assert "\ninjected" not in line
+                break
+        else:
+            pytest.fail("original_path not found in frontmatter")
+
+    def test_carriage_return_escaped_in_frontmatter(self):
+        """Carriage returns are also escaped in quoted YAML values."""
+        doc = ExtractedDocument(
+            source_path=Path("/tmp/file\rinjected"),
+            markdown="# Hello",
+            title="safe",
+            file_type="pdf",
+            page_count=None,
+            associated_files=(),
+            media_files=(),
+        )
+        config = OutputConfig(
+            directory="./out",
+            frontmatter=True,
+            metadata_fields=("original_path",),
+        )
+        result = format_output(doc, config)
+        assert "\\r" in result
+        assert "\rinjected" not in result
 
 
 class TestOutputPathFor:
