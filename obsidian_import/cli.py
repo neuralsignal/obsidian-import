@@ -9,7 +9,7 @@ from pathlib import Path
 import click
 
 from obsidian_import import discover_files, extract_file
-from obsidian_import.config import default_config, load_config
+from obsidian_import.config import ImportConfig, default_config, load_config
 from obsidian_import.exceptions import ObsidianImportError
 from obsidian_import.media import copy_media_files
 from obsidian_import.output import format_output, media_dir_for, output_path_for
@@ -19,7 +19,7 @@ from obsidian_import.registry import check_backend_available
 log = logging.getLogger(__name__)
 
 
-def _resolve_config(config_path: str | None) -> object:
+def _resolve_config(config_path: str | None) -> ImportConfig:
     """Load config from path or use defaults."""
     if config_path is not None:
         return load_config(Path(config_path))
