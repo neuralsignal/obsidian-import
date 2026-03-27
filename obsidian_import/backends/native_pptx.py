@@ -7,8 +7,13 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from obsidian_import.config import MediaConfig
+
+if TYPE_CHECKING:
+    from pptx.table import Table
+
 from obsidian_import.exceptions import ExtractionError
 from obsidian_import.extraction_result import ExtractionResult, MediaFile
 from obsidian_import.formatting import render_markdown_table
@@ -121,10 +126,10 @@ def _mime_to_extension(content_type: str) -> str:
     return mime_map.get(content_type, ".png")
 
 
-def _extract_table(table: object) -> str:
+def _extract_table(table: Table) -> str:
     """Extract a PPTX table as markdown."""
     rows: list[list[str]] = []
-    for row in table.rows:  # type: ignore[attr-defined]
+    for row in table.rows:
         cells = [cell.text.strip().replace("\n", " ") for cell in row.cells]
         rows.append(cells)
 

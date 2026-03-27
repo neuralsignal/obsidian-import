@@ -6,12 +6,19 @@ Supports image extraction via PdfPipelineOptions when available.
 
 from __future__ import annotations
 
+import importlib.util
 import io
 import logging
 import re
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from obsidian_import.config import MediaConfig
+
+if TYPE_CHECKING:
+    from docling.datamodel.document import DoclingDocument
+    from docling.document_converter import DocumentConverter
+
 from obsidian_import.exceptions import BackendNotAvailableError, ExtractionError
 from obsidian_import.extraction_result import ExtractionResult, MediaFile
 from obsidian_import.media import generate_media_filename, save_media_to_temp
@@ -22,15 +29,8 @@ log = logging.getLogger(__name__)
 
 def extract(path: Path, timeout_seconds: int, media_config: MediaConfig) -> ExtractionResult:
     """Extract text and images using docling for high-quality document conversion."""
-    try:
-        import importlib.util
-
-        if importlib.util.find_spec("docling") is None:
-            raise ImportError("docling not found")
-    except ImportError as exc:
-        raise BackendNotAvailableError(
-            "docling is not installed. Install with: pip install obsidian-import[docling]"
-        ) from exc
+    if importlib.util.find_spec("docling") is None:
+        raise BackendNotAvailableError("docling is not installed. Install with: pip install obsidian-import[docling]")
 
     def _do_extract() -> ExtractionResult:
         converter = _build_converter(media_config)
@@ -54,7 +54,7 @@ def extract(path: Path, timeout_seconds: int, media_config: MediaConfig) -> Extr
     return run_with_timeout(_do_extract, timeout_seconds, "docling", path)
 
 
-def _build_converter(media_config: MediaConfig) -> object:
+def _build_converter(media_config: MediaConfig) -> DocumentConverter:
     """Build a DocumentConverter with optional image pipeline options."""
     from docling.document_converter import DocumentConverter
 
@@ -77,7 +77,7 @@ def _build_converter(media_config: MediaConfig) -> object:
         return DocumentConverter()
 
 
-def _extract_docling_images(doc: object, path: Path, media_config: MediaConfig) -> list[MediaFile]:
+def _extract_docling_images(doc: DoclingDocument, path: Path, media_config: MediaConfig) -> list[MediaFile]:
     """Extract images from a docling Document object."""
     media_files: list[MediaFile] = []
 

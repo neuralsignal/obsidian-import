@@ -8,8 +8,14 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from obsidian_import.config import MediaConfig
+
+if TYPE_CHECKING:
+    from pypdf import PdfReader
+    from pypdf.generic import EncodedStreamObject
+
 from obsidian_import.exceptions import ExtractionError
 from obsidian_import.extraction_result import ExtractionResult, MediaFile
 from obsidian_import.formatting import render_markdown_table
@@ -86,7 +92,7 @@ def _extract_pdf(path: Path, media_config: MediaConfig) -> ExtractionResult:
 
 
 def _extract_page_images(
-    reader: object,
+    reader: PdfReader,
     page_index: int,
     path: Path,
     media_config: MediaConfig,
@@ -131,7 +137,7 @@ def _extract_page_images(
     return media_files
 
 
-def _pdf_image_extension(xobj: object) -> str:
+def _pdf_image_extension(xobj: EncodedStreamObject) -> str:
     """Determine file extension from PDF image XObject filter."""
     filter_val = getattr(xobj, "get", lambda k: None)("/Filter")
     if filter_val is None:
