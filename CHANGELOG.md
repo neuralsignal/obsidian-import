@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.0.3](https://github.com/neuralsignal/obsidian-import/compare/v1.0.2...v1.0.3) (2026-03-27)
+
+
+### Bug Fixes
+
+* address security and code quality issues ([#14](https://github.com/neuralsignal/obsidian-import/issues/14), [#37](https://github.com/neuralsignal/obsidian-import/issues/37), [#59](https://github.com/neuralsignal/obsidian-import/issues/59), [#63](https://github.com/neuralsignal/obsidian-import/issues/63), [#64](https://github.com/neuralsignal/obsidian-import/issues/64)) ([4845e67](https://github.com/neuralsignal/obsidian-import/commit/4845e67d5b9a44b6bd50220ce4396e206385ffd1))
+* address security and code quality issues ([#14](https://github.com/neuralsignal/obsidian-import/issues/14), [#37](https://github.com/neuralsignal/obsidian-import/issues/37), [#59](https://github.com/neuralsignal/obsidian-import/issues/59), [#63](https://github.com/neuralsignal/obsidian-import/issues/63), [#64](https://github.com/neuralsignal/obsidian-import/issues/64)) ([9c9fb18](https://github.com/neuralsignal/obsidian-import/commit/9c9fb18446d193b342bb5466938e15147e69019c))
+* bump pypdf &gt;=6.9.1 to address CVE-2026-33123 DoS vulnerability ([#55](https://github.com/neuralsignal/obsidian-import/issues/55)) ([b9e2a8c](https://github.com/neuralsignal/obsidian-import/commit/b9e2a8c78d416d7fe98388fec6f3d3cdaf789ffe))
+* strengthen type annotations and simplify docling availability check ([00f951b](https://github.com/neuralsignal/obsidian-import/commit/00f951b8f336b6f97e6d0089da3be2e807966056))
+* strengthen type annotations and simplify docling check ([86dfa39](https://github.com/neuralsignal/obsidian-import/commit/86dfa3980764d4fa19fcf1b620a7ad653dcd2c60))
+
+
+### Documentation
+
+* sync documentation with codebase ([f797c3d](https://github.com/neuralsignal/obsidian-import/commit/f797c3d65adba67ab01e36ebdc953765c57e6f0c))
+
 ## [1.0.2](https://github.com/neuralsignal/obsidian-import/compare/v1.0.1...v1.0.2) (2026-03-20)
 
 
