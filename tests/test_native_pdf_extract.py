@@ -7,7 +7,13 @@ from obsidian_import.backends.native_pdf import extract
 from obsidian_import.config import MediaConfig
 from obsidian_import.extraction_result import MediaFile
 
-_TEST_MEDIA_CONFIG = MediaConfig(extract_images=True, image_format="png", image_max_dimension=0)
+_TEST_MEDIA_CONFIG = MediaConfig(
+    extract_images=True,
+    image_format="png",
+    image_max_dimension=0,
+    image_max_bytes=50_000_000,
+    image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
+)
 
 
 class TestNativePdfExtract:
@@ -118,7 +124,13 @@ class TestNativePdfExtract:
         mock_reader.metadata = None
         mock_reader.get_fields.return_value = None
 
-        config = MediaConfig(extract_images=False, image_format="png", image_max_dimension=0)
+        config = MediaConfig(
+            extract_images=False,
+            image_format="png",
+            image_max_dimension=0,
+            image_max_bytes=50_000_000,
+            image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
+        )
 
         with (
             patch("pdfplumber.open", return_value=mock_pdf),

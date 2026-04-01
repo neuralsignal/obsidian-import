@@ -21,7 +21,13 @@ from obsidian_import.backends.native_docx import (
 from obsidian_import.config import MediaConfig
 from obsidian_import.exceptions import ExtractionError
 
-_TEST_MEDIA_CONFIG = MediaConfig(extract_images=True, image_format="png", image_max_dimension=0)
+_TEST_MEDIA_CONFIG = MediaConfig(
+    extract_images=True,
+    image_format="png",
+    image_max_dimension=0,
+    image_max_bytes=50_000_000,
+    image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
+)
 
 
 def _make_docx(tmp_path: Path, name: str, xml_content: str) -> Path:
@@ -243,7 +249,13 @@ class TestNativeDocxExtract:
     def test_no_images_when_disabled(self, tmp_path):
         """When extract_images=False, no images should be extracted."""
         docx = _make_docx(tmp_path, "simple.docx", _SIMPLE_DOC)
-        config = MediaConfig(extract_images=False, image_format="png", image_max_dimension=0)
+        config = MediaConfig(
+            extract_images=False,
+            image_format="png",
+            image_max_dimension=0,
+            image_max_bytes=50_000_000,
+            image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
+        )
         result = extract(docx, timeout_seconds=30, media_config=config)
         assert result.media_files == ()
 

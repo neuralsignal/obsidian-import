@@ -14,9 +14,21 @@ from obsidian_import.config import MediaConfig
 from obsidian_import.exceptions import BackendNotAvailableError
 from obsidian_import.extraction_result import ExtractionResult
 
-_TEST_MEDIA_CONFIG = MediaConfig(extract_images=True, image_format="png", image_max_dimension=0)
+_TEST_MEDIA_CONFIG = MediaConfig(
+    extract_images=True,
+    image_format="png",
+    image_max_dimension=0,
+    image_max_bytes=50_000_000,
+    image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
+)
 
-_NO_IMAGES_CONFIG = MediaConfig(extract_images=False, image_format="png", image_max_dimension=0)
+_NO_IMAGES_CONFIG = MediaConfig(
+    extract_images=False,
+    image_format="png",
+    image_max_dimension=0,
+    image_max_bytes=50_000_000,
+    image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
+)
 
 
 def _mock_docling_document(text: str, pictures: list[MagicMock] | None) -> MagicMock:

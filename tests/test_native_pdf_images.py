@@ -24,7 +24,13 @@ class TestExtractPageImages:
         mock_reader = MagicMock()
         mock_reader.pages = [mock_page]
 
-        media_config = MediaConfig(extract_images=True, image_format="png", image_max_dimension=0)
+        media_config = MediaConfig(
+            extract_images=True,
+            image_format="png",
+            image_max_dimension=0,
+            image_max_bytes=50_000_000,
+            image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
+        )
         result = _extract_page_images(mock_reader, 0, Path("/fake.pdf"), media_config)
         assert result == []
 
@@ -47,7 +53,13 @@ class TestExtractPageImages:
         mock_reader = MagicMock()
         mock_reader.pages = [mock_page]
 
-        media_config = MediaConfig(extract_images=True, image_format="png", image_max_dimension=0)
+        media_config = MediaConfig(
+            extract_images=True,
+            image_format="png",
+            image_max_dimension=0,
+            image_max_bytes=50_000_000,
+            image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
+        )
         result = _extract_page_images(mock_reader, 0, Path("/fake.pdf"), media_config)
         assert result == []
 
@@ -71,7 +83,13 @@ class TestExtractPageImages:
         mock_reader = MagicMock()
         mock_reader.pages = [mock_page]
 
-        media_config = MediaConfig(extract_images=True, image_format="png", image_max_dimension=0)
+        media_config = MediaConfig(
+            extract_images=True,
+            image_format="png",
+            image_max_dimension=0,
+            image_max_bytes=50_000_000,
+            image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
+        )
 
         with patch("obsidian_import.backends.native_pdf.log") as mock_log:
             result = _extract_page_images(mock_reader, 0, Path("/fake.pdf"), media_config)
@@ -86,7 +104,13 @@ class TestExtractPageImages:
         mock_reader = MagicMock()
         mock_reader.pages = [mock_page]
 
-        media_config = MediaConfig(extract_images=True, image_format="png", image_max_dimension=0)
+        media_config = MediaConfig(
+            extract_images=True,
+            image_format="png",
+            image_max_dimension=0,
+            image_max_bytes=50_000_000,
+            image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
+        )
         result = _extract_page_images(mock_reader, 0, Path("/fake.pdf"), media_config)
         assert result == []
 

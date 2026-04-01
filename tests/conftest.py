@@ -61,7 +61,13 @@ def make_png_bytes(width: int, height: int, mode: str = "RGB") -> bytes:
 
 def make_test_media_config() -> MediaConfig:
     """Return a standard test MediaConfig."""
-    return MediaConfig(extract_images=True, image_format="png", image_max_dimension=0)
+    return MediaConfig(
+        extract_images=True,
+        image_format="png",
+        image_max_dimension=0,
+        image_max_bytes=50_000_000,
+        image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
+    )
 
 
 def make_pil_image(width: int, height: int, color: str) -> Image.Image:
