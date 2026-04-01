@@ -2,7 +2,6 @@
 
 from pathlib import Path
 
-import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
@@ -34,10 +33,10 @@ class TestFormatOutput:
     def test_includes_frontmatter(self):
         result = format_output(_make_doc("Test Doc", "# Hello\n\nContent here."), _make_config(True))
         assert result.startswith("---\n")
-        assert "title: Test Doc" in result
+        assert 'title: "Test Doc"' in result
         assert "source:" in result
-        assert "file_type: pdf" in result
-        assert "page_count: 3" in result
+        assert 'file_type: "pdf"' in result
+        assert 'page_count: "3"' in result
 
     def test_no_frontmatter(self):
         result = format_output(_make_doc("Test Doc", "# Hello\n\nContent here."), _make_config(False))
@@ -73,22 +72,42 @@ class TestFormatOutput:
     def test_special_chars_in_title_escaped(self):
         doc = _make_doc('Title: "quoted"', "# Hello")
         result = format_output(doc, _make_config(True))
-        assert 'title: "Title' in result
+        assert 'title: "Title: \\"quoted\\""' in result
 
     def test_backslash_escaped_in_quoted_value(self):
         doc = _make_doc('Report: "Sales\\Revenue"', "# Hello")
         result = format_output(doc, _make_config(True))
         assert 'title: "Report: \\"Sales\\\\Revenue\\""' in result
 
-    def test_backslash_only_no_quoting_needed(self):
+    def test_plain_title_quoted(self):
         doc = _make_doc("plain title", "# Hello")
         result = format_output(doc, _make_config(True))
-        assert "title: plain title" in result
+        assert 'title: "plain title"' in result
 
     def test_backslash_with_colon_triggers_escaping(self):
         doc = _make_doc("C:\\Users\\report: final", "# Hello")
         result = format_output(doc, _make_config(True))
         assert 'title: "C:\\\\Users\\\\report: final"' in result
+
+    def test_yaml_comment_marker_escaped(self):
+        doc = _make_doc("foo #bar", "# Hello")
+        result = format_output(doc, _make_config(True))
+        assert 'title: "foo #bar"' in result
+
+    def test_yaml_flow_indicators_escaped(self):
+        doc = _make_doc("[Draft] Report", "# Hello")
+        result = format_output(doc, _make_config(True))
+        assert 'title: "[Draft] Report"' in result
+
+    def test_yaml_anchor_escaped(self):
+        doc = _make_doc("&anchor value", "# Hello")
+        result = format_output(doc, _make_config(True))
+        assert 'title: "&anchor value"' in result
+
+    def test_tab_character_escaped(self):
+        doc = _make_doc("tab\there", "# Hello")
+        result = format_output(doc, _make_config(True))
+        assert 'title: "tab\\there"' in result
 
     def test_newlines_escaped_in_frontmatter(self):
         """Literal newlines in values are escaped to prevent YAML injection."""
@@ -107,14 +126,10 @@ class TestFormatOutput:
             metadata_fields=("original_path",),
         )
         result = format_output(doc, config)
-        lines = result.split("\n")
-        for line in lines:
-            if line.startswith("original_path:"):
-                assert "\\n" in line
-                assert "\ninjected" not in line
-                break
-        else:
-            pytest.fail("original_path not found in frontmatter")
+        frontmatter_lines = result.split("---")[1].strip().split("\n")
+        assert len(frontmatter_lines) == 1
+        assert "\\n" in frontmatter_lines[0]
+        assert "\ninjected" not in result.split("---")[1]
 
     def test_carriage_return_escaped_in_frontmatter(self):
         """Carriage returns are also escaped in quoted YAML values."""
