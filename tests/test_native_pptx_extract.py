@@ -11,7 +11,13 @@ from obsidian_import.config import MediaConfig
 from obsidian_import.exceptions import ExtractionError
 from obsidian_import.extraction_result import MediaFile
 
-_TEST_MEDIA_CONFIG = MediaConfig(extract_images=True, image_format="png", image_max_dimension=0)
+_TEST_MEDIA_CONFIG = MediaConfig(
+    extract_images=True,
+    image_format="png",
+    image_max_dimension=0,
+    image_max_bytes=50_000_000,
+    image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
+)
 
 
 class TestNativePptxExtract:
@@ -78,7 +84,13 @@ class TestNativePptxExtract:
 
         mock_prs = mock_pptx_presentation([{"title": "Test"}])
 
-        config = MediaConfig(extract_images=False, image_format="png", image_max_dimension=0)
+        config = MediaConfig(
+            extract_images=False,
+            image_format="png",
+            image_max_dimension=0,
+            image_max_bytes=50_000_000,
+            image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
+        )
 
         with (
             patch("pptx.Presentation", return_value=mock_prs),

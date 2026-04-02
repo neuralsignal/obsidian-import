@@ -50,7 +50,7 @@ extraction:
     return config_file
 
 
-def make_png_bytes(width: int, height: int, mode: str = "RGB") -> bytes:
+def make_png_bytes(width: int, height: int, mode: str) -> bytes:
     """Create minimal PNG image bytes."""
     color: str | tuple[int, ...] = (255, 0, 0, 128) if mode == "RGBA" else (128,) if mode == "L" else "red"
     img = Image.new(mode, (width, height), color=color)
@@ -61,7 +61,13 @@ def make_png_bytes(width: int, height: int, mode: str = "RGB") -> bytes:
 
 def make_test_media_config() -> MediaConfig:
     """Return a standard test MediaConfig."""
-    return MediaConfig(extract_images=True, image_format="png", image_max_dimension=0)
+    return MediaConfig(
+        extract_images=True,
+        image_format="png",
+        image_max_dimension=0,
+        image_max_bytes=50_000_000,
+        image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
+    )
 
 
 def make_pil_image(width: int, height: int, color: str) -> Image.Image:

@@ -53,12 +53,25 @@ def save_media_to_temp(
 
 def _process_image_bytes(image_bytes: bytes, media_config: MediaConfig) -> bytes:
     """Apply format conversion and resizing to image bytes."""
+    if media_config.image_max_bytes > 0 and len(image_bytes) > media_config.image_max_bytes:
+        raise ExtractionError(
+            f"Image bytes ({len(image_bytes)}) exceed configured maximum "
+            f"({media_config.image_max_bytes}). Increase media.image_max_bytes to allow larger images."
+        )
+
     try:
         from PIL import Image
     except ImportError as exc:
         raise ExtractionError("Pillow is required for image extraction. Install with: pip install Pillow") from exc
 
     img = Image.open(io.BytesIO(image_bytes))
+
+    if img.format not in media_config.image_allowed_formats:
+        raise ExtractionError(
+            f"Image format '{img.format}' is not in the allowed formats: "
+            f"{sorted(media_config.image_allowed_formats)}. "
+            "Update media.image_allowed_formats to allow this format."
+        )
 
     if media_config.image_max_dimension > 0:
         max_dim = media_config.image_max_dimension

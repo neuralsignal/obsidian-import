@@ -74,7 +74,7 @@ class TestGenerateMediaFilenameProperties:
 
 class TestSaveMediaToTemp:
     def test_saves_png(self):
-        img_bytes = make_png_bytes(10, 10)
+        img_bytes = make_png_bytes(10, 10, "RGB")
         config = make_test_media_config()
         mf = save_media_to_temp(img_bytes, "test.png", config)
         assert mf.source_path.exists()
@@ -87,13 +87,25 @@ class TestSaveMediaToTemp:
         img.save(buf, format="JPEG")
         jpeg_bytes = buf.getvalue()
 
-        config = MediaConfig(extract_images=True, image_format="png", image_max_dimension=0)
+        config = MediaConfig(
+            extract_images=True,
+            image_format="png",
+            image_max_dimension=0,
+            image_max_bytes=50_000_000,
+            image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
+        )
         mf = save_media_to_temp(jpeg_bytes, "test.jpeg", config)
         assert mf.filename.endswith(".png")
 
     def test_respects_max_dimension(self):
-        img_bytes = make_png_bytes(200, 200)
-        config = MediaConfig(extract_images=True, image_format="png", image_max_dimension=50)
+        img_bytes = make_png_bytes(200, 200, "RGB")
+        config = MediaConfig(
+            extract_images=True,
+            image_format="png",
+            image_max_dimension=50,
+            image_max_bytes=50_000_000,
+            image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
+        )
         mf = save_media_to_temp(img_bytes, "big.png", config)
         saved_img = Image.open(mf.source_path)
         assert saved_img.width <= 50
@@ -109,7 +121,7 @@ class TestPilImportError:
                 raise ImportError("No module named 'PIL'")
             return original_import(name, *args, **kwargs)
 
-        img_bytes = make_png_bytes(10, 10)
+        img_bytes = make_png_bytes(10, 10, "RGB")
         config = make_test_media_config()
 
         import obsidian_import.media as media_mod
@@ -124,16 +136,28 @@ class TestPilImportError:
 
 class TestJpgNormalization:
     def test_jpg_format_produces_valid_jpeg(self) -> None:
-        img_bytes = make_png_bytes(10, 10)
-        config = MediaConfig(extract_images=True, image_format="jpg", image_max_dimension=0)
+        img_bytes = make_png_bytes(10, 10, "RGB")
+        config = MediaConfig(
+            extract_images=True,
+            image_format="jpg",
+            image_max_dimension=0,
+            image_max_bytes=50_000_000,
+            image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
+        )
         mf = save_media_to_temp(img_bytes, "test.png", config)
         assert mf.filename.endswith(".jpg")
         saved_img = Image.open(mf.source_path)
         assert saved_img.format == "JPEG"
 
     def test_uppercase_jpg_format(self) -> None:
-        img_bytes = make_png_bytes(10, 10)
-        config = MediaConfig(extract_images=True, image_format="JPG", image_max_dimension=0)
+        img_bytes = make_png_bytes(10, 10, "RGB")
+        config = MediaConfig(
+            extract_images=True,
+            image_format="JPG",
+            image_max_dimension=0,
+            image_max_bytes=50_000_000,
+            image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
+        )
         mf = save_media_to_temp(img_bytes, "test.png", config)
         saved_img = Image.open(mf.source_path)
         assert saved_img.format == "JPEG"
@@ -142,7 +166,13 @@ class TestJpgNormalization:
 class TestRgbaToJpegConversion:
     def test_rgba_image_saved_as_jpeg(self) -> None:
         img_bytes = make_png_bytes(10, 10, mode="RGBA")
-        config = MediaConfig(extract_images=True, image_format="jpeg", image_max_dimension=0)
+        config = MediaConfig(
+            extract_images=True,
+            image_format="jpeg",
+            image_max_dimension=0,
+            image_max_bytes=50_000_000,
+            image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
+        )
         mf = save_media_to_temp(img_bytes, "test.png", config)
         assert mf.filename.endswith(".jpeg")
         saved_img = Image.open(mf.source_path)
@@ -151,7 +181,13 @@ class TestRgbaToJpegConversion:
 
     def test_rgba_image_saved_as_jpg(self) -> None:
         img_bytes = make_png_bytes(10, 10, mode="RGBA")
-        config = MediaConfig(extract_images=True, image_format="jpg", image_max_dimension=0)
+        config = MediaConfig(
+            extract_images=True,
+            image_format="jpg",
+            image_max_dimension=0,
+            image_max_bytes=50_000_000,
+            image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
+        )
         mf = save_media_to_temp(img_bytes, "test.png", config)
         saved_img = Image.open(mf.source_path)
         assert saved_img.format == "JPEG"
@@ -168,7 +204,13 @@ class TestJpegFormatProperties:
     @settings(max_examples=30)
     def test_any_mode_with_jpeg_format_produces_valid_jpeg(self, width: int, height: int, fmt: str, mode: str) -> None:
         img_bytes = make_png_bytes(width, height, mode=mode)
-        config = MediaConfig(extract_images=True, image_format=fmt, image_max_dimension=0)
+        config = MediaConfig(
+            extract_images=True,
+            image_format=fmt,
+            image_max_dimension=0,
+            image_max_bytes=50_000_000,
+            image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
+        )
         mf = save_media_to_temp(img_bytes, "test.png", config)
         saved_img = Image.open(mf.source_path)
         assert saved_img.format == "JPEG"
@@ -182,8 +224,14 @@ class TestSaveMediaToTempProperties:
     )
     @settings(max_examples=30)
     def test_respects_max_dimension_property(self, width: int, height: int, max_dim: int) -> None:
-        img_bytes = make_png_bytes(width, height)
-        config = MediaConfig(extract_images=True, image_format="png", image_max_dimension=max_dim)
+        img_bytes = make_png_bytes(width, height, "RGB")
+        config = MediaConfig(
+            extract_images=True,
+            image_format="png",
+            image_max_dimension=max_dim,
+            image_max_bytes=50_000_000,
+            image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
+        )
         mf = save_media_to_temp(img_bytes, "test.png", config)
         saved_img = Image.open(mf.source_path)
         assert saved_img.width <= max(max_dim, width)
@@ -195,8 +243,14 @@ class TestSaveMediaToTempProperties:
     )
     @settings(max_examples=20)
     def test_zero_max_dimension_preserves_size(self, width: int, height: int) -> None:
-        img_bytes = make_png_bytes(width, height)
-        config = MediaConfig(extract_images=True, image_format="png", image_max_dimension=0)
+        img_bytes = make_png_bytes(width, height, "RGB")
+        config = MediaConfig(
+            extract_images=True,
+            image_format="png",
+            image_max_dimension=0,
+            image_max_bytes=50_000_000,
+            image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
+        )
         mf = save_media_to_temp(img_bytes, "test.png", config)
         saved_img = Image.open(mf.source_path)
         assert saved_img.width == width

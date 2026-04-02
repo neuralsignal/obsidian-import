@@ -14,7 +14,13 @@ from obsidian_import.backends.docling import (
 from obsidian_import.config import MediaConfig
 from obsidian_import.extraction_result import MediaFile
 
-_TEST_MEDIA_CONFIG = MediaConfig(extract_images=True, image_format="png", image_max_dimension=0)
+_TEST_MEDIA_CONFIG = MediaConfig(
+    extract_images=True,
+    image_format="png",
+    image_max_dimension=0,
+    image_max_bytes=50_000_000,
+    image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
+)
 
 
 class TestExtractDoclingImages:

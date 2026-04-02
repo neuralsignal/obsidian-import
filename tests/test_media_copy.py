@@ -11,7 +11,7 @@ from obsidian_import.media import copy_media_files, save_media_to_temp
 
 class TestCopyMediaFiles:
     def test_copies_to_per_document_dir(self, tmp_path):
-        img_bytes = make_png_bytes(10, 10)
+        img_bytes = make_png_bytes(10, 10, "RGB")
         config = make_test_media_config()
         mf = save_media_to_temp(img_bytes, "test.png", config)
 
@@ -22,7 +22,7 @@ class TestCopyMediaFiles:
         assert destinations[0].parent.name == "report"
 
     def test_creates_media_dir(self, tmp_path):
-        img_bytes = make_png_bytes(10, 10)
+        img_bytes = make_png_bytes(10, 10, "RGB")
         config = make_test_media_config()
         mf = save_media_to_temp(img_bytes, "test.png", config)
 
@@ -37,7 +37,7 @@ class TestCopyMediaFiles:
         assert result == []
 
     def test_skip_existing_file(self, tmp_path):
-        img_bytes = make_png_bytes(10, 10)
+        img_bytes = make_png_bytes(10, 10, "RGB")
         config = make_test_media_config()
         mf = save_media_to_temp(img_bytes, "test.png", config)
 
@@ -53,7 +53,7 @@ class TestCopyMediaFiles:
         config = make_test_media_config()
         files = []
         for i in range(3):
-            img_bytes = make_png_bytes(10, 10)
+            img_bytes = make_png_bytes(10, 10, "RGB")
             mf = save_media_to_temp(img_bytes, f"page{i}_img1.png", config)
             files.append(mf)
 
