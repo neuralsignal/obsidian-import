@@ -74,7 +74,7 @@ class TestGenerateMediaFilenameProperties:
 
 class TestSaveMediaToTemp:
     def test_saves_png(self):
-        img_bytes = make_png_bytes(10, 10)
+        img_bytes = make_png_bytes(10, 10, "RGB")
         config = make_test_media_config()
         mf = save_media_to_temp(img_bytes, "test.png", config)
         assert mf.source_path.exists()
@@ -98,7 +98,7 @@ class TestSaveMediaToTemp:
         assert mf.filename.endswith(".png")
 
     def test_respects_max_dimension(self):
-        img_bytes = make_png_bytes(200, 200)
+        img_bytes = make_png_bytes(200, 200, "RGB")
         config = MediaConfig(
             extract_images=True,
             image_format="png",
@@ -121,7 +121,7 @@ class TestPilImportError:
                 raise ImportError("No module named 'PIL'")
             return original_import(name, *args, **kwargs)
 
-        img_bytes = make_png_bytes(10, 10)
+        img_bytes = make_png_bytes(10, 10, "RGB")
         config = make_test_media_config()
 
         import obsidian_import.media as media_mod
@@ -136,7 +136,7 @@ class TestPilImportError:
 
 class TestJpgNormalization:
     def test_jpg_format_produces_valid_jpeg(self) -> None:
-        img_bytes = make_png_bytes(10, 10)
+        img_bytes = make_png_bytes(10, 10, "RGB")
         config = MediaConfig(
             extract_images=True,
             image_format="jpg",
@@ -150,7 +150,7 @@ class TestJpgNormalization:
         assert saved_img.format == "JPEG"
 
     def test_uppercase_jpg_format(self) -> None:
-        img_bytes = make_png_bytes(10, 10)
+        img_bytes = make_png_bytes(10, 10, "RGB")
         config = MediaConfig(
             extract_images=True,
             image_format="JPG",
@@ -224,7 +224,7 @@ class TestSaveMediaToTempProperties:
     )
     @settings(max_examples=30)
     def test_respects_max_dimension_property(self, width: int, height: int, max_dim: int) -> None:
-        img_bytes = make_png_bytes(width, height)
+        img_bytes = make_png_bytes(width, height, "RGB")
         config = MediaConfig(
             extract_images=True,
             image_format="png",
@@ -243,7 +243,7 @@ class TestSaveMediaToTempProperties:
     )
     @settings(max_examples=20)
     def test_zero_max_dimension_preserves_size(self, width: int, height: int) -> None:
-        img_bytes = make_png_bytes(width, height)
+        img_bytes = make_png_bytes(width, height, "RGB")
         config = MediaConfig(
             extract_images=True,
             image_format="png",

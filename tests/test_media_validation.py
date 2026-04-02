@@ -26,7 +26,7 @@ def _make_config(
 
 class TestImageByteSizeValidation:
     def test_rejects_oversized_image_bytes(self) -> None:
-        img_bytes = make_png_bytes(10, 10)
+        img_bytes = make_png_bytes(10, 10, "RGB")
         config = _make_config(
             image_max_bytes=10,
             image_allowed_formats=frozenset({"PNG"}),
@@ -35,7 +35,7 @@ class TestImageByteSizeValidation:
             _process_image_bytes(img_bytes, config)
 
     def test_accepts_image_bytes_within_limit(self) -> None:
-        img_bytes = make_png_bytes(10, 10)
+        img_bytes = make_png_bytes(10, 10, "RGB")
         config = _make_config(
             image_max_bytes=len(img_bytes) + 1000,
             image_allowed_formats=frozenset({"PNG"}),
@@ -44,7 +44,7 @@ class TestImageByteSizeValidation:
         assert len(result) > 0
 
     def test_zero_max_bytes_disables_size_check(self) -> None:
-        img_bytes = make_png_bytes(10, 10)
+        img_bytes = make_png_bytes(10, 10, "RGB")
         config = _make_config(
             image_max_bytes=0,
             image_allowed_formats=frozenset({"PNG"}),
@@ -53,7 +53,7 @@ class TestImageByteSizeValidation:
         assert len(result) > 0
 
     def test_exact_limit_is_accepted(self) -> None:
-        img_bytes = make_png_bytes(10, 10)
+        img_bytes = make_png_bytes(10, 10, "RGB")
         config = _make_config(
             image_max_bytes=len(img_bytes),
             image_allowed_formats=frozenset({"PNG"}),
@@ -64,7 +64,7 @@ class TestImageByteSizeValidation:
 
 class TestImageFormatValidation:
     def test_rejects_disallowed_format(self) -> None:
-        img_bytes = make_png_bytes(10, 10)
+        img_bytes = make_png_bytes(10, 10, "RGB")
         config = _make_config(
             image_max_bytes=50_000_000,
             image_allowed_formats=frozenset({"JPEG"}),
@@ -73,7 +73,7 @@ class TestImageFormatValidation:
             _process_image_bytes(img_bytes, config)
 
     def test_accepts_allowed_format(self) -> None:
-        img_bytes = make_png_bytes(10, 10)
+        img_bytes = make_png_bytes(10, 10, "RGB")
         config = _make_config(
             image_max_bytes=50_000_000,
             image_allowed_formats=frozenset({"PNG", "JPEG"}),
@@ -82,7 +82,7 @@ class TestImageFormatValidation:
         assert len(result) > 0
 
     def test_rejects_with_empty_allowlist(self) -> None:
-        img_bytes = make_png_bytes(10, 10)
+        img_bytes = make_png_bytes(10, 10, "RGB")
         config = _make_config(
             image_max_bytes=50_000_000,
             image_allowed_formats=frozenset(),
@@ -104,7 +104,7 @@ class TestImageFormatValidation:
         assert len(result) > 0
 
     def test_error_message_includes_format_and_allowlist(self) -> None:
-        img_bytes = make_png_bytes(10, 10)
+        img_bytes = make_png_bytes(10, 10, "RGB")
         config = _make_config(
             image_max_bytes=50_000_000,
             image_allowed_formats=frozenset({"JPEG", "GIF"}),

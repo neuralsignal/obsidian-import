@@ -50,7 +50,7 @@ extraction:
     return config_file
 
 
-def make_png_bytes(width: int, height: int, mode: str = "RGB") -> bytes:
+def make_png_bytes(width: int, height: int, mode: str) -> bytes:
     """Create minimal PNG image bytes."""
     color: str | tuple[int, ...] = (255, 0, 0, 128) if mode == "RGBA" else (128,) if mode == "L" else "red"
     img = Image.new(mode, (width, height), color=color)
