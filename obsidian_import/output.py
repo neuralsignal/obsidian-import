@@ -8,6 +8,8 @@ from datetime import UTC, datetime
 from importlib.metadata import metadata
 from pathlib import Path
 
+import yaml
+
 from obsidian_import.config import OutputConfig
 from obsidian_import.extraction_result import MediaFile
 
@@ -65,14 +67,19 @@ def _build_frontmatter(doc: ExtractedDocument, config: OutputConfig) -> str:
 
     lines = ["---"]
     for key, value in fields.items():
-        if "\n" in value or "\r" in value or ":" in value or '"' in value:
-            escaped = value.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n").replace("\r", "\\r")
-            lines.append(f'{key}: "{escaped}"')
-        else:
-            lines.append(f"{key}: {value}")
+        lines.append(f"{key}: {_yaml_scalar(value)}")
     lines.append("---")
 
     return "\n".join(lines)
+
+
+def _yaml_scalar(value: str) -> str:
+    """Serialize a string to a safe, single-line YAML scalar.
+
+    Uses PyYAML's double-quote style to handle all YAML-significant
+    characters (#, |, >, [, {, &, *, !, tab, newline, etc.) correctly.
+    """
+    return yaml.dump(value, default_style='"', allow_unicode=True).strip()
 
 
 def output_path_for(source_path: Path, output_directory: str, source_root: Path | None) -> Path:
