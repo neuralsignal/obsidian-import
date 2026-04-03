@@ -182,11 +182,12 @@ def config_for_backend(
     timeout_seconds: int,
     max_file_size_mb: int,
     xlsx_max_rows_per_sheet: int,
+    extract_images: bool,
 ) -> ImportConfig:
     """Create an ImportConfig with all backends set to a single backend name.
 
     Useful for consumers that just need quick extraction without managing
-    the full config surface. Media extraction is disabled by default.
+    the full config surface.
     """
     base = _load_default_yaml()
     for key in base["backends"]:
@@ -194,7 +195,7 @@ def config_for_backend(
     base["extraction"]["timeout_seconds"] = timeout_seconds
     base["extraction"]["max_file_size_mb"] = max_file_size_mb
     base["extraction"]["xlsx_max_rows_per_sheet"] = xlsx_max_rows_per_sheet
-    base["media"]["extract_images"] = False
+    base["media"]["extract_images"] = extract_images
     return _build_config(base, config_dir=None)
 
 

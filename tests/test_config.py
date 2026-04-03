@@ -91,11 +91,11 @@ class TestDefaultConfig:
 
 class TestConfigForBackend:
     def test_returns_import_config(self):
-        config = config_for_backend("markitdown", 60, 50, 200)
+        config = config_for_backend("markitdown", 60, 50, 200, False)
         assert isinstance(config, ImportConfig)
 
     def test_all_backends_match(self):
-        config = config_for_backend("markitdown", 60, 50, 200)
+        config = config_for_backend("markitdown", 60, 50, 200, False)
         assert config.backends.pdf == "markitdown"
         assert config.backends.docx == "markitdown"
         assert config.backends.pptx == "markitdown"
@@ -107,17 +107,21 @@ class TestConfigForBackend:
         assert config.backends.default == "markitdown"
 
     def test_extraction_params_match(self):
-        config = config_for_backend("native", 90, 75, 300)
+        config = config_for_backend("native", 90, 75, 300, False)
         assert config.extraction.timeout_seconds == 90
         assert config.extraction.max_file_size_mb == 75
         assert config.extraction.xlsx_max_rows_per_sheet == 300
 
-    def test_media_disabled(self):
-        config = config_for_backend("native", 60, 50, 200)
+    def test_extract_images_false(self):
+        config = config_for_backend("native", 60, 50, 200, False)
         assert config.media.extract_images is False
 
+    def test_extract_images_true(self):
+        config = config_for_backend("native", 60, 50, 200, True)
+        assert config.media.extract_images is True
+
     def test_frozen(self):
-        config = config_for_backend("native", 60, 50, 200)
+        config = config_for_backend("native", 60, 50, 200, False)
         with pytest.raises(AttributeError):
             config.extraction = None  # type: ignore[misc]
 

@@ -41,7 +41,7 @@ doc = extract_file(Path("report.pdf"), config)
 markdown = format_output(doc, config.output)
 
 # Or use a convenience helper for quick single-backend extraction
-config = config_for_backend("native", timeout_seconds=60, max_file_size_mb=50, xlsx_max_rows_per_sheet=500)
+config = config_for_backend("native", timeout_seconds=60, max_file_size_mb=50, xlsx_max_rows_per_sheet=500, extract_images=False)
 doc = extract_file(Path("report.pdf"), config)
 ```
 

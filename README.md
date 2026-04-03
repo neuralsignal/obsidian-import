@@ -52,7 +52,7 @@ doc = extract_file(Path("report.pdf"), config)
 markdown = format_output(doc, config.output)
 
 # Quick text extraction (no config file needed)
-config = config_for_backend("markitdown", timeout_seconds=60, max_file_size_mb=50, xlsx_max_rows_per_sheet=500)
+config = config_for_backend("markitdown", timeout_seconds=60, max_file_size_mb=50, xlsx_max_rows_per_sheet=500, extract_images=False)
 text = extract_text(Path("report.pdf"), config)
 
 # Batch discovery
@@ -72,11 +72,12 @@ config = config_for_backend(
     timeout_seconds=60,
     max_file_size_mb=50,
     xlsx_max_rows_per_sheet=500,
+    extract_images=False,
 )
 text = extract_text(Path("document.docx"), config)
 ```
 
-This sets all backends to the specified backend name and disables media extraction. All parameters are required — no hidden defaults.
+This sets all backends to the specified backend name. All parameters are required — no hidden defaults.
 
 ## Configuration
 
@@ -190,7 +191,7 @@ media:
 
 Extracted images are saved in per-document media folders (`<doc-stem>/`) and referenced via Obsidian wikilinks (`![[doc-stem/image_001.png]]`).
 
-To disable media extraction (e.g., for text-only pipelines), set `extract_images: false` or use `config_for_backend()` which disables it by default.
+To disable media extraction (e.g., for text-only pipelines), set `extract_images: false` in your config YAML or pass `extract_images=False` to `config_for_backend()`.
 
 ## Image Handling
 
