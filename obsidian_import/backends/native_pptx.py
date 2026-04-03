@@ -58,39 +58,13 @@ def _extract_pptx(path: Path, media_config: MediaConfig) -> ExtractionResult:
         else:
             slide_sections.append(f"## Slide {i}")
 
-        body_texts: list[str] = []
-        image_index = 0
-        for shape in slide.shapes:
-            if shape.has_text_frame:
-                if shape == slide.shapes.title:
-                    continue
-                for para in shape.text_frame.paragraphs:
-                    text = para.text.strip()
-                    if text:
-                        level = para.level or 0
-                        if level > 0:
-                            body_texts.append(f"{'  ' * level}- {text}")
-                        else:
-                            body_texts.append(text)
-
-            if shape.has_table:
-                table_md = _extract_table(shape.table)
-                if table_md:
-                    body_texts.append(table_md)
-
-            if media_config.extract_images and shape.shape_type == _PICTURE_SHAPE_TYPE:
-                try:
-                    image = shape.image
-                    img_bytes = image.blob
-                    content_type = image.content_type
-                    ext = _mime_to_extension(content_type)
-                    image_index += 1
-                    filename = generate_media_filename(f"slide{i}", image_index, ext)
-                    mf = save_media_to_temp(img_bytes, filename, media_config)
-                    media_files.append(mf)
-                    body_texts.append(f"![[{path.stem}/{mf.filename}]]")
-                except (ExtractionError, AttributeError, ValueError):
-                    log.warning("Failed to extract image from slide %d of %s", i, path)
+        body_texts, slide_media = _extract_slide_content(
+            slide,
+            i,
+            path,
+            media_config,
+        )
+        media_files.extend(slide_media)
 
         if body_texts:
             slide_sections.append("\n".join(body_texts))
@@ -110,6 +84,52 @@ def _extract_pptx(path: Path, media_config: MediaConfig) -> ExtractionResult:
         markdown="\n\n".join(sections),
         media_files=tuple(media_files),
     )
+
+
+def _extract_slide_content(
+    slide: object,
+    slide_number: int,
+    path: Path,
+    media_config: MediaConfig,
+) -> tuple[list[str], list[MediaFile]]:
+    """Extract text, tables, and images from all shapes on a single slide."""
+    body_texts: list[str] = []
+    media_files: list[MediaFile] = []
+    image_index = 0
+
+    for shape in slide.shapes:  # type: ignore[attr-defined]
+        if shape.has_text_frame:
+            if shape == slide.shapes.title:  # type: ignore[attr-defined]
+                continue
+            for para in shape.text_frame.paragraphs:
+                text = para.text.strip()
+                if text:
+                    level = para.level or 0
+                    if level > 0:
+                        body_texts.append(f"{'  ' * level}- {text}")
+                    else:
+                        body_texts.append(text)
+
+        if shape.has_table:
+            table_md = _extract_table(shape.table)
+            if table_md:
+                body_texts.append(table_md)
+
+        if media_config.extract_images and shape.shape_type == _PICTURE_SHAPE_TYPE:
+            try:
+                image = shape.image
+                img_bytes = image.blob
+                content_type = image.content_type
+                ext = _mime_to_extension(content_type)
+                image_index += 1
+                filename = generate_media_filename(f"slide{slide_number}", image_index, ext)
+                mf = save_media_to_temp(img_bytes, filename, media_config)
+                media_files.append(mf)
+                body_texts.append(f"![[{path.stem}/{mf.filename}]]")
+            except (ExtractionError, AttributeError, ValueError):
+                log.warning("Failed to extract image from slide %d of %s", slide_number, path)
+
+    return body_texts, media_files
 
 
 def _mime_to_extension(content_type: str) -> str:
