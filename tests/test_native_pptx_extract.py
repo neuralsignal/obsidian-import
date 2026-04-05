@@ -226,7 +226,7 @@ class TestNativePptxExtract:
             patch("pptx.util.Inches", return_value=914400),
             patch(
                 "obsidian_import.backends.native_pptx.save_media_to_temp",
-                side_effect=AttributeError("no image data"),
+                side_effect=ExtractionError("image save failed"),
             ),
             caplog.at_level(logging.WARNING),
         ):

@@ -126,7 +126,10 @@ def _extract_page_images(
     media_files: list[MediaFile] = []
     try:
         page = reader.pages[page_index]
-        resources = page.get("/Resources")
+        try:
+            resources = page.get("/Resources")
+        except AttributeError as exc:
+            raise KeyError(f"malformed page resources: {exc}") from exc
         if resources is None:
             return []
 
@@ -144,19 +147,22 @@ def _extract_page_images(
 
             image_index += 1
             try:
-                img_bytes = xobj.get_data()
+                try:
+                    img_bytes = xobj.get_data()
+                except (ValueError, KeyError) as exc:
+                    raise ExtractionError(f"PDF image {obj_name} decode failed: {exc}") from exc
                 ext = _pdf_image_extension(xobj)
                 filename = generate_media_filename(f"page{page_index + 1}", image_index, ext)
                 mf = save_media_to_temp(img_bytes, filename, media_config)
                 media_files.append(mf)
-            except (ExtractionError, ValueError, KeyError):
+            except ExtractionError:
                 log.warning(
                     "Failed to extract image %s from page %d of %s",
                     obj_name,
                     page_index + 1,
                     path,
                 )
-    except (KeyError, AttributeError):
+    except KeyError:
         log.warning("Failed to access XObjects on page %d of %s", page_index + 1, path)
 
     return media_files

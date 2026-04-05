@@ -117,16 +117,19 @@ def _extract_slide_content(
 
         if media_config.extract_images and shape.shape_type == _PICTURE_SHAPE_TYPE:
             try:
-                image = shape.image
-                img_bytes = image.blob
-                content_type = image.content_type
+                try:
+                    image = shape.image
+                    img_bytes = image.blob
+                    content_type = image.content_type
+                except (AttributeError, ValueError) as exc:
+                    raise ExtractionError(f"PPTX image on slide {slide_number} unavailable: {exc}") from exc
                 ext = _mime_to_extension(content_type)
                 image_index += 1
                 filename = generate_media_filename(f"slide{slide_number}", image_index, ext)
                 mf = save_media_to_temp(img_bytes, filename, media_config)
                 media_files.append(mf)
                 body_texts.append(f"![[{path.stem}/{mf.filename}]]")
-            except (ExtractionError, AttributeError, ValueError):
+            except ExtractionError:
                 log.warning("Failed to extract image from slide %d of %s", slide_number, path)
 
     return body_texts, media_files
