@@ -30,9 +30,13 @@ class TestRunWithTimeout:
             run_with_timeout(failing, timeout_seconds=5, label="test", path=Path("/tmp/f.txt"))
 
     def test_raises_extraction_error_on_none_result(self):
-        # This should not happen with our implementation since fn() always returns str,
-        # but the guard exists for safety.
-        pass
+        """Worker that returns None triggers the no-result guard (line 46)."""
+
+        def returns_none() -> str:
+            return None  # type: ignore[return-value]
+
+        with pytest.raises(ExtractionError, match="returned no result"):
+            run_with_timeout(returns_none, timeout_seconds=5, label="test", path=Path("/tmp/f.txt"))
 
     def test_error_message_includes_label_and_path(self):
         with pytest.raises(ExtractionTimeoutError, match="PDF") as exc_info:

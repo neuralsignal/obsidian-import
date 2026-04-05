@@ -187,3 +187,22 @@ class TestCheckBackendAvailable:
     def test_unknown_backend(self):
         available, message = check_backend_available("nonexistent", ".pdf")
         assert available is False
+
+    def test_import_error_returns_false(self):
+        """ImportError during import returns (False, ...) (lines 152-153)."""
+        with patch("obsidian_import.registry.importlib.import_module", side_effect=ImportError("no such module")):
+            available, message = check_backend_available("native", ".pdf")
+        assert available is False
+        assert "not available" in message
+
+
+class TestResolveModulePath:
+    def test_non_string_backend_module_raises(self):
+        """Non-string value in _BACKEND_MODULES raises UnsupportedFormatError (line 76)."""
+        from obsidian_import.registry import _resolve_module_path
+
+        with (
+            patch.dict("obsidian_import.registry._BACKEND_MODULES", {"markitdown": 42}),
+            pytest.raises(UnsupportedFormatError, match="Invalid backend module config"),
+        ):
+            _resolve_module_path("markitdown", ".pdf")

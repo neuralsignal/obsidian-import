@@ -123,6 +123,15 @@ class TestConfigForBackend:
 
 
 class TestBuildConfig:
+    def test_relative_config_dir_resolved(self):
+        """Relative config_dir is resolved to absolute (line 101)."""
+        from pathlib import Path
+
+        raw = _load_default_yaml()
+        raw["input"]["directories"] = [{"path": "/tmp/test", "extensions": [".pdf"], "exclude": []}]
+        config = _build_config(raw, config_dir=Path("relative/path"))
+        assert isinstance(config, ImportConfig)
+
     def test_missing_section_raises_config_error(self):
         with pytest.raises(ConfigError, match="Missing required config section"):
             _build_config({"input": {}, "output": {}, "backends": {}}, config_dir=None)

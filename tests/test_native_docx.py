@@ -166,6 +166,51 @@ class TestNativeDocxExtract:
         assert "![[media/" not in result.markdown
         assert result.media_files[0].media_type == "image"
 
+    def test_image_only_paragraph(self, tmp_path):
+        """Paragraph with image but no text runs produces wikilink (line 106)."""
+        xml = """<?xml version="1.0" encoding="UTF-8"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+            xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+            xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+            xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+  <w:body>
+    <w:p>
+      <w:r>
+        <w:drawing>
+          <wp:inline>
+            <a:graphic>
+              <a:graphicData>
+                <a:blip r:embed="rId1"/>
+              </a:graphicData>
+            </a:graphic>
+          </wp:inline>
+        </w:drawing>
+      </w:r>
+    </w:p>
+  </w:body>
+</w:document>"""
+
+        rels_xml = """<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Target="media/image1.png"
+    Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"/>
+</Relationships>"""
+
+        img = Image.new("RGB", (10, 10), color="blue")
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        img_bytes = buf.getvalue()
+
+        docx_path = tmp_path / "imageonly.docx"
+        with zipfile.ZipFile(str(docx_path), "w") as zf:
+            zf.writestr("word/document.xml", xml)
+            zf.writestr("word/_rels/document.xml.rels", rels_xml)
+            zf.writestr("word/media/image1.png", img_bytes)
+
+        result = extract(docx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG)
+        assert len(result.media_files) == 1
+        assert "![[imageonly/" in result.markdown
+
     def test_path_traversal_in_relationship_target_skipped(self, tmp_path):
         """DOCX with path traversal in relationship target skips the image."""
         xml = """<?xml version="1.0" encoding="UTF-8"?>

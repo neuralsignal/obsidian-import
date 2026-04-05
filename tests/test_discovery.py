@@ -1,5 +1,8 @@
 """Tests for file discovery with tmp_path fixtures."""
 
+from pathlib import Path
+from unittest.mock import patch
+
 from obsidian_import.config import (
     BackendsConfig,
     DirectoryConfig,
@@ -10,7 +13,7 @@ from obsidian_import.config import (
     OutputConfig,
     PassthroughConfig,
 )
-from obsidian_import.discovery import DiscoveredFile, discover_files
+from obsidian_import.discovery import DiscoveredFile, _is_excluded, discover_files
 
 
 def _make_config(directories: tuple[DirectoryConfig, ...]) -> ImportConfig:
@@ -144,3 +147,42 @@ class TestDiscoverFiles:
         names = {f.path.name for f in files}
         assert "real.pdf" in names
         assert "link.pdf" not in names
+
+    def test_skips_file_resolving_outside_base(self, tmp_path):
+        """Files whose resolved path escapes the base directory are skipped (line 45)."""
+        scan_dir = tmp_path / "scan"
+        scan_dir.mkdir()
+        (scan_dir / "good.pdf").write_bytes(b"pdf")
+
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        (outside / "escaped.pdf").write_bytes(b"secret")
+
+        config = _make_config((DirectoryConfig(path=str(scan_dir), extensions=(".pdf",), exclude=()),))
+
+        original_resolve = Path.resolve
+        escaped_path = outside / "escaped.pdf"
+
+        def patched_resolve(self, strict=False):
+            if self.name == "good.pdf" and str(scan_dir) in str(self):
+                return escaped_path
+            return original_resolve(self, strict=strict)
+
+        with patch.object(Path, "resolve", patched_resolve):
+            files = list(discover_files(config))
+
+        names = {f.path.name for f in files}
+        assert "escaped.pdf" not in names
+
+
+class TestIsExcluded:
+    def test_filename_match_branch(self):
+        """Pattern matching bare filename rather than relative path (line 73)."""
+        base = Path("/project/docs")
+        path = base / "subdir" / "report.pdf"
+        assert _is_excluded(path, base, ("report.pdf",)) is True
+
+    def test_filename_no_match(self):
+        base = Path("/project/docs")
+        path = base / "subdir" / "other.pdf"
+        assert _is_excluded(path, base, ("report.pdf",)) is False
