@@ -118,7 +118,7 @@ class TestExtractPageImages:
 
         assert result == []
         mock_log.warning.assert_called_once()
-        assert "XObjects" in mock_log.warning.call_args[0][0]
+        assert "page resources" in mock_log.warning.call_args[0][0]
 
     def test_no_resources_returns_empty(self):
         mock_page = MagicMock()

@@ -129,7 +129,7 @@ def _extract_page_images(
         try:
             resources = page.get("/Resources")
         except AttributeError as exc:
-            raise KeyError(f"malformed page resources: {exc}") from exc
+            raise ExtractionError(f"malformed page resources: {exc}") from exc
         if resources is None:
             return []
 
@@ -164,6 +164,8 @@ def _extract_page_images(
                 )
     except KeyError:
         log.warning("Failed to access XObjects on page %d of %s", page_index + 1, path)
+    except ExtractionError:
+        log.warning("Failed to read page resources on page %d of %s", page_index + 1, path)
 
     return media_files
 
