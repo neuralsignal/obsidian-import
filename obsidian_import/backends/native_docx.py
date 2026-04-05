@@ -52,15 +52,7 @@ def _extract_docx(path: Path, media_config: MediaConfig) -> ExtractionResult:
         doc_xml = zf.read("word/document.xml")
         root = fromstring(doc_xml)
 
-        rel_map: dict[str, str] = {}
-        if "word/_rels/document.xml.rels" in zf.namelist():
-            rels_xml = zf.read("word/_rels/document.xml.rels")
-            rels_root = fromstring(rels_xml)
-            for rel in rels_root:
-                rid = rel.get("Id", "")
-                target = rel.get("Target", "")
-                if rid and target:
-                    rel_map[rid] = target
+        rel_map = _build_rel_map(zf, fromstring)
 
         media_files: list[MediaFile] = []
         image_index = 0
@@ -80,36 +72,18 @@ def _extract_docx(path: Path, media_config: MediaConfig) -> ExtractionResult:
                 text = _extract_paragraph(element)
 
                 if media_config.extract_images:
-                    drawings = element.findall(f".//{{{_NS['w']}}}drawing")
-                    for drawing in drawings:
-                        blips = drawing.findall(f".//{{{_NS['a']}}}blip")
-                        for blip in blips:
-                            embed_id = blip.get(f"{{{_NS['r']}}}embed", "")
-                            if embed_id and embed_id in rel_map:
-                                target = rel_map[embed_id]
-                                media_path = f"word/{target}" if not target.startswith("word/") else target
-                                if ".." in Path(media_path).parts:
-                                    continue
-                                if not media_path.startswith("word/media/"):
-                                    continue
-                                if media_path in zf.namelist():
-                                    image_index += 1
-                                    img_bytes = zf.read(media_path)
-                                    orig_ext = Path(media_path).suffix
-                                    filename = generate_media_filename("doc", image_index, orig_ext)
-                                    try:
-                                        mf = save_media_to_temp(img_bytes, filename, media_config)
-                                        media_files.append(mf)
-                                        if text:
-                                            text += f"\n\n![[{path.stem}/{mf.filename}]]"
-                                        else:
-                                            text = f"![[{path.stem}/{mf.filename}]]"
-                                    except ExtractionError:
-                                        log.warning(
-                                            "Failed to extract image %s from %s",
-                                            media_path,
-                                            path,
-                                        )
+                    extracted, image_index = _extract_docx_images(
+                        element,
+                        rel_map,
+                        zf,
+                        path,
+                        media_config,
+                        image_index,
+                    )
+                    media_files.extend(extracted)
+                    for mf in extracted:
+                        embed = f"![[{path.stem}/{mf.filename}]]"
+                        text = f"{text}\n\n{embed}" if text else embed
 
                 if text:
                     sections.append(text)
@@ -123,6 +97,66 @@ def _extract_docx(path: Path, media_config: MediaConfig) -> ExtractionResult:
         markdown="\n\n".join(sections),
         media_files=tuple(media_files),
     )
+
+
+def _build_rel_map(zf: zipfile.ZipFile, fromstring: object) -> dict[str, str]:
+    """Build relationship ID to target path map from document.xml.rels."""
+    rel_map: dict[str, str] = {}
+    if "word/_rels/document.xml.rels" not in zf.namelist():
+        return rel_map
+
+    rels_xml = zf.read("word/_rels/document.xml.rels")
+    rels_root = fromstring(rels_xml)  # type: ignore[operator]
+    for rel in rels_root:
+        rid = rel.get("Id", "")
+        target = rel.get("Target", "")
+        if rid and target:
+            rel_map[rid] = target
+    return rel_map
+
+
+def _extract_docx_images(
+    element: Element,
+    rel_map: dict[str, str],
+    zf: zipfile.ZipFile,
+    path: Path,
+    media_config: MediaConfig,
+    image_index: int,
+) -> tuple[list[MediaFile], int]:
+    """Extract images from drawing elements in a paragraph.
+
+    Returns the list of extracted MediaFiles and the updated image_index.
+    """
+    media_files: list[MediaFile] = []
+    drawings = element.findall(f".//{{{_NS['w']}}}drawing")
+    for drawing in drawings:
+        blips = drawing.findall(f".//{{{_NS['a']}}}blip")
+        for blip in blips:
+            embed_id = blip.get(f"{{{_NS['r']}}}embed", "")
+            if not embed_id or embed_id not in rel_map:
+                continue
+            target = rel_map[embed_id]
+            media_path = f"word/{target}" if not target.startswith("word/") else target
+            if ".." in Path(media_path).parts:
+                continue
+            if not media_path.startswith("word/media/"):
+                continue
+            if media_path not in zf.namelist():
+                continue
+            image_index += 1
+            img_bytes = zf.read(media_path)
+            orig_ext = Path(media_path).suffix
+            filename = generate_media_filename("doc", image_index, orig_ext)
+            try:
+                mf = save_media_to_temp(img_bytes, filename, media_config)
+                media_files.append(mf)
+            except ExtractionError:
+                log.warning(
+                    "Failed to extract image %s from %s",
+                    media_path,
+                    path,
+                )
+    return media_files, image_index
 
 
 def _local_name(element: Element) -> str:

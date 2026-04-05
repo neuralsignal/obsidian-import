@@ -62,33 +62,58 @@ def _extract_pdf(path: Path, media_config: MediaConfig) -> ExtractionResult:
 
     with pdfplumber.open(str(path)) as pdf:
         for i, page in enumerate(pdf.pages, 1):
-            page_sections: list[str] = [f"\n## Page {i}\n"]
-
-            tables = page.extract_tables()
-            if tables:
-                for table in tables:
-                    if not table or not table[0]:
-                        continue
-                    cleaned = [[str(cell or "").strip() for cell in row] for row in table]
-                    page_sections.append(render_markdown_table(cleaned))
-
-            text = page.extract_text()
-            if text:
-                page_sections.append(text.strip())
-
-            if media_config.extract_images:
-                page_images = _extract_page_images(reader, i - 1, path, media_config)
-                for mf in page_images:
-                    media_files.append(mf)
-                    page_sections.append(f"![[{path.stem}/{mf.filename}]]")
-
-            if len(page_sections) > 1:
-                sections.append("\n".join(page_sections))
+            page_content, page_media = _extract_page_content(
+                page,
+                reader,
+                i,
+                path,
+                media_config,
+            )
+            media_files.extend(page_media)
+            if page_content:
+                sections.append(page_content)
 
     return ExtractionResult(
         markdown="\n\n".join(sections),
         media_files=tuple(media_files),
     )
+
+
+def _extract_page_content(
+    page: object,
+    reader: PdfReader,
+    page_number: int,
+    path: Path,
+    media_config: MediaConfig,
+) -> tuple[str, list[MediaFile]]:
+    """Extract tables, text, and images from a single PDF page.
+
+    Returns the assembled page markdown and a list of extracted media files.
+    """
+    page_sections: list[str] = [f"\n## Page {page_number}\n"]
+    media_files: list[MediaFile] = []
+
+    tables = page.extract_tables()  # type: ignore[attr-defined]
+    if tables:
+        for table in tables:
+            if not table or not table[0]:
+                continue
+            cleaned = [[str(cell or "").strip() for cell in row] for row in table]
+            page_sections.append(render_markdown_table(cleaned))
+
+    text = page.extract_text()  # type: ignore[attr-defined]
+    if text:
+        page_sections.append(text.strip())
+
+    if media_config.extract_images:
+        page_images = _extract_page_images(reader, page_number - 1, path, media_config)
+        for mf in page_images:
+            media_files.append(mf)
+            page_sections.append(f"![[{path.stem}/{mf.filename}]]")
+
+    if len(page_sections) > 1:
+        return "\n".join(page_sections), media_files
+    return "", media_files
 
 
 def _extract_page_images(
