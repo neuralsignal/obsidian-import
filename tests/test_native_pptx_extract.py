@@ -226,7 +226,7 @@ class TestNativePptxExtract:
             patch("pptx.util.Inches", return_value=914400),
             patch(
                 "obsidian_import.backends.native_pptx.save_media_to_temp",
-                side_effect=AttributeError("no image data"),
+                side_effect=ExtractionError("image save failed"),
             ),
             caplog.at_level(logging.WARNING),
         ):
@@ -264,6 +264,39 @@ class TestNativePptxExtract:
             extract(pptx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG)
 
         assert "Failed to extract image" in caplog.text
+
+    def test_shape_image_attribute_error_converted_to_extraction_error(self, tmp_path, caplog):
+        """AttributeError from shape.image is converted to ExtractionError and logged."""
+        pptx_path = tmp_path / "bad_shape.pptx"
+        pptx_path.write_bytes(b"fake pptx")
+
+        mock_prs = mock_pptx_presentation([{"title": "Pics", "body_texts": ["Some text"]}])
+        slide = mock_prs.slides[0]
+
+        class BrokenImageShape:
+            has_text_frame = False
+            has_table = False
+            shape_type = 13
+
+            @property
+            def image(self):
+                raise AttributeError("no image data")
+
+        pic_shape = BrokenImageShape()
+
+        shapes = list(slide.shapes.__iter__()) + [pic_shape]
+        slide.shapes.__iter__ = MagicMock(return_value=iter(shapes))
+
+        with (
+            patch("pptx.Presentation", return_value=mock_prs),
+            patch("pptx.util.Inches", return_value=914400),
+            patch("obsidian_import.backends.native_pptx.save_media_to_temp"),
+            caplog.at_level(logging.WARNING),
+        ):
+            result = extract(pptx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG)
+
+        assert "Failed to extract image" in caplog.text
+        assert "Some text" in result.markdown
 
     def test_speaker_notes_extracted(self, tmp_path):
         pptx_path = tmp_path / "notes.pptx"

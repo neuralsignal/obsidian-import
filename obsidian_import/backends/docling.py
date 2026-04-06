@@ -87,7 +87,10 @@ def _extract_docling_images(doc: DoclingDocument, path: Path, media_config: Medi
 
     for i, picture in enumerate(pictures, 1):
         try:
-            pil_image = picture.get_image(doc=doc)
+            try:
+                pil_image = picture.get_image(doc=doc)
+            except (AttributeError, ValueError) as exc:
+                raise ExtractionError(f"docling image {i} unavailable: {exc}") from exc
             if pil_image is None:
                 continue
 
@@ -98,7 +101,7 @@ def _extract_docling_images(doc: DoclingDocument, path: Path, media_config: Medi
             filename = generate_media_filename("fig", i, ".png")
             mf = save_media_to_temp(img_bytes, filename, media_config)
             media_files.append(mf)
-        except (ExtractionError, AttributeError, ValueError):
+        except ExtractionError:
             log.warning("Failed to extract picture %d from %s via docling", i, path)
 
     return media_files
