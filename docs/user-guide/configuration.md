@@ -41,7 +41,15 @@ extraction:
 media:
   extract_images: true
   image_format: png
-  image_max_dimension: 0   # 0 = no limit
+  image_max_dimension: 0        # 0 = no limit
+  image_max_bytes: 50000000     # 50 MB per image; 0 = no limit
+  image_allowed_formats:
+    - PNG
+    - JPEG
+    - GIF
+    - BMP
+    - TIFF
+    - WEBP
 
 passthrough:
   extensions: []
@@ -109,6 +117,8 @@ Controls embedded image extraction from documents.
 | `extract_images` | bool | Extract embedded images from PDF, DOCX, and PPTX files |
 | `image_format` | string | Output format for extracted images (`png`, `jpg`) |
 | `image_max_dimension` | int | Maximum width or height in pixels; `0` means no limit |
+| `image_max_bytes` | int | Maximum image size in bytes before skipping; `0` means no limit |
+| `image_allowed_formats` | list[string] | Pillow format names to allow (e.g., `PNG`, `JPEG`, `GIF`) |
 
 When `extract_images` is enabled, images are saved to a per-document folder (`<output_dir>/<doc_stem>/`) and linked in the markdown as Obsidian wikilinks (`![[doc_stem/page1_img0.png]]`).
 
