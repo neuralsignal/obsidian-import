@@ -343,7 +343,7 @@ class TestNativeDocxExtract:
 
         with (
             patch(
-                "obsidian_import.backends.native_docx.save_media_to_temp",
+                "obsidian_import.media.save_media_to_temp",
                 side_effect=ExtractionError("PIL failed"),
             ),
             caplog.at_level(logging.WARNING),

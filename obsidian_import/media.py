@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 import io
+import logging
 import shutil
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
 
 from obsidian_import.config import MediaConfig
 from obsidian_import.exceptions import ExtractionError
 from obsidian_import.extraction_result import MediaFile
+
+log = logging.getLogger(__name__)
 
 
 def generate_media_filename(context: str, index: int, extension: str) -> str:
@@ -49,6 +53,27 @@ def save_media_to_temp(
         filename=filename,
         media_type="image",
     )
+
+
+def attempt_save_image(
+    get_bytes: Callable[[], bytes | None],
+    filename: str,
+    media_config: MediaConfig,
+    log_context: str,
+) -> MediaFile | None:
+    """Try to extract and save an image, returning None on failure.
+
+    The get_bytes callable should raise ExtractionError for library-specific
+    failures. Returns None if get_bytes returns None or any ExtractionError occurs.
+    """
+    try:
+        img_bytes = get_bytes()
+        if img_bytes is None:
+            return None
+        return save_media_to_temp(img_bytes, filename, media_config)
+    except ExtractionError:
+        log.warning("Failed to extract image: %s", log_context)
+        return None
 
 
 def _process_image_bytes(image_bytes: bytes, media_config: MediaConfig) -> bytes:
