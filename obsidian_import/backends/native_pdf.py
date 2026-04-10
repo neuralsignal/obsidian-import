@@ -116,6 +116,32 @@ def _extract_page_content(
     return "", media_files
 
 
+def _get_page_xobjects(reader: PdfReader, page_index: int) -> dict | None:
+    """Access the XObject dictionary for a PDF page.
+
+    Returns the XObject dict, or None if no XObjects exist.
+    Raises ExtractionError if the page is inaccessible or malformed.
+    """
+    try:
+        page = reader.pages[page_index]
+    except (IndexError, KeyError) as exc:
+        raise ExtractionError(f"page {page_index} not accessible: {exc}") from exc
+
+    try:
+        resources = page.get("/Resources")
+    except AttributeError as exc:
+        raise ExtractionError(f"malformed page resources: {exc}") from exc
+
+    if resources is None:
+        return None
+
+    xobjects = resources.get("/XObject")
+    if xobjects is None:
+        return None
+
+    return xobjects.get_object()
+
+
 def _extract_page_images(
     reader: PdfReader,
     page_index: int,
@@ -123,49 +149,37 @@ def _extract_page_images(
     media_config: MediaConfig,
 ) -> list[MediaFile]:
     """Extract images from a single PDF page via pypdf XObject resources."""
-    media_files: list[MediaFile] = []
     try:
-        page = reader.pages[page_index]
-        try:
-            resources = page.get("/Resources")
-        except AttributeError as exc:
-            raise ExtractionError(f"malformed page resources: {exc}") from exc
-        if resources is None:
-            return []
-
-        xobjects = resources.get("/XObject")
-        if xobjects is None:
-            return []
-
-        xobject_dict = xobjects.get_object()
-        image_index = 0
-        for obj_name in xobject_dict:
-            xobj = xobject_dict[obj_name].get_object()
-            subtype = xobj.get("/Subtype")
-            if subtype != "/Image":
-                continue
-
-            image_index += 1
-            try:
-                try:
-                    img_bytes = xobj.get_data()
-                except (ValueError, KeyError) as exc:
-                    raise ExtractionError(f"PDF image {obj_name} decode failed: {exc}") from exc
-                ext = _pdf_image_extension(xobj)
-                filename = generate_media_filename(f"page{page_index + 1}", image_index, ext)
-                mf = save_media_to_temp(img_bytes, filename, media_config)
-                media_files.append(mf)
-            except ExtractionError:
-                log.warning(
-                    "Failed to extract image %s from page %d of %s",
-                    obj_name,
-                    page_index + 1,
-                    path,
-                )
-    except KeyError:
-        log.warning("Failed to access XObjects on page %d of %s", page_index + 1, path)
+        xobject_dict = _get_page_xobjects(reader, page_index)
     except ExtractionError:
         log.warning("Failed to read page resources on page %d of %s", page_index + 1, path)
+        return []
+
+    if xobject_dict is None:
+        return []
+
+    media_files: list[MediaFile] = []
+    image_index = 0
+    for obj_name in xobject_dict:
+        xobj = xobject_dict[obj_name].get_object()
+        subtype = xobj.get("/Subtype")
+        if subtype != "/Image":
+            continue
+
+        image_index += 1
+        try:
+            img_bytes = xobj.get_data()
+            ext = _pdf_image_extension(xobj)
+            filename = generate_media_filename(f"page{page_index + 1}", image_index, ext)
+            mf = save_media_to_temp(img_bytes, filename, media_config)
+            media_files.append(mf)
+        except (ValueError, KeyError, ExtractionError):
+            log.warning(
+                "Failed to extract image %s from page %d of %s",
+                obj_name,
+                page_index + 1,
+                path,
+            )
 
     return media_files
 
