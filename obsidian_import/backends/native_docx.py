@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import zipfile
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -33,6 +34,15 @@ _NS = {
 }
 
 
+@dataclass(frozen=True)
+class _DocxZipContext:
+    """Groups zipfile-related context for DOCX image extraction."""
+
+    zf: zipfile.ZipFile
+    rel_map: dict[str, str]
+    path: Path
+
+
 def extract(path: Path, timeout_seconds: int, media_config: MediaConfig) -> ExtractionResult:
     """Extract text and images from a DOCX file, returning ExtractionResult."""
     return run_with_timeout(lambda: _extract_docx(path, media_config), timeout_seconds, "DOCX", path)
@@ -53,6 +63,7 @@ def _extract_docx(path: Path, media_config: MediaConfig) -> ExtractionResult:
         root = fromstring(doc_xml)
 
         rel_map = _build_rel_map(zf, fromstring)
+        zip_ctx = _DocxZipContext(zf=zf, rel_map=rel_map, path=path)
 
         media_files: list[MediaFile] = []
         image_index = 0
@@ -74,9 +85,7 @@ def _extract_docx(path: Path, media_config: MediaConfig) -> ExtractionResult:
                 if media_config.extract_images:
                     extracted, image_index = _extract_docx_images(
                         element,
-                        rel_map,
-                        zf,
-                        path,
+                        zip_ctx,
                         media_config,
                         image_index,
                     )
@@ -117,9 +126,7 @@ def _build_rel_map(zf: zipfile.ZipFile, fromstring: object) -> dict[str, str]:
 
 def _extract_docx_images(
     element: Element,
-    rel_map: dict[str, str],
-    zf: zipfile.ZipFile,
-    path: Path,
+    zip_ctx: _DocxZipContext,
     media_config: MediaConfig,
     image_index: int,
 ) -> tuple[list[MediaFile], int]:
@@ -133,18 +140,18 @@ def _extract_docx_images(
         blips = drawing.findall(f".//{{{_NS['a']}}}blip")
         for blip in blips:
             embed_id = blip.get(f"{{{_NS['r']}}}embed", "")
-            if not embed_id or embed_id not in rel_map:
+            if not embed_id or embed_id not in zip_ctx.rel_map:
                 continue
-            target = rel_map[embed_id]
+            target = zip_ctx.rel_map[embed_id]
             media_path = f"word/{target}" if not target.startswith("word/") else target
             if ".." in Path(media_path).parts:
                 continue
             if not media_path.startswith("word/media/"):
                 continue
-            if media_path not in zf.namelist():
+            if media_path not in zip_ctx.zf.namelist():
                 continue
             image_index += 1
-            img_bytes = zf.read(media_path)
+            img_bytes = zip_ctx.zf.read(media_path)
             orig_ext = Path(media_path).suffix
             filename = generate_media_filename("doc", image_index, orig_ext)
             try:
@@ -154,7 +161,7 @@ def _extract_docx_images(
                 log.warning(
                     "Failed to extract image %s from %s",
                     media_path,
-                    path,
+                    zip_ctx.path,
                 )
     return media_files, image_index
 
