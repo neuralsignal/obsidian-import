@@ -137,6 +137,39 @@ class TestExtractPageImages:
         result = _extract_page_images(mock_reader, 0, Path("/fake.pdf"), media_config)
         assert result == []
 
+    def test_xobject_key_error_logs_warning(self):
+        """KeyError raised while accessing XObject entries logs warning (line 166)."""
+        mock_xobject_dict = MagicMock()
+        mock_xobject_dict.__iter__.return_value = iter(["img0"])
+        mock_xobject_dict.__getitem__.side_effect = KeyError("missing xobject entry")
+
+        mock_xobjects = MagicMock()
+        mock_xobjects.get_object.return_value = mock_xobject_dict
+
+        mock_resources = MagicMock()
+        mock_resources.get.side_effect = lambda k: mock_xobjects if k == "/XObject" else None
+
+        mock_page = MagicMock()
+        mock_page.get.side_effect = lambda k: mock_resources if k == "/Resources" else None
+
+        mock_reader = MagicMock()
+        mock_reader.pages = [mock_page]
+
+        media_config = MediaConfig(
+            extract_images=True,
+            image_format="png",
+            image_max_dimension=0,
+            image_max_bytes=50_000_000,
+            image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
+        )
+
+        with patch("obsidian_import.backends.native_pdf.log") as mock_log:
+            result = _extract_page_images(mock_reader, 0, Path("/fake.pdf"), media_config)
+
+        assert result == []
+        mock_log.warning.assert_called_once()
+        assert "XObjects" in mock_log.warning.call_args[0][0]
+
 
 class TestPdfImageExtension:
     def test_none_filter_returns_png(self):
