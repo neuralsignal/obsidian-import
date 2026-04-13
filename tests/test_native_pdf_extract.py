@@ -177,7 +177,7 @@ class TestNativePdfExtract:
         with (
             patch("pdfplumber.open", return_value=mock_pdf),
             patch("pypdf.PdfReader", return_value=mock_reader),
-            patch("obsidian_import.backends.native_pdf.save_media_to_temp") as mock_save,
+            patch("obsidian_import.media.save_media_to_temp") as mock_save,
         ):
             mock_save.return_value = MediaFile(
                 source_path=Path("/tmp/img.png"), filename="page1_img1.png", media_type="image"

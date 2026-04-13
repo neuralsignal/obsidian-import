@@ -1,5 +1,6 @@
 """Tests for PDF image extraction and extension mapping."""
 
+import logging
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -63,7 +64,7 @@ class TestExtractPageImages:
         result = _extract_page_images(mock_reader, 0, Path("/fake.pdf"), media_config)
         assert result == []
 
-    def test_image_extraction_failure_logs_warning(self):
+    def test_image_extraction_failure_logs_warning(self, caplog):
         mock_xobj = MagicMock()
         mock_xobj.get.return_value = "/Image"
         mock_xobj.get_data.side_effect = ValueError("corrupt image")
@@ -91,11 +92,11 @@ class TestExtractPageImages:
             image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
         )
 
-        with patch("obsidian_import.backends.native_pdf.log") as mock_log:
+        with caplog.at_level(logging.WARNING):
             result = _extract_page_images(mock_reader, 0, Path("/fake.pdf"), media_config)
 
         assert result == []
-        mock_log.warning.assert_called_once()
+        assert "Failed to extract image" in caplog.text
 
     def test_malformed_page_xobjects_logs_warning(self):
         """KeyError/AttributeError accessing XObjects logs warning (lines 134-135)."""

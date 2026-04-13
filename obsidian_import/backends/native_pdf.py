@@ -7,6 +7,7 @@ and embedded images via pypdf XObject extraction.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -19,7 +20,7 @@ if TYPE_CHECKING:
 from obsidian_import.exceptions import ExtractionError
 from obsidian_import.extraction_result import ExtractionResult, MediaFile
 from obsidian_import.formatting import render_markdown_table
-from obsidian_import.media import generate_media_filename, save_media_to_temp
+from obsidian_import.media import attempt_save_image, generate_media_filename
 from obsidian_import.timeout import run_with_timeout
 
 log = logging.getLogger(__name__)
@@ -146,28 +147,34 @@ def _extract_page_images(
                 continue
 
             image_index += 1
-            try:
-                try:
-                    img_bytes = xobj.get_data()
-                except (ValueError, KeyError) as exc:
-                    raise ExtractionError(f"PDF image {obj_name} decode failed: {exc}") from exc
-                ext = _pdf_image_extension(xobj)
-                filename = generate_media_filename(f"page{page_index + 1}", image_index, ext)
-                mf = save_media_to_temp(img_bytes, filename, media_config)
+            ext = _pdf_image_extension(xobj)
+            filename = generate_media_filename(f"page{page_index + 1}", image_index, ext)
+            mf = attempt_save_image(
+                _make_pdf_xobj_reader(xobj, obj_name),
+                filename,
+                media_config,
+                f"{obj_name} from page {page_index + 1} of {path}",
+            )
+            if mf is not None:
                 media_files.append(mf)
-            except ExtractionError:
-                log.warning(
-                    "Failed to extract image %s from page %d of %s",
-                    obj_name,
-                    page_index + 1,
-                    path,
-                )
     except KeyError:
         log.warning("Failed to access XObjects on page %d of %s", page_index + 1, path)
     except ExtractionError:
         log.warning("Failed to read page resources on page %d of %s", page_index + 1, path)
 
     return media_files
+
+
+def _make_pdf_xobj_reader(xobj: EncodedStreamObject, obj_name: str) -> Callable[[], bytes]:
+    """Return a callable that decodes image bytes from a PDF XObject."""
+
+    def _read() -> bytes:
+        try:
+            return xobj.get_data()
+        except (ValueError, KeyError) as exc:
+            raise ExtractionError(f"PDF image {obj_name} decode failed: {exc}") from exc
+
+    return _read
 
 
 def _pdf_image_extension(xobj: EncodedStreamObject) -> str:
