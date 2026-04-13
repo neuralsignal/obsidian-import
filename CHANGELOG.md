@@ -8,6 +8,7 @@
 * add extract_images parameter to config_for_backend ([#85](https://github.com/neuralsignal/obsidian-import/issues/85)) ([fbc9def](https://github.com/neuralsignal/obsidian-import/commit/fbc9def4758157115d5c4ddfde80b41db7ff5834))
 * bump pypdf &gt;=6.9.2 to address CVE-2026-33699 infinite loop DoS ([#94](https://github.com/neuralsignal/obsidian-import/issues/94)) ([67e2286](https://github.com/neuralsignal/obsidian-import/commit/67e2286e571153ef898dcf06bc2396c8416e3e58))
 * correct exception type in native_pdf.py and add missing test ([cdcd0d3](https://github.com/neuralsignal/obsidian-import/commit/cdcd0d3fa3fda5d70e95340ee2fe08757f28b8a3))
+* decompose _extract_page_images to reduce cyclomatic complexity ([#102](https://github.com/neuralsignal/obsidian-import/issues/102)) ([a4547bd](https://github.com/neuralsignal/obsidian-import/commit/a4547bd6f44fd7c5e2135fd707b06cbf375c25ec))
 * extract shared attempt_save_image helper to eliminate DRY violation ([#99](https://github.com/neuralsignal/obsidian-import/issues/99)) ([964354d](https://github.com/neuralsignal/obsidian-import/commit/964354db8e21be4c6f4fe6cde8ef5637eec98037))
 * replace hand-rolled YAML escaping with PyYAML serializer ([#75](https://github.com/neuralsignal/obsidian-import/issues/75)) ([37535e0](https://github.com/neuralsignal/obsidian-import/commit/37535e0a2a6d94ee7dc5b5c3aeb52b7c5576b369))
 * resolve merge conflict — reapply exception narrowing to refactored code ([f8d8165](https://github.com/neuralsignal/obsidian-import/commit/f8d8165329e0a382b192118abde93fc4dbe9e976))
