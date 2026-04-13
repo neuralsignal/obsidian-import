@@ -7,8 +7,9 @@ Extracts embedded images from word/media/ when media extraction is enabled.
 
 from __future__ import annotations
 
-import logging
 import zipfile
+from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -19,10 +20,8 @@ from obsidian_import.config import MediaConfig
 from obsidian_import.exceptions import ExtractionError
 from obsidian_import.extraction_result import ExtractionResult, MediaFile
 from obsidian_import.formatting import render_markdown_table
-from obsidian_import.media import generate_media_filename, save_media_to_temp
+from obsidian_import.media import attempt_save_image, generate_media_filename
 from obsidian_import.timeout import run_with_timeout
-
-log = logging.getLogger(__name__)
 
 _NS = {
     "w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
@@ -31,6 +30,15 @@ _NS = {
     "wp": "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
     "rel": "http://schemas.openxmlformats.org/package/2006/relationships",
 }
+
+
+@dataclass(frozen=True)
+class _DocxZipContext:
+    """Groups zipfile-related context for DOCX image extraction."""
+
+    zf: zipfile.ZipFile
+    rel_map: dict[str, str]
+    path: Path
 
 
 def extract(path: Path, timeout_seconds: int, media_config: MediaConfig) -> ExtractionResult:
@@ -53,6 +61,7 @@ def _extract_docx(path: Path, media_config: MediaConfig) -> ExtractionResult:
         root = fromstring(doc_xml)
 
         rel_map = _build_rel_map(zf, fromstring)
+        zip_ctx = _DocxZipContext(zf=zf, rel_map=rel_map, path=path)
 
         media_files: list[MediaFile] = []
         image_index = 0
@@ -74,9 +83,7 @@ def _extract_docx(path: Path, media_config: MediaConfig) -> ExtractionResult:
                 if media_config.extract_images:
                     extracted, image_index = _extract_docx_images(
                         element,
-                        rel_map,
-                        zf,
-                        path,
+                        zip_ctx,
                         media_config,
                         image_index,
                     )
@@ -117,9 +124,7 @@ def _build_rel_map(zf: zipfile.ZipFile, fromstring: object) -> dict[str, str]:
 
 def _extract_docx_images(
     element: Element,
-    rel_map: dict[str, str],
-    zf: zipfile.ZipFile,
-    path: Path,
+    zip_ctx: _DocxZipContext,
     media_config: MediaConfig,
     image_index: int,
 ) -> tuple[list[MediaFile], int]:
@@ -133,30 +138,38 @@ def _extract_docx_images(
         blips = drawing.findall(f".//{{{_NS['a']}}}blip")
         for blip in blips:
             embed_id = blip.get(f"{{{_NS['r']}}}embed", "")
-            if not embed_id or embed_id not in rel_map:
+            if not embed_id or embed_id not in zip_ctx.rel_map:
                 continue
-            target = rel_map[embed_id]
+            target = zip_ctx.rel_map[embed_id]
             media_path = f"word/{target}" if not target.startswith("word/") else target
             if ".." in Path(media_path).parts:
                 continue
             if not media_path.startswith("word/media/"):
                 continue
-            if media_path not in zf.namelist():
+            if media_path not in zip_ctx.zf.namelist():
                 continue
             image_index += 1
-            img_bytes = zf.read(media_path)
+            img_bytes = zip_ctx.zf.read(media_path)
             orig_ext = Path(media_path).suffix
             filename = generate_media_filename("doc", image_index, orig_ext)
-            try:
-                mf = save_media_to_temp(img_bytes, filename, media_config)
+            mf = attempt_save_image(
+                _make_bytes_reader(img_bytes),
+                filename,
+                media_config,
+                f"{media_path} from {zip_ctx.path}",
+            )
+            if mf is not None:
                 media_files.append(mf)
-            except ExtractionError:
-                log.warning(
-                    "Failed to extract image %s from %s",
-                    media_path,
-                    path,
-                )
     return media_files, image_index
+
+
+def _make_bytes_reader(img_bytes: bytes) -> Callable[[], bytes]:
+    """Return a callable that returns pre-read image bytes."""
+
+    def _read() -> bytes:
+        return img_bytes
+
+    return _read
 
 
 def _local_name(element: Element) -> str:
