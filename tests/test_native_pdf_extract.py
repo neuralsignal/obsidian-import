@@ -3,7 +3,7 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from obsidian_import.backends.native_pdf import extract
+from obsidian_import.backends.native_pdf import _extract_page_content, extract
 from obsidian_import.config import MediaConfig
 from obsidian_import.extraction_result import MediaFile
 
@@ -218,6 +218,29 @@ class TestNativePdfExtract:
         assert "## Form Fields" in result.markdown
         assert "**FullName** (/Tx): Alice" in result.markdown
         assert "**Checkbox1** (/Btn): /Yes" in result.markdown
+
+    def test_blank_page_returns_empty_string(self):
+        """Page with no text, tables, or images returns ('', []) (line 116)."""
+        mock_page = MagicMock()
+        mock_page.extract_tables.return_value = []
+        mock_page.extract_text.return_value = ""
+
+        mock_reader_page = MagicMock()
+        mock_reader_page.get.return_value = None
+
+        mock_reader = MagicMock()
+        mock_reader.pages = [mock_reader_page]
+
+        result_text, result_media = _extract_page_content(
+            mock_page,
+            mock_reader,
+            page_number=1,
+            path=Path("/fake.pdf"),
+            media_config=_TEST_MEDIA_CONFIG,
+        )
+
+        assert result_text == ""
+        assert result_media == []
 
     def test_empty_table_guard(self, tmp_path):
         pdf_path = tmp_path / "empty_table.pdf"
