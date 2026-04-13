@@ -343,7 +343,7 @@ class TestNativeDocxExtract:
 
         with (
             patch(
-                "obsidian_import.backends.native_docx.save_media_to_temp",
+                "obsidian_import.media.save_media_to_temp",
                 side_effect=ExtractionError("PIL failed"),
             ),
             caplog.at_level(logging.WARNING),
@@ -353,6 +353,86 @@ class TestNativeDocxExtract:
         assert result.media_files == ()
         assert "Text with broken image" in result.markdown
         assert "Failed to extract image" in caplog.text
+
+    def test_embed_id_not_in_rel_map_is_skipped(self, tmp_path):
+        """DOCX with a blip referencing an embed ID absent from rel_map skips silently."""
+        xml = """<?xml version="1.0" encoding="UTF-8"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+            xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+            xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+            xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+  <w:body>
+    <w:p>
+      <w:r><w:t>Text with dangling embed</w:t></w:r>
+      <w:r>
+        <w:drawing>
+          <wp:inline>
+            <a:graphic>
+              <a:graphicData>
+                <a:blip r:embed="rId99"/>
+              </a:graphicData>
+            </a:graphic>
+          </wp:inline>
+        </w:drawing>
+      </w:r>
+    </w:p>
+  </w:body>
+</w:document>"""
+
+        rels_xml = """<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Target="media/image1.png"
+    Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"/>
+</Relationships>"""
+
+        docx_path = tmp_path / "dangling.docx"
+        with zipfile.ZipFile(str(docx_path), "w") as zf:
+            zf.writestr("word/document.xml", xml)
+            zf.writestr("word/_rels/document.xml.rels", rels_xml)
+
+        result = extract(docx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG)
+        assert result.media_files == ()
+        assert "Text with dangling embed" in result.markdown
+
+    def test_media_path_missing_from_zip_is_skipped(self, tmp_path):
+        """DOCX with rel_map resolving to a path not present in the zip skips silently."""
+        xml = """<?xml version="1.0" encoding="UTF-8"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+            xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+            xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+            xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+  <w:body>
+    <w:p>
+      <w:r><w:t>Text with truncated archive</w:t></w:r>
+      <w:r>
+        <w:drawing>
+          <wp:inline>
+            <a:graphic>
+              <a:graphicData>
+                <a:blip r:embed="rId1"/>
+              </a:graphicData>
+            </a:graphic>
+          </wp:inline>
+        </w:drawing>
+      </w:r>
+    </w:p>
+  </w:body>
+</w:document>"""
+
+        rels_xml = """<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Target="media/image1.png"
+    Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"/>
+</Relationships>"""
+
+        docx_path = tmp_path / "missing_media.docx"
+        with zipfile.ZipFile(str(docx_path), "w") as zf:
+            zf.writestr("word/document.xml", xml)
+            zf.writestr("word/_rels/document.xml.rels", rels_xml)
+
+        result = extract(docx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG)
+        assert result.media_files == ()
+        assert "Text with truncated archive" in result.markdown
 
     def test_extract_table_empty_rows(self):
         """A w:tbl with no w:tr children returns empty string."""

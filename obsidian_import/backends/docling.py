@@ -10,6 +10,7 @@ import importlib.util
 import io
 import logging
 import re
+from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -21,7 +22,7 @@ if TYPE_CHECKING:
 
 from obsidian_import.exceptions import BackendNotAvailableError, ExtractionError
 from obsidian_import.extraction_result import ExtractionResult, MediaFile
-from obsidian_import.media import generate_media_filename, save_media_to_temp
+from obsidian_import.media import attempt_save_image, generate_media_filename
 from obsidian_import.timeout import run_with_timeout
 
 log = logging.getLogger(__name__)
@@ -86,25 +87,34 @@ def _extract_docling_images(doc: DoclingDocument, path: Path, media_config: Medi
         return media_files
 
     for i, picture in enumerate(pictures, 1):
-        try:
-            try:
-                pil_image = picture.get_image(doc=doc)
-            except (AttributeError, ValueError) as exc:
-                raise ExtractionError(f"docling image {i} unavailable: {exc}") from exc
-            if pil_image is None:
-                continue
-
-            buf = io.BytesIO()
-            pil_image.save(buf, format="PNG")
-            img_bytes = buf.getvalue()
-
-            filename = generate_media_filename("fig", i, ".png")
-            mf = save_media_to_temp(img_bytes, filename, media_config)
+        filename = generate_media_filename("fig", i, ".png")
+        mf = attempt_save_image(
+            _make_docling_picture_reader(picture, doc, i),
+            filename,
+            media_config,
+            f"picture {i} from {path} via docling",
+        )
+        if mf is not None:
             media_files.append(mf)
-        except ExtractionError:
-            log.warning("Failed to extract picture %d from %s via docling", i, path)
 
     return media_files
+
+
+def _make_docling_picture_reader(picture: object, doc: DoclingDocument, index: int) -> Callable[[], bytes | None]:
+    """Return a callable that extracts image bytes from a docling picture."""
+
+    def _read() -> bytes | None:
+        try:
+            pil_image = picture.get_image(doc=doc)  # type: ignore[union-attr]
+        except (AttributeError, ValueError) as exc:
+            raise ExtractionError(f"docling image {index} unavailable: {exc}") from exc
+        if pil_image is None:
+            return None
+        buf = io.BytesIO()
+        pil_image.save(buf, format="PNG")
+        return buf.getvalue()
+
+    return _read
 
 
 def _replace_image_refs_with_wikilinks(markdown: str, media_files: list[MediaFile], doc_stem: str) -> str:

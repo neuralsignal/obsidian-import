@@ -7,8 +7,8 @@ Extracts embedded images from word/media/ when media extraction is enabled.
 
 from __future__ import annotations
 
-import logging
 import zipfile
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -20,10 +20,8 @@ from obsidian_import.config import MediaConfig
 from obsidian_import.exceptions import ExtractionError
 from obsidian_import.extraction_result import ExtractionResult, MediaFile
 from obsidian_import.formatting import render_markdown_table
-from obsidian_import.media import generate_media_filename, save_media_to_temp
+from obsidian_import.media import attempt_save_image, generate_media_filename
 from obsidian_import.timeout import run_with_timeout
-
-log = logging.getLogger(__name__)
 
 _NS = {
     "w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
@@ -154,16 +152,24 @@ def _extract_docx_images(
             img_bytes = zip_ctx.zf.read(media_path)
             orig_ext = Path(media_path).suffix
             filename = generate_media_filename("doc", image_index, orig_ext)
-            try:
-                mf = save_media_to_temp(img_bytes, filename, media_config)
+            mf = attempt_save_image(
+                _make_bytes_reader(img_bytes),
+                filename,
+                media_config,
+                f"{media_path} from {zip_ctx.path}",
+            )
+            if mf is not None:
                 media_files.append(mf)
-            except ExtractionError:
-                log.warning(
-                    "Failed to extract image %s from %s",
-                    media_path,
-                    zip_ctx.path,
-                )
     return media_files, image_index
+
+
+def _make_bytes_reader(img_bytes: bytes) -> Callable[[], bytes]:
+    """Return a callable that returns pre-read image bytes."""
+
+    def _read() -> bytes:
+        return img_bytes
+
+    return _read
 
 
 def _local_name(element: Element) -> str:

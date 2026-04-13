@@ -120,7 +120,7 @@ class TestNativePptxExtract:
         with (
             patch("pptx.Presentation", return_value=mock_prs),
             patch("pptx.util.Inches", return_value=914400),
-            patch("obsidian_import.backends.native_pptx.save_media_to_temp") as mock_save,
+            patch("obsidian_import.media.save_media_to_temp") as mock_save,
         ):
             mock_save.return_value = MediaFile(
                 source_path=Path("/tmp/img.png"), filename="slide1_img1.png", media_type="image"
@@ -225,7 +225,7 @@ class TestNativePptxExtract:
             patch("pptx.Presentation", return_value=mock_prs),
             patch("pptx.util.Inches", return_value=914400),
             patch(
-                "obsidian_import.backends.native_pptx.save_media_to_temp",
+                "obsidian_import.media.save_media_to_temp",
                 side_effect=ExtractionError("image save failed"),
             ),
             caplog.at_level(logging.WARNING),
@@ -256,7 +256,7 @@ class TestNativePptxExtract:
             patch("pptx.Presentation", return_value=mock_prs),
             patch("pptx.util.Inches", return_value=914400),
             patch(
-                "obsidian_import.backends.native_pptx.save_media_to_temp",
+                "obsidian_import.media.save_media_to_temp",
                 side_effect=ExtractionError("corrupt image"),
             ),
             caplog.at_level(logging.WARNING),
@@ -290,7 +290,7 @@ class TestNativePptxExtract:
         with (
             patch("pptx.Presentation", return_value=mock_prs),
             patch("pptx.util.Inches", return_value=914400),
-            patch("obsidian_import.backends.native_pptx.save_media_to_temp"),
+            patch("obsidian_import.media.save_media_to_temp"),
             caplog.at_level(logging.WARNING),
         ):
             result = extract(pptx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG)

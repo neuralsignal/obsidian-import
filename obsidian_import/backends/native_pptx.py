@@ -6,6 +6,7 @@ Extracts per-slide text, speaker notes, tables, and embedded images.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -17,7 +18,7 @@ if TYPE_CHECKING:
 from obsidian_import.exceptions import ExtractionError
 from obsidian_import.extraction_result import ExtractionResult, MediaFile
 from obsidian_import.formatting import render_markdown_table
-from obsidian_import.media import generate_media_filename, save_media_to_temp
+from obsidian_import.media import attempt_save_image, generate_media_filename
 from obsidian_import.timeout import run_with_timeout
 
 log = logging.getLogger(__name__)
@@ -116,23 +117,35 @@ def _extract_slide_content(
                 body_texts.append(table_md)
 
         if media_config.extract_images and shape.shape_type == _PICTURE_SHAPE_TYPE:
+            image_index += 1
             try:
-                try:
-                    image = shape.image
-                    img_bytes = image.blob
-                    content_type = image.content_type
-                except (AttributeError, ValueError) as exc:
-                    raise ExtractionError(f"PPTX image on slide {slide_number} unavailable: {exc}") from exc
-                ext = _mime_to_extension(content_type)
-                image_index += 1
-                filename = generate_media_filename(f"slide{slide_number}", image_index, ext)
-                mf = save_media_to_temp(img_bytes, filename, media_config)
+                ext = _mime_to_extension(shape.image.content_type)
+            except (AttributeError, ValueError):
+                ext = ".png"
+            filename = generate_media_filename(f"slide{slide_number}", image_index, ext)
+            mf = attempt_save_image(
+                _make_pptx_image_reader(shape, slide_number),
+                filename,
+                media_config,
+                f"slide {slide_number} of {path}",
+            )
+            if mf is not None:
                 media_files.append(mf)
                 body_texts.append(f"![[{path.stem}/{mf.filename}]]")
-            except ExtractionError:
-                log.warning("Failed to extract image from slide %d of %s", slide_number, path)
 
     return body_texts, media_files
+
+
+def _make_pptx_image_reader(shape: object, slide_number: int) -> Callable[[], bytes]:
+    """Return a callable that reads image bytes from a PPTX shape."""
+
+    def _read() -> bytes:
+        try:
+            return shape.image.blob  # type: ignore[union-attr]
+        except (AttributeError, ValueError) as exc:
+            raise ExtractionError(f"PPTX image on slide {slide_number} unavailable: {exc}") from exc
+
+    return _read
 
 
 def _mime_to_extension(content_type: str) -> str:
