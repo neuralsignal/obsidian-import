@@ -65,6 +65,7 @@ class MediaConfig:
     image_format: str
     image_max_dimension: int
     image_max_bytes: int
+    image_max_pixels: int
     image_allowed_formats: frozenset[str]
 
 
@@ -172,6 +173,7 @@ def _build_config(raw: dict[str, Any], config_dir: Path | None) -> ImportConfig:
             image_format=str(media_raw["image_format"]),
             image_max_dimension=int(media_raw["image_max_dimension"]),
             image_max_bytes=int(media_raw["image_max_bytes"]),
+            image_max_pixels=int(media_raw["image_max_pixels"]),
             image_allowed_formats=frozenset(media_raw["image_allowed_formats"]),
         ),
     )
