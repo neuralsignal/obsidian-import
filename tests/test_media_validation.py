@@ -14,12 +14,14 @@ from obsidian_import.media import _process_image_bytes
 def _make_config(
     image_max_bytes: int,
     image_allowed_formats: frozenset[str],
+    image_max_pixels: int = 50_000_000,
 ) -> MediaConfig:
     return MediaConfig(
         extract_images=True,
         image_format="png",
         image_max_dimension=0,
         image_max_bytes=image_max_bytes,
+        image_max_pixels=image_max_pixels,
         image_allowed_formats=image_allowed_formats,
     )
 
@@ -113,3 +115,66 @@ class TestImageFormatValidation:
             _process_image_bytes(img_bytes, config)
         assert "GIF" in str(exc_info.value)
         assert "JPEG" in str(exc_info.value)
+
+
+class TestImagePixelCountValidation:
+    def test_pillow_decompression_bomb_guard_rejects_large_image(self) -> None:
+        img_bytes = make_png_bytes(200, 200, "RGB")
+        config = _make_config(
+            image_max_bytes=50_000_000,
+            image_allowed_formats=frozenset({"PNG"}),
+            image_max_pixels=100,
+        )
+        with pytest.raises(ExtractionError, match="pixel limit"):
+            _process_image_bytes(img_bytes, config)
+
+    def test_explicit_check_rejects_image_between_limit_and_double(self) -> None:
+        img_bytes = make_png_bytes(13, 13, "RGB")
+        config = _make_config(
+            image_max_bytes=50_000_000,
+            image_allowed_formats=frozenset({"PNG"}),
+            image_max_pixels=100,
+        )
+        with pytest.raises(ExtractionError, match="pixel count"):
+            _process_image_bytes(img_bytes, config)
+
+    def test_accepts_image_within_pixel_limit(self) -> None:
+        img_bytes = make_png_bytes(10, 10, "RGB")
+        config = _make_config(
+            image_max_bytes=50_000_000,
+            image_allowed_formats=frozenset({"PNG"}),
+            image_max_pixels=1_000,
+        )
+        result = _process_image_bytes(img_bytes, config)
+        assert len(result) > 0
+
+    def test_exact_pixel_limit_is_accepted(self) -> None:
+        img_bytes = make_png_bytes(10, 10, "RGB")
+        config = _make_config(
+            image_max_bytes=50_000_000,
+            image_allowed_formats=frozenset({"PNG"}),
+            image_max_pixels=100,
+        )
+        result = _process_image_bytes(img_bytes, config)
+        assert len(result) > 0
+
+    def test_zero_max_pixels_disables_pixel_check(self) -> None:
+        img_bytes = make_png_bytes(100, 100, "RGB")
+        config = _make_config(
+            image_max_bytes=50_000_000,
+            image_allowed_formats=frozenset({"PNG"}),
+            image_max_pixels=0,
+        )
+        result = _process_image_bytes(img_bytes, config)
+        assert len(result) > 0
+
+    def test_error_message_includes_pixel_count_and_limit(self) -> None:
+        img_bytes = make_png_bytes(13, 13, "RGB")
+        config = _make_config(
+            image_max_bytes=50_000_000,
+            image_allowed_formats=frozenset({"PNG"}),
+            image_max_pixels=100,
+        )
+        with pytest.raises(ExtractionError, match="169") as exc_info:
+            _process_image_bytes(img_bytes, config)
+        assert "100" in str(exc_info.value)

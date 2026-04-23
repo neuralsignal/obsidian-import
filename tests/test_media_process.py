@@ -92,6 +92,7 @@ class TestSaveMediaToTemp:
             image_format="png",
             image_max_dimension=0,
             image_max_bytes=50_000_000,
+            image_max_pixels=50_000_000,
             image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
         )
         mf = save_media_to_temp(jpeg_bytes, "test.jpeg", config)
@@ -104,6 +105,7 @@ class TestSaveMediaToTemp:
             image_format="png",
             image_max_dimension=50,
             image_max_bytes=50_000_000,
+            image_max_pixels=50_000_000,
             image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
         )
         mf = save_media_to_temp(img_bytes, "big.png", config)
@@ -142,6 +144,7 @@ class TestJpgNormalization:
             image_format="jpg",
             image_max_dimension=0,
             image_max_bytes=50_000_000,
+            image_max_pixels=50_000_000,
             image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
         )
         mf = save_media_to_temp(img_bytes, "test.png", config)
@@ -156,6 +159,7 @@ class TestJpgNormalization:
             image_format="JPG",
             image_max_dimension=0,
             image_max_bytes=50_000_000,
+            image_max_pixels=50_000_000,
             image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
         )
         mf = save_media_to_temp(img_bytes, "test.png", config)
@@ -171,6 +175,7 @@ class TestRgbaToJpegConversion:
             image_format="jpeg",
             image_max_dimension=0,
             image_max_bytes=50_000_000,
+            image_max_pixels=50_000_000,
             image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
         )
         mf = save_media_to_temp(img_bytes, "test.png", config)
@@ -186,6 +191,7 @@ class TestRgbaToJpegConversion:
             image_format="jpg",
             image_max_dimension=0,
             image_max_bytes=50_000_000,
+            image_max_pixels=50_000_000,
             image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
         )
         mf = save_media_to_temp(img_bytes, "test.png", config)
@@ -209,6 +215,7 @@ class TestJpegFormatProperties:
             image_format=fmt,
             image_max_dimension=0,
             image_max_bytes=50_000_000,
+            image_max_pixels=50_000_000,
             image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
         )
         mf = save_media_to_temp(img_bytes, "test.png", config)
@@ -230,6 +237,7 @@ class TestSaveMediaToTempProperties:
             image_format="png",
             image_max_dimension=max_dim,
             image_max_bytes=50_000_000,
+            image_max_pixels=50_000_000,
             image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
         )
         mf = save_media_to_temp(img_bytes, "test.png", config)
@@ -249,6 +257,7 @@ class TestSaveMediaToTempProperties:
             image_format="png",
             image_max_dimension=0,
             image_max_bytes=50_000_000,
+            image_max_pixels=50_000_000,
             image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
         )
         mf = save_media_to_temp(img_bytes, "test.png", config)

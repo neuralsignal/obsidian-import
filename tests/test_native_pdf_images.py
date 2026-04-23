@@ -30,6 +30,7 @@ class TestExtractPageImages:
             image_format="png",
             image_max_dimension=0,
             image_max_bytes=50_000_000,
+            image_max_pixels=50_000_000,
             image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
         )
         result = _extract_page_images(mock_reader, 0, Path("/fake.pdf"), media_config)
@@ -59,6 +60,7 @@ class TestExtractPageImages:
             image_format="png",
             image_max_dimension=0,
             image_max_bytes=50_000_000,
+            image_max_pixels=50_000_000,
             image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
         )
         result = _extract_page_images(mock_reader, 0, Path("/fake.pdf"), media_config)
@@ -89,6 +91,7 @@ class TestExtractPageImages:
             image_format="png",
             image_max_dimension=0,
             image_max_bytes=50_000_000,
+            image_max_pixels=50_000_000,
             image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
         )
 
@@ -111,6 +114,7 @@ class TestExtractPageImages:
             image_format="png",
             image_max_dimension=0,
             image_max_bytes=50_000_000,
+            image_max_pixels=50_000_000,
             image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
         )
 
@@ -133,6 +137,7 @@ class TestExtractPageImages:
             image_format="png",
             image_max_dimension=0,
             image_max_bytes=50_000_000,
+            image_max_pixels=50_000_000,
             image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
         )
         result = _extract_page_images(mock_reader, 0, Path("/fake.pdf"), media_config)
@@ -161,6 +166,7 @@ class TestExtractPageImages:
             image_format="png",
             image_max_dimension=0,
             image_max_bytes=50_000_000,
+            image_max_pixels=50_000_000,
             image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
         )
 

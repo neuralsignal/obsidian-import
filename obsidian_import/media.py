@@ -89,7 +89,27 @@ def _process_image_bytes(image_bytes: bytes, media_config: MediaConfig) -> bytes
     except ImportError as exc:
         raise ExtractionError("Pillow is required for image extraction. Install with: pip install Pillow") from exc
 
-    img = Image.open(io.BytesIO(image_bytes))
+    if media_config.image_max_pixels > 0:
+        Image.MAX_IMAGE_PIXELS = media_config.image_max_pixels
+    else:
+        Image.MAX_IMAGE_PIXELS = None
+
+    try:
+        img = Image.open(io.BytesIO(image_bytes))
+    except Image.DecompressionBombError as exc:
+        raise ExtractionError(
+            f"Image exceeds maximum pixel limit ({media_config.image_max_pixels} pixels). "
+            "This may be a decompression bomb. Increase media.image_max_pixels to allow larger images."
+        ) from exc
+
+    if media_config.image_max_pixels > 0:
+        pixel_count = img.width * img.height
+        if pixel_count > media_config.image_max_pixels:
+            raise ExtractionError(
+                f"Image pixel count ({pixel_count}) exceeds maximum "
+                f"({media_config.image_max_pixels}). "
+                "Increase media.image_max_pixels to allow larger images."
+            )
 
     if img.format not in media_config.image_allowed_formats:
         raise ExtractionError(

@@ -12,6 +12,7 @@ _TEST_MEDIA_CONFIG = MediaConfig(
     image_format="png",
     image_max_dimension=0,
     image_max_bytes=50_000_000,
+    image_max_pixels=50_000_000,
     image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
 )
 
@@ -129,6 +130,7 @@ class TestNativePdfExtract:
             image_format="png",
             image_max_dimension=0,
             image_max_bytes=50_000_000,
+            image_max_pixels=50_000_000,
             image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
         )
 
