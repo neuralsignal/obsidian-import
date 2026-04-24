@@ -161,8 +161,8 @@ def _extract_page_images(
 
     media_files: list[MediaFile] = []
     image_index = 0
-    try:
-        for obj_name in xobject_dict:
+    for obj_name in xobject_dict:
+        try:
             xobj = xobject_dict[obj_name].get_object()
             subtype = xobj.get("/Subtype")
             if subtype != "/Image":
@@ -179,8 +179,8 @@ def _extract_page_images(
             )
             if mf is not None:
                 media_files.append(mf)
-    except KeyError:
-        log.warning("Failed to access XObjects on page %d of %s", page_index + 1, path)
+        except KeyError:
+            log.warning("Failed to access XObject %s on page %d of %s", obj_name, page_index + 1, path)
 
     return media_files
 
