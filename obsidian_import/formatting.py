@@ -7,6 +7,11 @@ Provides reusable functions for rendering markdown constructs
 from __future__ import annotations
 
 
+def make_media_wikilink(doc_stem: str, filename: str) -> str:
+    """Build an Obsidian wikilink embed for a media file."""
+    return f"![[{doc_stem}/{filename}]]"
+
+
 def _escape_cell(value: str) -> str:
     """Escape pipe characters and newlines in a table cell."""
     return value.replace("|", "\\|").replace("\n", " ")

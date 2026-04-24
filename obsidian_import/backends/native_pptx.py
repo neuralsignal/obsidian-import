@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 from obsidian_import.exceptions import ExtractionError
 from obsidian_import.extraction_result import ExtractionResult, MediaFile
-from obsidian_import.formatting import render_markdown_table
+from obsidian_import.formatting import make_media_wikilink, render_markdown_table
 from obsidian_import.media import attempt_save_image, generate_media_filename
 from obsidian_import.timeout import run_with_timeout
 
@@ -131,7 +131,7 @@ def _extract_slide_content(
             )
             if mf is not None:
                 media_files.append(mf)
-                body_texts.append(f"![[{path.stem}/{mf.filename}]]")
+                body_texts.append(make_media_wikilink(path.stem, mf.filename))
 
     return body_texts, media_files
 

@@ -5,7 +5,32 @@ from __future__ import annotations
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from obsidian_import.formatting import render_markdown_table
+from obsidian_import.formatting import make_media_wikilink, render_markdown_table
+
+
+class TestMakeMediaWikilink:
+    def test_basic_wikilink(self) -> None:
+        assert make_media_wikilink("report", "image_001.png") == "![[report/image_001.png]]"
+
+    @given(
+        doc_stem=st.text(min_size=1, max_size=50, alphabet=st.characters(whitelist_categories=("L", "N", "P"))),
+        filename=st.text(min_size=1, max_size=50, alphabet=st.characters(whitelist_categories=("L", "N", "P"))),
+    )
+    @settings(max_examples=100)
+    def test_wikilink_format(self, doc_stem: str, filename: str) -> None:
+        result = make_media_wikilink(doc_stem, filename)
+        assert result.startswith("![[")
+        assert result.endswith("]]")
+        assert f"{doc_stem}/{filename}" in result
+
+    @given(
+        doc_stem=st.text(min_size=1, max_size=50, alphabet=st.characters(whitelist_categories=("L", "N", "P"))),
+        filename=st.text(min_size=1, max_size=50, alphabet=st.characters(whitelist_categories=("L", "N", "P"))),
+    )
+    @settings(max_examples=100)
+    def test_wikilink_exact_structure(self, doc_stem: str, filename: str) -> None:
+        result = make_media_wikilink(doc_stem, filename)
+        assert result == f"![[{doc_stem}/{filename}]]"
 
 
 class TestRenderMarkdownTable:
