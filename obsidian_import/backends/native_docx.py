@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 from obsidian_import.config import MediaConfig
 from obsidian_import.exceptions import ExtractionError
 from obsidian_import.extraction_result import ExtractionResult, MediaFile
-from obsidian_import.formatting import render_markdown_table
+from obsidian_import.formatting import make_media_wikilink, render_markdown_table
 from obsidian_import.media import attempt_save_image, generate_media_filename
 from obsidian_import.timeout import run_with_timeout
 
@@ -89,7 +89,7 @@ def _extract_docx(path: Path, media_config: MediaConfig) -> ExtractionResult:
                     )
                     media_files.extend(extracted)
                     for mf in extracted:
-                        embed = f"![[{path.stem}/{mf.filename}]]"
+                        embed = make_media_wikilink(path.stem, mf.filename)
                         text = f"{text}\n\n{embed}" if text else embed
 
                 if text:

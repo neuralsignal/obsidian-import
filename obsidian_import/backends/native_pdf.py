@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 from obsidian_import.exceptions import ExtractionError
 from obsidian_import.extraction_result import ExtractionResult, MediaFile
-from obsidian_import.formatting import render_markdown_table
+from obsidian_import.formatting import make_media_wikilink, render_markdown_table
 from obsidian_import.media import attempt_save_image, generate_media_filename
 from obsidian_import.timeout import run_with_timeout
 
@@ -110,7 +110,7 @@ def _extract_page_content(
         page_images = _extract_page_images(reader, page_number - 1, path, media_config)
         for mf in page_images:
             media_files.append(mf)
-            page_sections.append(f"![[{path.stem}/{mf.filename}]]")
+            page_sections.append(make_media_wikilink(path.stem, mf.filename))
 
     if len(page_sections) > 1:
         return "\n".join(page_sections), media_files

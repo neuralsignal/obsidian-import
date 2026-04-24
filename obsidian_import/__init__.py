@@ -17,6 +17,7 @@ from obsidian_import.config import config_for_backend as config_for_backend
 from obsidian_import.discovery import DiscoveredFile
 from obsidian_import.discovery import discover_files as _discover_files
 from obsidian_import.extraction_result import ExtractionResult
+from obsidian_import.formatting import make_media_wikilink
 from obsidian_import.output import ExtractedDocument
 from obsidian_import.registry import extract_with_backend
 
@@ -62,7 +63,7 @@ def extract_file(path: Path, config: ImportConfig) -> ExtractedDocument:
     markdown = result.markdown
     if result.media_files:
         for mf in result.media_files:
-            wikilink = f"![[{doc_stem}/{mf.filename}]]"
+            wikilink = make_media_wikilink(doc_stem, mf.filename)
             if wikilink not in markdown:
                 markdown += f"\n\n{wikilink}"
 

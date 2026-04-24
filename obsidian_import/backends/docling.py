@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 
 from obsidian_import.exceptions import BackendNotAvailableError, ExtractionError
 from obsidian_import.extraction_result import ExtractionResult, MediaFile
+from obsidian_import.formatting import make_media_wikilink
 from obsidian_import.media import attempt_save_image, generate_media_filename
 from obsidian_import.timeout import run_with_timeout
 
@@ -124,7 +125,7 @@ def _replace_image_refs_with_wikilinks(markdown: str, media_files: list[MediaFil
     def _match_image_ref(match: re.Match[str]) -> str:
         mf = next(media_iter, None)
         if mf is not None:
-            return f"![[{doc_stem}/{mf.filename}]]"
+            return make_media_wikilink(doc_stem, mf.filename)
         return match.group(0)
 
     return re.sub(r"!\[([^\]]*)\]\([^)]+\)", _match_image_ref, markdown)
