@@ -5,14 +5,17 @@ import logging
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
 from obsidian_import.backends.native_pdf import (
     _extract_page_images,
+    _get_page_xobjects,
     _pdf_image_extension,
 )
 from obsidian_import.config import MediaConfig
+from obsidian_import.exceptions import ExtractionError
 
 
 def _minimal_png_bytes() -> bytes:
@@ -22,6 +25,22 @@ def _minimal_png_bytes() -> bytes:
     buf = io.BytesIO()
     Image.new("RGB", (2, 2), color="red").save(buf, format="PNG")
     return buf.getvalue()
+
+
+class TestGetPageXobjectsPageAccess:
+    def test_index_error_raises_extraction_error(self):
+        mock_reader = MagicMock()
+        mock_reader.pages.__getitem__ = MagicMock(side_effect=IndexError("list index out of range"))
+
+        with pytest.raises(ExtractionError, match="page 5 not accessible"):
+            _get_page_xobjects(mock_reader, 5)
+
+    def test_key_error_raises_extraction_error(self):
+        mock_reader = MagicMock()
+        mock_reader.pages.__getitem__ = MagicMock(side_effect=KeyError("missing page node"))
+
+        with pytest.raises(ExtractionError, match="page 0 not accessible"):
+            _get_page_xobjects(mock_reader, 0)
 
 
 class TestExtractPageImages:
