@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.1.0](https://github.com/neuralsignal/obsidian-import/compare/v1.0.4...v1.1.0) (2026-04-28)
+
+
+### Features
+
+* add .html as a first-class backend config key ([4602f1b](https://github.com/neuralsignal/obsidian-import/commit/4602f1b3587140ad959e66cabce4c3819f47165a))
+* add .html as a first-class backend config key ([e64b82f](https://github.com/neuralsignal/obsidian-import/commit/e64b82fadf8b16d38d4df3229565034b8ddae1fb))
+
+
+### Bug Fixes
+
+* add decompression bomb guard with configurable image_max_pixels ([#113](https://github.com/neuralsignal/obsidian-import/issues/113)) ([bb840be](https://github.com/neuralsignal/obsidian-import/commit/bb840bedc4cfcc6a7f9d8c3a9060ca86be05a028))
+* bump Pillow lower bound to &gt;=12.2 for CVE-2026-40192 ([#127](https://github.com/neuralsignal/obsidian-import/issues/127)) ([35f9167](https://github.com/neuralsignal/obsidian-import/commit/35f9167534c39d33f708efb27f96ae10f05b741a))
+* bump pypdf lower bound to 6.10.2 for DoS CVE fixes ([e49878e](https://github.com/neuralsignal/obsidian-import/commit/e49878eb49e8ad0d5fb3752ff002509a48dc4cbf)), closes [#126](https://github.com/neuralsignal/obsidian-import/issues/126)
+* correct misleading native extensions list and add .htm dispatch test ([afa2521](https://github.com/neuralsignal/obsidian-import/commit/afa2521197814126ce991fa1c77ba3c0d81d5391))
+* scope try/except per XObject iteration in _extract_page_images ([#120](https://github.com/neuralsignal/obsidian-import/issues/120)) ([2d8a820](https://github.com/neuralsignal/obsidian-import/commit/2d8a8204f8f85d08209d02a3d120c96859a33b0e))
+
 ## [Unreleased]
 
 ### Security
