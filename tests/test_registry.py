@@ -112,6 +112,22 @@ class TestGetBackendModule:
         module = get_backend_module(".html", backends)
         assert module.__name__ == "obsidian_import.backends.markitdown"
 
+    def test_htm_returns_configured_backend(self):
+        backends = BackendsConfig(
+            pdf="native",
+            docx="native",
+            pptx="native",
+            xlsx="native",
+            csv="native",
+            json="native",
+            yaml="native",
+            image="native",
+            html="markitdown",
+            default="native",
+        )
+        module = get_backend_module(".htm", backends)
+        assert module.__name__ == "obsidian_import.backends.markitdown"
+
     def test_html_native_raises(self):
         with pytest.raises(UnsupportedFormatError, match="No native backend"):
             get_backend_module(".html", _native_backends())
