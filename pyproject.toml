@@ -1,6 +1,6 @@
 [project]
 name = "obsidian-import"
-version = "1.0.4"
+version = "1.1.0"
 description = "Extract files (PDF, DOCX, PPTX, XLSX) into Obsidian-flavored Markdown"
 readme = "README.md"
 license = "MIT"
