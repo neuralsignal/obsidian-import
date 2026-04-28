@@ -30,6 +30,7 @@ def _native_backends() -> BackendsConfig:
         json="native",
         yaml="native",
         image="native",
+        html="native",
         default="native",
     )
 
@@ -86,12 +87,49 @@ class TestGetBackendModule:
             json="native",
             yaml="native",
             image="native",
+            html="native",
             default="markitdown",
+        )
+        module = get_backend_module(".rtf", backends)
+        assert module.__name__ == "obsidian_import.backends.markitdown"
+
+    def test_unknown_extension_native_default_raises(self):
+        with pytest.raises(UnsupportedFormatError, match="No native backend"):
+            get_backend_module(".rtf", _native_backends())
+
+    def test_html_returns_configured_backend(self):
+        backends = BackendsConfig(
+            pdf="native",
+            docx="native",
+            pptx="native",
+            xlsx="native",
+            csv="native",
+            json="native",
+            yaml="native",
+            image="native",
+            html="markitdown",
+            default="native",
         )
         module = get_backend_module(".html", backends)
         assert module.__name__ == "obsidian_import.backends.markitdown"
 
-    def test_unknown_extension_native_default_raises(self):
+    def test_htm_returns_configured_backend(self):
+        backends = BackendsConfig(
+            pdf="native",
+            docx="native",
+            pptx="native",
+            xlsx="native",
+            csv="native",
+            json="native",
+            yaml="native",
+            image="native",
+            html="markitdown",
+            default="native",
+        )
+        module = get_backend_module(".htm", backends)
+        assert module.__name__ == "obsidian_import.backends.markitdown"
+
+    def test_html_native_raises(self):
         with pytest.raises(UnsupportedFormatError, match="No native backend"):
             get_backend_module(".html", _native_backends())
 
@@ -105,6 +143,7 @@ class TestGetBackendModule:
             json="native",
             yaml="native",
             image="native",
+            html="native",
             default="native",
         )
         with pytest.raises(UnsupportedFormatError, match="Unknown backend"):
@@ -122,6 +161,7 @@ class TestExtractWithBackend:
             json="markitdown",
             yaml="markitdown",
             image="markitdown",
+            html="markitdown",
             default="markitdown",
         )
 

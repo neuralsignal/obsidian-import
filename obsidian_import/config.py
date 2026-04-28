@@ -42,6 +42,7 @@ class BackendsConfig:
     json: str
     yaml: str
     image: str
+    html: str
     default: str
 
 
@@ -156,6 +157,7 @@ def _build_config(raw: dict[str, Any], config_dir: Path | None) -> ImportConfig:
             json=backends_raw.get("json", backends_raw["default"]),
             yaml=backends_raw.get("yaml", backends_raw["default"]),
             image=backends_raw.get("image", backends_raw["default"]),
+            html=backends_raw.get("html", backends_raw["default"]),
             default=backends_raw["default"],
         ),
         extraction=ExtractionConfig(

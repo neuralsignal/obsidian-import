@@ -110,6 +110,7 @@ backends:
   json: native       # stdlib json -> fenced code block
   yaml: native       # PyYAML -> fenced code block
   image: native      # Obsidian ![[wikilink]] embed
+  html: markitdown   # .html / .htm via markitdown (no native backend)
   default: native    # fallback for unknown extensions
 
 extraction:
