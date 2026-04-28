@@ -31,6 +31,8 @@ _EXTENSION_TO_CONFIG_KEY: dict[str, str] = {
     ".webp": "image",
     ".bmp": "image",
     ".tiff": "image",
+    ".html": "html",
+    ".htm": "html",
 }
 
 _BACKEND_MODULES: dict[str, str | dict[str, str]] = {

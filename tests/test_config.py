@@ -69,6 +69,12 @@ class TestDefaultConfig:
         assert config.backends.yaml == "native"
         assert config.backends.image == "native"
 
+    def test_default_html_backend_is_markitdown(self):
+        # Native has no .html handler; defaulting html to markitdown keeps
+        # default-configured callers working out of the box.
+        config = default_config()
+        assert config.backends.html == "markitdown"
+
     def test_default_passthrough_empty(self):
         config = default_config()
         assert config.passthrough.extensions == ()
@@ -104,6 +110,7 @@ class TestConfigForBackend:
         assert config.backends.json == "markitdown"
         assert config.backends.yaml == "markitdown"
         assert config.backends.image == "markitdown"
+        assert config.backends.html == "markitdown"
         assert config.backends.default == "markitdown"
 
     def test_extraction_params_match(self):
@@ -241,12 +248,14 @@ backends:
   json: markitdown
   yaml: markitdown
   image: markitdown
+  html: native
 """)
         config = load_config(config_file)
         assert config.backends.csv == "markitdown"
         assert config.backends.json == "markitdown"
         assert config.backends.yaml == "markitdown"
         assert config.backends.image == "markitdown"
+        assert config.backends.html == "native"
 
     def test_new_backend_keys_default_to_native(self, tmp_path):
         config_file = tmp_path / "config.yaml"
@@ -256,3 +265,13 @@ backends:
         assert config.backends.json == "native"
         assert config.backends.yaml == "native"
         assert config.backends.image == "native"
+
+    def test_html_backend_falls_back_to_default_when_omitted(self):
+        # A raw dict with no html key: the html slot gracefully defaults to
+        # the configured `default`. Defensive fallback for callers that build
+        # configs programmatically without going through load_config.
+        raw = _load_default_yaml()
+        del raw["backends"]["html"]
+        raw["backends"]["default"] = "markitdown"
+        config = _build_config(raw, config_dir=None)
+        assert config.backends.html == "markitdown"

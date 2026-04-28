@@ -21,6 +21,7 @@ backends:
   json: native
   yaml: native
   image: native
+  html: markitdown
   default: native
 
 extraction:
