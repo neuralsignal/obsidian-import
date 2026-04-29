@@ -39,16 +39,29 @@ class _DocxZipContext:
     zf: zipfile.ZipFile
     rel_map: dict[str, str]
     path: Path
+    max_bytes: int
 
 
-def extract(path: Path, timeout_seconds: int, media_config: MediaConfig) -> ExtractionResult:
+def extract(path: Path, timeout_seconds: int, media_config: MediaConfig, max_file_size_mb: int) -> ExtractionResult:
     """Extract text and images from a DOCX file, returning ExtractionResult."""
-    return run_with_timeout(lambda: _extract_docx(path, media_config), timeout_seconds, "DOCX", path)
+    return run_with_timeout(lambda: _extract_docx(path, media_config, max_file_size_mb), timeout_seconds, "DOCX", path)
 
 
-def _extract_docx(path: Path, media_config: MediaConfig) -> ExtractionResult:
+def _check_zip_entry_size(zf: zipfile.ZipFile, entry_name: str, max_bytes: int, path: Path) -> None:
+    """Raise ExtractionError if a ZIP entry's uncompressed size exceeds max_bytes."""
+    info = zf.getinfo(entry_name)
+    if info.file_size > max_bytes:
+        raise ExtractionError(
+            f"ZIP entry '{entry_name}' in {path} has uncompressed size "
+            f"{info.file_size} bytes, exceeding limit of {max_bytes} bytes"
+        )
+
+
+def _extract_docx(path: Path, media_config: MediaConfig, max_file_size_mb: int) -> ExtractionResult:
     """Internal DOCX extraction logic."""
     from defusedxml.ElementTree import fromstring
+
+    max_bytes = max_file_size_mb * 1024 * 1024
 
     if not zipfile.is_zipfile(str(path)):
         raise ExtractionError(f"Not a valid DOCX (ZIP) file: {path}")
@@ -57,11 +70,12 @@ def _extract_docx(path: Path, media_config: MediaConfig) -> ExtractionResult:
         if "word/document.xml" not in zf.namelist():
             raise ExtractionError(f"No word/document.xml found in: {path}")
 
+        _check_zip_entry_size(zf, "word/document.xml", max_bytes, path)
         doc_xml = zf.read("word/document.xml")
         root = fromstring(doc_xml)
 
-        rel_map = _build_rel_map(zf, fromstring)
-        zip_ctx = _DocxZipContext(zf=zf, rel_map=rel_map, path=path)
+        rel_map = _build_rel_map(zf, fromstring, max_bytes, path)
+        zip_ctx = _DocxZipContext(zf=zf, rel_map=rel_map, path=path, max_bytes=max_bytes)
 
         media_files: list[MediaFile] = []
         image_index = 0
@@ -106,12 +120,13 @@ def _extract_docx(path: Path, media_config: MediaConfig) -> ExtractionResult:
     )
 
 
-def _build_rel_map(zf: zipfile.ZipFile, fromstring: object) -> dict[str, str]:
+def _build_rel_map(zf: zipfile.ZipFile, fromstring: object, max_bytes: int, path: Path) -> dict[str, str]:
     """Build relationship ID to target path map from document.xml.rels."""
     rel_map: dict[str, str] = {}
     if "word/_rels/document.xml.rels" not in zf.namelist():
         return rel_map
 
+    _check_zip_entry_size(zf, "word/_rels/document.xml.rels", max_bytes, path)
     rels_xml = zf.read("word/_rels/document.xml.rels")
     rels_root = fromstring(rels_xml)  # type: ignore[operator]
     for rel in rels_root:
@@ -148,6 +163,7 @@ def _extract_docx_images(
                 continue
             if media_path not in zip_ctx.zf.namelist():
                 continue
+            _check_zip_entry_size(zip_ctx.zf, media_path, zip_ctx.max_bytes, zip_ctx.path)
             image_index += 1
             img_bytes = zip_ctx.zf.read(media_path)
             orig_ext = Path(media_path).suffix
