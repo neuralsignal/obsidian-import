@@ -1943,8 +1943,8 @@ packages:
   requires_python: '>=3'
 - pypi: ./
   name: obsidian-import
-  version: 1.0.4
-  sha256: baca205be7c0b51a620d723b03b18eda7f9bdf14068333a068deea31afac902e
+  version: 1.1.0
+  sha256: f4afb5efb19b520bf0af6f3b12ed0513cf01cf99bd7eda9873e67b90fb1a0247
   requires_dist:
   - pyyaml>=6.0,<7
   - click>=8.0,<9
