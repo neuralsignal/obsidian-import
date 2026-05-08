@@ -22,7 +22,7 @@ _IMAGE_EXTENSIONS: frozenset[str] = frozenset(
 )
 
 
-def extract(path: Path, timeout_seconds: int, **kwargs: object) -> str:
+def extract(path: Path, timeout_seconds: int) -> str:
     """Generate an Obsidian-flavored markdown embed for an image file.
 
     Returns markdown with a wikilink embed (![[filename]]).
@@ -31,7 +31,6 @@ def extract(path: Path, timeout_seconds: int, **kwargs: object) -> str:
     timeout_seconds is accepted for backend interface compatibility
     but not applied, as this function performs no blocking I/O.
     """
-    _ = timeout_seconds
     return f"![[{path.name}]]"
 
 
