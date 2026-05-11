@@ -11,7 +11,7 @@ from pathlib import Path
 from obsidian_import.timeout import run_with_timeout
 
 
-def extract(path: Path, timeout_seconds: int, **kwargs: object) -> str:
+def extract(path: Path, timeout_seconds: int) -> str:
     """Extract a JSON file as a fenced code block in markdown."""
     return run_with_timeout(lambda: _extract_json(path), timeout_seconds, "JSON", path)
 
