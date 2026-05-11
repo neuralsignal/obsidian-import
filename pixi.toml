@@ -34,6 +34,7 @@ pyasn1 = ">=0.6.3,<1"
 jinja2 = ">=3.1.6,<4"
 twisted = ">=24.7.0,<25"
 pyjwt = ">=2.12.0,<3"
+urllib3 = ">=2.6.3,<3"
 
 [tasks]
 lint = "ruff check obsidian_import/ tests/"
