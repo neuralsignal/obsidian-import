@@ -117,6 +117,37 @@ class TestImageFormatValidation:
         assert "JPEG" in str(exc_info.value)
 
 
+class TestMaxImagePixelsRestored:
+    """Verify that _process_image_bytes does not leak global PIL state."""
+
+    def test_restores_max_pixels_after_successful_call(self) -> None:
+        from PIL import Image as _Image
+
+        sentinel = _Image.MAX_IMAGE_PIXELS
+        img_bytes = make_png_bytes(10, 10, "RGB")
+        config = _make_config(
+            image_max_bytes=50_000_000,
+            image_allowed_formats=frozenset({"PNG"}),
+            image_max_pixels=1_000,
+        )
+        _process_image_bytes(img_bytes, config)
+        assert sentinel == _Image.MAX_IMAGE_PIXELS
+
+    def test_restores_max_pixels_after_error(self) -> None:
+        from PIL import Image as _Image
+
+        sentinel = _Image.MAX_IMAGE_PIXELS
+        img_bytes = make_png_bytes(200, 200, "RGB")
+        config = _make_config(
+            image_max_bytes=50_000_000,
+            image_allowed_formats=frozenset({"PNG"}),
+            image_max_pixels=100,
+        )
+        with pytest.raises(ExtractionError):
+            _process_image_bytes(img_bytes, config)
+        assert sentinel == _Image.MAX_IMAGE_PIXELS
+
+
 class TestImagePixelCountValidation:
     def test_pillow_decompression_bomb_guard_rejects_large_image(self) -> None:
         img_bytes = make_png_bytes(200, 200, "RGB")

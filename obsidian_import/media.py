@@ -89,50 +89,54 @@ def _process_image_bytes(image_bytes: bytes, media_config: MediaConfig) -> bytes
     except ImportError as exc:
         raise ExtractionError("Pillow is required for image extraction. Install with: pip install Pillow") from exc
 
-    if media_config.image_max_pixels > 0:
-        Image.MAX_IMAGE_PIXELS = media_config.image_max_pixels
-    else:
-        Image.MAX_IMAGE_PIXELS = None
-
+    old_limit = Image.MAX_IMAGE_PIXELS
     try:
-        img = Image.open(io.BytesIO(image_bytes))
-    except Image.DecompressionBombError as exc:
-        raise ExtractionError(
-            f"Image exceeds maximum pixel limit ({media_config.image_max_pixels} pixels). "
-            "This may be a decompression bomb. Increase media.image_max_pixels to allow larger images."
-        ) from exc
+        if media_config.image_max_pixels > 0:
+            Image.MAX_IMAGE_PIXELS = media_config.image_max_pixels
+        else:
+            Image.MAX_IMAGE_PIXELS = None
 
-    if media_config.image_max_pixels > 0:
-        pixel_count = img.width * img.height
-        if pixel_count > media_config.image_max_pixels:
+        try:
+            img = Image.open(io.BytesIO(image_bytes))
+        except Image.DecompressionBombError as exc:
             raise ExtractionError(
-                f"Image pixel count ({pixel_count}) exceeds maximum "
-                f"({media_config.image_max_pixels}). "
-                "Increase media.image_max_pixels to allow larger images."
+                f"Image exceeds maximum pixel limit ({media_config.image_max_pixels} pixels). "
+                "This may be a decompression bomb. Increase media.image_max_pixels to allow larger images."
+            ) from exc
+
+        if media_config.image_max_pixels > 0:
+            pixel_count = img.width * img.height
+            if pixel_count > media_config.image_max_pixels:
+                raise ExtractionError(
+                    f"Image pixel count ({pixel_count}) exceeds maximum "
+                    f"({media_config.image_max_pixels}). "
+                    "Increase media.image_max_pixels to allow larger images."
+                )
+
+        if img.format not in media_config.image_allowed_formats:
+            raise ExtractionError(
+                f"Image format '{img.format}' is not in the allowed formats: "
+                f"{sorted(media_config.image_allowed_formats)}. "
+                "Update media.image_allowed_formats to allow this format."
             )
 
-    if img.format not in media_config.image_allowed_formats:
-        raise ExtractionError(
-            f"Image format '{img.format}' is not in the allowed formats: "
-            f"{sorted(media_config.image_allowed_formats)}. "
-            "Update media.image_allowed_formats to allow this format."
-        )
+        if media_config.image_max_dimension > 0:
+            max_dim = media_config.image_max_dimension
+            if img.width > max_dim or img.height > max_dim:
+                img.thumbnail((max_dim, max_dim), Image.LANCZOS)
 
-    if media_config.image_max_dimension > 0:
-        max_dim = media_config.image_max_dimension
-        if img.width > max_dim or img.height > max_dim:
-            img.thumbnail((max_dim, max_dim), Image.LANCZOS)
+        output = io.BytesIO()
+        target_format = media_config.image_format.upper()
+        if target_format == "JPG":
+            target_format = "JPEG"
 
-    output = io.BytesIO()
-    target_format = media_config.image_format.upper()
-    if target_format == "JPG":
-        target_format = "JPEG"
+        if img.mode == "RGBA" and target_format == "JPEG":
+            img = img.convert("RGB")
 
-    if img.mode == "RGBA" and target_format == "JPEG":
-        img = img.convert("RGB")
-
-    img.save(output, format=target_format)
-    return output.getvalue()
+        img.save(output, format=target_format)
+        return output.getvalue()
+    finally:
+        Image.MAX_IMAGE_PIXELS = old_limit
 
 
 def copy_media_files(
