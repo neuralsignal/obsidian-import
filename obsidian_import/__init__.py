@@ -27,6 +27,8 @@ def _build_extra_kwargs(extension: str, config: ImportConfig) -> dict[str, objec
     extra_kwargs: dict[str, object] = {}
     if extension == ".xlsx":
         extra_kwargs["max_rows_per_sheet"] = config.extraction.xlsx_max_rows_per_sheet
+    if extension == ".docx":
+        extra_kwargs["max_file_size_mb"] = config.extraction.max_file_size_mb
     return extra_kwargs
 
 

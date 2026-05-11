@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/neuralsignal/obsidian-import/compare/v1.1.0...v1.1.1) (2026-05-11)
+
+
+### Bug Fixes
+
+* scope Image.MAX_IMAGE_PIXELS mutation to _process_image_bytes lifetime ([#163](https://github.com/neuralsignal/obsidian-import/issues/163)) ([037974c](https://github.com/neuralsignal/obsidian-import/commit/037974c302e6dc9e7d4421455c5c6a477d4c482c))
+
 ## [1.1.0](https://github.com/neuralsignal/obsidian-import/compare/v1.0.4...v1.1.0) (2026-04-28)
 
 
