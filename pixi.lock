@@ -151,6 +151,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/e5/7a/8dd906bd22e79e47397a61742927f6747fe93242ef86645ee9092e610244/pyjwt-2.12.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/5d/ab/34ec41718af73c00119d0351b7a2531d2ebddb51833a36448fc7b862be60/pylatexenc-2.10.tar.gz
       - pypi: https://files.pythonhosted.org/packages/6f/2c/5b079febdc65e1c3fb2729bf958d18b45be7113828528e8a0b5850dd819a/pymdown_extensions-10.21-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/a8/41/52f3a3e812b816a91e89aa504199d8bf989a1f873192b10762be66cf2009/pyopenssl-26.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/0c/d6/1d5c60cc17bbdf37c1552d9c03862fc6d32c5836732a0415b2d637edc2d0/pypdf-6.10.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ff/49/a640b288a48dab1752281dd9b72c0679fccea107874e80a65a606b00efa9/pypdfium2-5.6.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/a8/a4/20da314d277121d6534b3a980b29035dcd51e6744bd79075a6ce8fa4eb8d/pytest-8.4.2-py3-none-any.whl
@@ -327,6 +328,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/bc/5c/510ae8e3663238d32e653ed6a09ac65611dd045a7241f12633c1ab48bb9b/pyobjc_framework_coreml-12.1-cp314-cp314-macosx_10_15_universal2.whl
       - pypi: https://files.pythonhosted.org/packages/4a/00/96249c5c7e5aaca5f688ca18b8d8ad05cd7886ebd639b3c71a6a4cadbe75/pyobjc_framework_quartz-12.1-cp314-cp314-macosx_10_15_universal2.whl
       - pypi: https://files.pythonhosted.org/packages/a7/a4/ee1ef14d6e1df6617e64dbaaa0ecf8ecb9e0af1425613fa633f6a94049c1/pyobjc_framework_vision-12.1-cp314-cp314-macosx_10_15_universal2.whl
+      - pypi: https://files.pythonhosted.org/packages/a8/41/52f3a3e812b816a91e89aa504199d8bf989a1f873192b10762be66cf2009/pyopenssl-26.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/0c/d6/1d5c60cc17bbdf37c1552d9c03862fc6d32c5836732a0415b2d637edc2d0/pypdf-6.10.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/6e/f6/9f9e190fe0e5a6b86b82f83bd8b5d3490348766062381140ca5cad8e00b1/pypdfium2-5.6.0-py3-none-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/a8/a4/20da314d277121d6534b3a980b29035dcd51e6744bd79075a6ce8fa4eb8d/pytest-8.4.2-py3-none-any.whl
@@ -2656,6 +2658,19 @@ packages:
   - pyobjc-framework-quartz>=12.1
   - pyobjc-framework-coreml>=12.1
   requires_python: '>=3.10'
+- pypi: https://files.pythonhosted.org/packages/a8/41/52f3a3e812b816a91e89aa504199d8bf989a1f873192b10762be66cf2009/pyopenssl-26.1.0-py3-none-any.whl
+  name: pyopenssl
+  version: 26.1.0
+  sha256: 115563879b2c8ccb207975705d3e491434d8c9d7c79667c902ecbf5f3bbd2ece
+  requires_dist:
+  - cryptography>=46.0.0,<48
+  - typing-extensions>=4.9 ; python_full_version >= '3.8' and python_full_version < '3.13'
+  - pytest-rerunfailures ; extra == 'test'
+  - pretend ; extra == 'test'
+  - pytest>=3.0.1 ; extra == 'test'
+  - sphinx!=5.2.0,!=5.2.0.post0,!=7.2.5 ; extra == 'docs'
+  - sphinx-rtd-theme ; extra == 'docs'
+  requires_python: '>=3.8'
 - pypi: https://files.pythonhosted.org/packages/0c/d6/1d5c60cc17bbdf37c1552d9c03862fc6d32c5836732a0415b2d637edc2d0/pypdf-6.10.2-py3-none-any.whl
   name: pypdf
   version: 6.10.2
