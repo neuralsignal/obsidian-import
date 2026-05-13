@@ -5,7 +5,75 @@ from __future__ import annotations
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from obsidian_import.formatting import make_media_wikilink, render_markdown_table
+from obsidian_import.formatting import make_media_wikilink, render_markdown_table, sanitize_markdown_inline
+
+
+class TestSanitizeMarkdownInline:
+    def test_strips_newlines(self) -> None:
+        assert sanitize_markdown_inline("line1\nline2") == "line1 line2"
+
+    def test_strips_crlf(self) -> None:
+        assert sanitize_markdown_inline("a\r\nb") == "a b"
+
+    def test_strips_cr(self) -> None:
+        assert sanitize_markdown_inline("a\rb") == "a b"
+
+    def test_escapes_asterisks(self) -> None:
+        assert sanitize_markdown_inline("**bold**") == r"\*\*bold\*\*"
+
+    def test_escapes_underscores(self) -> None:
+        assert sanitize_markdown_inline("_italic_") == r"\_italic\_"
+
+    def test_escapes_backticks(self) -> None:
+        assert sanitize_markdown_inline("`code`") == r"\`code\`"
+
+    def test_escapes_hash(self) -> None:
+        assert sanitize_markdown_inline("## heading") == r"\#\# heading"
+
+    def test_escapes_pipes(self) -> None:
+        assert sanitize_markdown_inline("a|b") == r"a\|b"
+
+    def test_escapes_angle_brackets(self) -> None:
+        assert sanitize_markdown_inline("<script>") == r"\<script\>"
+
+    def test_escapes_square_brackets(self) -> None:
+        assert sanitize_markdown_inline("[link](url)") == r"\[link\](url)"
+
+    def test_escapes_backslashes(self) -> None:
+        assert sanitize_markdown_inline("a\\b") == "a\\\\b"
+
+    def test_plain_text_unchanged(self) -> None:
+        assert sanitize_markdown_inline("hello world") == "hello world"
+
+    def test_heading_injection_via_newline(self) -> None:
+        result = sanitize_markdown_inline("\n\n## Injected Heading")
+        assert "\n" not in result
+        assert "## " not in result
+
+    def test_thematic_break_injection(self) -> None:
+        result = sanitize_markdown_inline("\n\n---")
+        assert "\n" not in result
+
+
+class TestSanitizeMarkdownInlineProperties:
+    @given(text=st.text(min_size=0, max_size=200))
+    @settings(max_examples=200)
+    def test_no_newlines_in_output(self, text: str) -> None:
+        result = sanitize_markdown_inline(text)
+        assert "\n" not in result
+        assert "\r" not in result
+
+    @given(text=st.text(min_size=0, max_size=200))
+    @settings(max_examples=200)
+    def test_no_unescaped_markdown_chars(self, text: str) -> None:
+        result = sanitize_markdown_inline(text)
+        i = 0
+        while i < len(result):
+            if result[i] == "\\":
+                i += 2
+                continue
+            assert result[i] not in "*_`#|<>[]\\", f"unescaped '{result[i]}' at position {i}"
+            i += 1
 
 
 class TestMakeMediaWikilink:

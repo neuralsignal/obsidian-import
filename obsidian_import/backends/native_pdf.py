@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 from obsidian_import.exceptions import ExtractionError
 from obsidian_import.extraction_result import ExtractionResult, MediaFile
-from obsidian_import.formatting import make_media_wikilink, render_markdown_table
+from obsidian_import.formatting import make_media_wikilink, render_markdown_table, sanitize_markdown_inline
 from obsidian_import.media import attempt_save_image, generate_media_filename
 from obsidian_import.timeout import run_with_timeout
 
@@ -58,7 +58,10 @@ def _extract_pdf(path: Path, media_config: MediaConfig) -> ExtractionResult:
         for name, field in fields.items():
             field_type = field.get("/FT", "unknown")
             value = field.get("/V", "")
-            field_lines.append(f"- **{name}** ({field_type}): {value}")
+            safe_name = sanitize_markdown_inline(str(name))
+            safe_type = sanitize_markdown_inline(str(field_type))
+            safe_value = sanitize_markdown_inline(str(value))
+            field_lines.append(f"- **{safe_name}** ({safe_type}): {safe_value}")
         sections.append("\n".join(field_lines))
 
     with pdfplumber.open(str(path)) as pdf:
