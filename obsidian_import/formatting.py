@@ -6,6 +6,16 @@ Provides reusable functions for rendering markdown constructs
 
 from __future__ import annotations
 
+import re
+
+_MARKDOWN_INLINE_RE = re.compile(r"([*_`#|<>\[\]\\])")
+
+
+def sanitize_markdown_inline(text: str) -> str:
+    """Strip newlines and escape markdown-significant characters for safe inline embedding."""
+    flat = text.replace("\r\n", " ").replace("\r", " ").replace("\n", " ")
+    return _MARKDOWN_INLINE_RE.sub(r"\\\1", flat)
+
 
 def make_media_wikilink(doc_stem: str, filename: str) -> str:
     """Build an Obsidian wikilink embed for a media file."""
