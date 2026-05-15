@@ -16,10 +16,9 @@ class TestCopyMediaFiles:
         mf = save_media_to_temp(img_bytes, "test.png", config)
 
         media_dir = tmp_path / "report"
-        destinations = copy_media_files((mf,), media_dir)
-        assert len(destinations) == 1
-        assert destinations[0].exists()
-        assert destinations[0].parent.name == "report"
+        copy_media_files((mf,), media_dir)
+        assert (media_dir / "test.png").exists()
+        assert (media_dir / "test.png").parent.name == "report"
 
     def test_creates_media_dir(self, tmp_path):
         img_bytes = make_png_bytes(10, 10, "RGB")
@@ -32,9 +31,10 @@ class TestCopyMediaFiles:
         copy_media_files((mf,), media_dir)
         assert media_dir.exists()
 
-    def test_empty_list_returns_empty(self, tmp_path):
-        result = copy_media_files((), tmp_path / "report")
-        assert result == []
+    def test_empty_list_is_noop(self, tmp_path):
+        media_dir = tmp_path / "report"
+        copy_media_files((), media_dir)
+        assert not media_dir.exists()
 
     def test_skip_existing_file(self, tmp_path):
         img_bytes = make_png_bytes(10, 10, "RGB")
@@ -45,8 +45,7 @@ class TestCopyMediaFiles:
         media_dir.mkdir()
         (media_dir / "test.png").write_bytes(b"existing")
 
-        destinations = copy_media_files((mf,), media_dir)
-        assert len(destinations) == 1
+        copy_media_files((mf,), media_dir)
         assert (media_dir / "test.png").read_bytes() == b"existing"
 
     def test_multiple_files_copied(self, tmp_path):
@@ -58,9 +57,10 @@ class TestCopyMediaFiles:
             files.append(mf)
 
         media_dir = tmp_path / "multi_doc"
-        destinations = copy_media_files(tuple(files), media_dir)
-        assert len(destinations) == 3
-        assert all(d.exists() for d in destinations)
+        copy_media_files(tuple(files), media_dir)
+        copied = list(media_dir.iterdir())
+        assert len(copied) == 3
+        assert all(f.exists() for f in copied)
 
 
 class TestExtractionResult:
