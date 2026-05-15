@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import io
 import logging
 import shutil
@@ -205,5 +206,16 @@ def copy_media_files(
         if not dest.exists():
             shutil.copy2(mf.source_path, dest)
         destinations.append(dest)
+        _cleanup_temp_source(mf.source_path)
 
     return destinations
+
+
+def _cleanup_temp_source(source_path: Path) -> None:
+    """Remove a temp media file and its parent dir created by save_media_to_temp."""
+    parent = source_path.parent
+    if not parent.name.startswith("obsidian_media_"):
+        return
+    source_path.unlink(missing_ok=True)
+    with contextlib.suppress(OSError):
+        parent.rmdir()
