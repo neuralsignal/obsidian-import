@@ -186,29 +186,22 @@ def _process_image_bytes(image_bytes: bytes, media_config: MediaConfig) -> bytes
 def copy_media_files(
     media_files: tuple[MediaFile, ...],
     media_dir: Path,
-) -> list[Path]:
+) -> None:
     """Copy extracted media files to a per-document media directory.
 
     Args:
         media_files: Tuple of MediaFile objects to copy.
         media_dir: Destination directory for media files.
-
-    Returns the list of destination paths.
     """
     if not media_files:
-        return []
+        return
 
     media_dir.mkdir(parents=True, exist_ok=True)
 
-    destinations: list[Path] = []
     for mf in media_files:
         dest = media_dir / mf.filename
         if not dest.exists():
             shutil.copy2(mf.source_path, dest)
-        destinations.append(dest)
-        _cleanup_temp_source(mf.source_path)
-
-    return destinations
 
 
 def _cleanup_temp_source(source_path: Path) -> None:
