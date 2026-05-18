@@ -37,6 +37,7 @@ twisted = ">=24.7.0,<25"
 pyjwt = ">=2.12.0,<3"
 urllib3 = ">=2.6.3,<3"
 pyopenssl = ">=26.0.0,<27"
+cryptography = ">=46.0.7,<47"
 
 [tasks]
 lint = "ruff check obsidian_import/ tests/"
