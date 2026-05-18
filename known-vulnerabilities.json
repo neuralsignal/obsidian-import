@@ -1,0 +1,8 @@
+[
+  {
+    "id": "CVE-2026-3219",
+    "package": "pip",
+    "reason": "No fix available as of 2026-05-18. pip is a build/dev-only dependency (not bundled in distributed package). See #182.",
+    "expires": "2026-08-18"
+  }
+]
