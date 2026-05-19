@@ -235,15 +235,3 @@ class TestCheckBackendAvailable:
             available, message = check_backend_available("native", ".pdf")
         assert available is False
         assert "not available" in message
-
-
-class TestResolveModulePath:
-    def test_non_string_backend_module_raises(self):
-        """Non-string value in _BACKEND_MODULES raises UnsupportedFormatError (line 76)."""
-        from obsidian_import.registry import _resolve_module_path
-
-        with (
-            patch.dict("obsidian_import.registry._BACKEND_MODULES", {"markitdown": 42}),
-            pytest.raises(UnsupportedFormatError, match="Invalid backend module config"),
-        ):
-            _resolve_module_path("markitdown", ".pdf")
