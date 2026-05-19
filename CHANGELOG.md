@@ -26,6 +26,10 @@
 
 ## [Unreleased]
 
+### Bug Fixes
+
+* clean up temp dirs created by save_media_to_temp after media copy ([#176](https://github.com/neuralsignal/obsidian-import/issues/176))
+
 ### Security
 
 * bump pypdf >=6.10.2 to address multiple High-severity DoS CVEs (CVE-2026-40260, GHSA-jj6c-8h6c-hppx, GHSA-4pxv-j86v-mhcw, GHSA-7gw9-cf7v-778f, GHSA-x284-j5p8-9c5p) ([#126](https://github.com/neuralsignal/obsidian-import/issues/126))

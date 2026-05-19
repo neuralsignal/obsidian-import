@@ -189,6 +189,9 @@ def copy_media_files(
 ) -> None:
     """Copy extracted media files to a per-document media directory.
 
+    Temp source files created by save_media_to_temp (in ``obsidian_media_*``
+    directories) are removed after copying.
+
     Args:
         media_files: Tuple of MediaFile objects to copy.
         media_dir: Destination directory for media files.
