@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.1.2](https://github.com/neuralsignal/obsidian-import/compare/v1.1.1...v1.1.2) (2026-05-20)
+
+
+### Bug Fixes
+
+* call _cleanup_temp_source in copy_media_files to remove temp dirs ([6682e90](https://github.com/neuralsignal/obsidian-import/commit/6682e904eb9b28c1b8c5e9eb7db6d8fedcb13da7))
+* clean up temp dirs created by save_media_to_temp after media copy ([#176](https://github.com/neuralsignal/obsidian-import/issues/176)) ([026e76c](https://github.com/neuralsignal/obsidian-import/commit/026e76cd50d40d564e48293965ee2155897da107))
+* sanitize PDF form field values against markdown injection ([#171](https://github.com/neuralsignal/obsidian-import/issues/171)) ([9b22822](https://github.com/neuralsignal/obsidian-import/commit/9b228228261aa993c260397e912f66f2841d916e))
+
+
+### Documentation
+
+* add cleanup side-effect to copy_media_files docstring and CHANGELOG entry ([152709b](https://github.com/neuralsignal/obsidian-import/commit/152709b7648beb57e408c0d497db2b10dea09c1d))
+
 ## [1.1.1](https://github.com/neuralsignal/obsidian-import/compare/v1.1.0...v1.1.1) (2026-05-11)
 
 
