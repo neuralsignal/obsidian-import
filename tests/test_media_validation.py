@@ -1,6 +1,7 @@
 """Tests for image bytes validation in media processing."""
 
 import io
+import threading
 
 import pytest
 from conftest import make_png_bytes
@@ -13,6 +14,7 @@ from obsidian_import.exceptions import ExtractionError
 from obsidian_import.media import (
     _encode_image,
     _open_image_safely,
+    _pixel_limit_lock,
     _process_image_bytes,
     _resize_if_needed,
     _validate_byte_size,
@@ -155,6 +157,37 @@ class TestMaxImagePixelsRestored:
         with pytest.raises(ExtractionError):
             _process_image_bytes(img_bytes, config)
         assert sentinel == _Image.MAX_IMAGE_PIXELS
+
+    def test_pixel_limit_lock_serializes_concurrent_access(self) -> None:
+        """Verify _pixel_limit_lock prevents concurrent MAX_IMAGE_PIXELS mutation."""
+        from PIL import Image as _Image
+
+        sentinel = _Image.MAX_IMAGE_PIXELS
+        img_bytes = make_png_bytes(10, 10, "RGB")
+        config = _make_config(
+            image_max_bytes=50_000_000,
+            image_allowed_formats=frozenset({"PNG"}),
+            image_max_pixels=1_000,
+        )
+        errors: list[Exception] = []
+
+        def worker() -> None:
+            try:
+                _process_image_bytes(img_bytes, config)
+            except Exception as exc:  # noqa: BLE001
+                errors.append(exc)
+
+        threads = [threading.Thread(target=worker) for _ in range(4)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert not errors
+        assert sentinel == _Image.MAX_IMAGE_PIXELS
+
+    def test_pixel_limit_lock_is_a_lock(self) -> None:
+        assert isinstance(_pixel_limit_lock, type(threading.Lock()))
 
 
 class TestImagePixelCountValidation:

@@ -7,6 +7,7 @@ import io
 import logging
 import shutil
 import tempfile
+import threading
 from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -19,6 +20,8 @@ from obsidian_import.exceptions import ExtractionError
 from obsidian_import.extraction_result import MediaFile
 
 log = logging.getLogger(__name__)
+
+_pixel_limit_lock = threading.Lock()
 
 
 def generate_media_filename(context: str, index: int, extension: str) -> str:
@@ -158,8 +161,8 @@ def _encode_image(img: Image.Image, media_config: MediaConfig) -> bytes:
 def _process_image_bytes(image_bytes: bytes, media_config: MediaConfig) -> bytes:
     """Apply format conversion and resizing to image bytes.
 
-    Scopes Image.MAX_IMAGE_PIXELS mutation to this function's lifetime so it
-    cannot leak across threads or callers (see PR #163).
+    Serializes access to Image.MAX_IMAGE_PIXELS via _pixel_limit_lock to
+    prevent concurrent threads from racing on the global.
     """
     _validate_byte_size(image_bytes, media_config)
 
@@ -168,19 +171,20 @@ def _process_image_bytes(image_bytes: bytes, media_config: MediaConfig) -> bytes
     except ImportError as exc:
         raise ExtractionError("Pillow is required for image extraction. Install with: pip install Pillow") from exc
 
-    old_limit = Image.MAX_IMAGE_PIXELS
-    try:
-        if media_config.image_max_pixels > 0:
-            Image.MAX_IMAGE_PIXELS = media_config.image_max_pixels
-        else:
-            Image.MAX_IMAGE_PIXELS = None
+    with _pixel_limit_lock:
+        old_limit = Image.MAX_IMAGE_PIXELS
+        try:
+            if media_config.image_max_pixels > 0:
+                Image.MAX_IMAGE_PIXELS = media_config.image_max_pixels
+            else:
+                Image.MAX_IMAGE_PIXELS = None
 
-        img = _open_image_safely(image_bytes, media_config)
-        _validate_image_format(img, media_config)
-        img = _resize_if_needed(img, media_config)
-        return _encode_image(img, media_config)
-    finally:
-        Image.MAX_IMAGE_PIXELS = old_limit
+            img = _open_image_safely(image_bytes, media_config)
+            _validate_image_format(img, media_config)
+            img = _resize_if_needed(img, media_config)
+            return _encode_image(img, media_config)
+        finally:
+            Image.MAX_IMAGE_PIXELS = old_limit
 
 
 def copy_media_files(
