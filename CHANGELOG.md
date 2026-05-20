@@ -26,6 +26,10 @@
 
 ## [Unreleased]
 
+### Bug Fixes
+
+* clean up temp dirs created by save_media_to_temp after media copy ([#176](https://github.com/neuralsignal/obsidian-import/issues/176))
+
 ### Security
 
 * bump pip floor to >=26.1 for CVE-2026-6357 ([#183](https://github.com/neuralsignal/obsidian-import/issues/183))
