@@ -2,6 +2,11 @@
 
 Requires the [docling] extra: pip install obsidian-import[docling]
 Supports image extraction via PdfPipelineOptions when available.
+
+Security: docling depends on torch, which has a known deserialization
+vulnerability (PYSEC-2026-139) in the pt2 loading handler. Only use
+docling with model checkpoints from trusted sources. No upstream fix
+is available as of 2026-05-25.
 """
 
 from __future__ import annotations
@@ -10,6 +15,7 @@ import importlib.util
 import io
 import logging
 import re
+import warnings
 from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -33,6 +39,13 @@ def extract(path: Path, timeout_seconds: int, media_config: MediaConfig) -> Extr
     """Extract text and images using docling for high-quality document conversion."""
     if importlib.util.find_spec("docling") is None:
         raise BackendNotAvailableError("docling is not installed. Install with: pip install obsidian-import[docling]")
+
+    warnings.warn(
+        "PYSEC-2026-139: docling depends on torch, which has a known deserialization "
+        "vulnerability. Only load models from trusted sources. "
+        "See https://github.com/pytorch/pytorch for upstream status.",
+        stacklevel=2,
+    )
 
     def _do_extract() -> ExtractionResult:
         converter = _build_converter(media_config)
