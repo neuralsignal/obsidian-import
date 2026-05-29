@@ -117,7 +117,7 @@ class TestNativePptxExtract:
         pic_shape.image.content_type = "image/png"
 
         shapes = list(slide.shapes.__iter__()) + [pic_shape]
-        slide.shapes.__iter__ = MagicMock(return_value=iter(shapes))
+        slide.shapes.__iter__ = MagicMock(side_effect=lambda s=shapes: iter(s))
 
         with (
             patch("pptx.Presentation", return_value=mock_prs),
@@ -155,7 +155,7 @@ class TestNativePptxExtract:
         shape.text_frame.paragraphs = [para_level1, para_level2]
 
         shapes = list(slide.shapes.__iter__()) + [shape]
-        slide.shapes.__iter__ = MagicMock(return_value=iter(shapes))
+        slide.shapes.__iter__ = MagicMock(side_effect=lambda s=shapes: iter(s))
 
         with (
             patch("pptx.Presentation", return_value=mock_prs),
@@ -193,7 +193,7 @@ class TestNativePptxExtract:
         table_shape.table.rows = [row1, row2]
 
         shapes = list(slide.shapes.__iter__()) + [table_shape]
-        slide.shapes.__iter__ = MagicMock(return_value=iter(shapes))
+        slide.shapes.__iter__ = MagicMock(side_effect=lambda s=shapes: iter(s))
 
         with (
             patch("pptx.Presentation", return_value=mock_prs),
@@ -221,7 +221,7 @@ class TestNativePptxExtract:
         pic_shape.image.content_type = "image/png"
 
         shapes = list(slide.shapes.__iter__()) + [pic_shape]
-        slide.shapes.__iter__ = MagicMock(return_value=iter(shapes))
+        slide.shapes.__iter__ = MagicMock(side_effect=lambda s=shapes: iter(s))
 
         with (
             patch("pptx.Presentation", return_value=mock_prs),
@@ -252,7 +252,7 @@ class TestNativePptxExtract:
         pic_shape.image.content_type = "image/png"
 
         shapes = list(slide.shapes.__iter__()) + [pic_shape]
-        slide.shapes.__iter__ = MagicMock(return_value=iter(shapes))
+        slide.shapes.__iter__ = MagicMock(side_effect=lambda s=shapes: iter(s))
 
         with (
             patch("pptx.Presentation", return_value=mock_prs),
@@ -287,7 +287,7 @@ class TestNativePptxExtract:
         pic_shape = BrokenImageShape()
 
         shapes = list(slide.shapes.__iter__()) + [pic_shape]
-        slide.shapes.__iter__ = MagicMock(return_value=iter(shapes))
+        slide.shapes.__iter__ = MagicMock(side_effect=lambda s=shapes: iter(s))
 
         with (
             patch("pptx.Presentation", return_value=mock_prs),
