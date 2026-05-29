@@ -216,6 +216,36 @@ class TestExtractWithBackend:
         assert received["max_rows_per_sheet"] == 42
 
 
+class TestResolveModuleMisconfigured:
+    """Regression tests: misconfigured _BACKEND_MODULES raises UnsupportedFormatError, not AssertionError."""
+
+    def test_native_map_not_dict_raises(self):
+        with (
+            patch("obsidian_import.registry._BACKEND_MODULES", {"native": "not-a-dict"}),
+            pytest.raises(UnsupportedFormatError, match="native backend map misconfigured"),
+        ):
+            get_backend_module(".pdf", _native_backends())
+
+    def test_non_native_module_path_not_str_raises(self):
+        backends = BackendsConfig(
+            pdf="markitdown",
+            docx="native",
+            pptx="native",
+            xlsx="native",
+            csv="native",
+            json="native",
+            yaml="native",
+            image="native",
+            html="native",
+            default="native",
+        )
+        with (
+            patch("obsidian_import.registry._BACKEND_MODULES", {"native": {}, "markitdown": 42}),
+            pytest.raises(UnsupportedFormatError, match="backend module path misconfigured"),
+        ):
+            get_backend_module(".pdf", backends)
+
+
 class TestCheckBackendAvailable:
     def test_native_pdf_available(self):
         available, message = check_backend_available("native", ".pdf")
