@@ -118,7 +118,7 @@ def mock_pptx_presentation(slides_data: list[dict]) -> MagicMock:
             title_shape.has_table = False
             title_shape.shape_type = 1
 
-        slide.shapes.__iter__ = MagicMock(return_value=iter(shapes))
+        slide.shapes.__iter__ = MagicMock(side_effect=lambda s=shapes: iter(s))
         slide.shapes.__len__ = MagicMock(return_value=len(shapes))
         slide.has_notes_slide = False
         mock_slides.append(slide)
