@@ -2,6 +2,9 @@
 
 Requires the [docling] extra: pip install obsidian-import[docling]
 Supports image extraction via PdfPipelineOptions when available.
+
+Security: docling depends on transformers, which has a known deserialization
+RCE (PYSEC-2025-217). Only process documents from trusted sources.
 """
 
 from __future__ import annotations
