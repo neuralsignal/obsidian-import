@@ -8,7 +8,13 @@ import pytest
 
 from obsidian_import.config import BackendsConfig, MediaConfig
 from obsidian_import.exceptions import UnsupportedFormatError
-from obsidian_import.registry import check_backend_available, extract_with_backend, get_backend_module
+from obsidian_import.registry import (
+    _BACKEND_MODULES,
+    _resolve_module_path,
+    check_backend_available,
+    extract_with_backend,
+    get_backend_module,
+)
 
 _TEST_MEDIA_CONFIG = MediaConfig(
     extract_images=True,
@@ -216,34 +222,20 @@ class TestExtractWithBackend:
         assert received["max_rows_per_sheet"] == 42
 
 
-class TestResolveModuleMisconfigured:
-    """Regression tests: misconfigured _BACKEND_MODULES raises UnsupportedFormatError, not AssertionError."""
-
-    def test_native_map_not_dict_raises(self):
+class TestResolveModulePath:
+    def test_native_map_misconfigured_raises(self):
         with (
-            patch("obsidian_import.registry._BACKEND_MODULES", {"native": "not-a-dict"}),
+            patch.dict(_BACKEND_MODULES, {"native": "not-a-dict"}),
             pytest.raises(UnsupportedFormatError, match="native backend map misconfigured"),
         ):
-            get_backend_module(".pdf", _native_backends())
+            _resolve_module_path("native", ".pdf")
 
-    def test_non_native_module_path_not_str_raises(self):
-        backends = BackendsConfig(
-            pdf="markitdown",
-            docx="native",
-            pptx="native",
-            xlsx="native",
-            csv="native",
-            json="native",
-            yaml="native",
-            image="native",
-            html="native",
-            default="native",
-        )
+    def test_non_native_module_path_misconfigured_raises(self):
         with (
-            patch("obsidian_import.registry._BACKEND_MODULES", {"native": {}, "markitdown": 42}),
+            patch.dict(_BACKEND_MODULES, {"markitdown": {"unexpected": "dict"}}),
             pytest.raises(UnsupportedFormatError, match="backend module path misconfigured"),
         ):
-            get_backend_module(".pdf", backends)
+            _resolve_module_path("markitdown", ".pdf")
 
 
 class TestCheckBackendAvailable:
