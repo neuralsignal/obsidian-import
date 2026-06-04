@@ -94,46 +94,71 @@ def _extract_slide_content(
     media_config: MediaConfig,
 ) -> tuple[list[str], list[MediaFile]]:
     """Extract text, tables, and images from all shapes on a single slide."""
-    body_texts: list[str] = []
-    media_files: list[MediaFile] = []
-    image_index = 0
+    title_shape = slide.shapes.title  # type: ignore[attr-defined]
+    body_texts = _extract_text_from_shapes(slide, title_shape)
+    body_texts.extend(_extract_tables_from_shapes(slide))
+    image_texts, media_files = _extract_images_from_shapes(slide, slide_number, path, media_config)
+    body_texts.extend(image_texts)
+    return body_texts, media_files
 
+
+def _extract_text_from_shapes(slide: object, title_shape: object | None) -> list[str]:
+    """Extract text content from all text-frame shapes, skipping the title shape."""
+    texts: list[str] = []
     for shape in slide.shapes:  # type: ignore[attr-defined]
-        if shape.has_text_frame:
-            if shape == slide.shapes.title:  # type: ignore[attr-defined]
-                continue
-            for para in shape.text_frame.paragraphs:
-                text = para.text.strip()
-                if text:
-                    level = para.level or 0
-                    if level > 0:
-                        body_texts.append(f"{'  ' * level}- {text}")
-                    else:
-                        body_texts.append(text)
+        if not shape.has_text_frame or shape == title_shape:
+            continue
+        for para in shape.text_frame.paragraphs:
+            text = para.text.strip()
+            if text:
+                level = para.level or 0
+                if level > 0:
+                    texts.append(f"{'  ' * level}- {text}")
+                else:
+                    texts.append(text)
+    return texts
 
+
+def _extract_tables_from_shapes(slide: object) -> list[str]:
+    """Extract markdown tables from all table shapes."""
+    tables: list[str] = []
+    for shape in slide.shapes:  # type: ignore[attr-defined]
         if shape.has_table:
             table_md = _extract_table(shape.table)
             if table_md:
-                body_texts.append(table_md)
+                tables.append(table_md)
+    return tables
 
-        if media_config.extract_images and shape.shape_type == _PICTURE_SHAPE_TYPE:
-            image_index += 1
-            try:
-                ext = _mime_to_extension(shape.image.content_type)
-            except (AttributeError, ValueError):
-                ext = ".png"
-            filename = generate_media_filename(f"slide{slide_number}", image_index, ext)
-            mf = attempt_save_image(
-                _make_pptx_image_reader(shape, slide_number),
-                filename,
-                media_config,
-                f"slide {slide_number} of {path}",
-            )
-            if mf is not None:
-                media_files.append(mf)
-                body_texts.append(make_media_wikilink(path.stem, mf.filename))
 
-    return body_texts, media_files
+def _extract_images_from_shapes(
+    slide: object,
+    slide_number: int,
+    path: Path,
+    media_config: MediaConfig,
+) -> tuple[list[str], list[MediaFile]]:
+    """Extract images from picture shapes, returning wikilinks and media files."""
+    texts: list[str] = []
+    media_files: list[MediaFile] = []
+    image_index = 0
+    for shape in slide.shapes:  # type: ignore[attr-defined]
+        if not (media_config.extract_images and shape.shape_type == _PICTURE_SHAPE_TYPE):
+            continue
+        image_index += 1
+        try:
+            ext = _mime_to_extension(shape.image.content_type)
+        except (AttributeError, ValueError):
+            ext = ".png"
+        filename = generate_media_filename(f"slide{slide_number}", image_index, ext)
+        mf = attempt_save_image(
+            _make_pptx_image_reader(shape, slide_number),
+            filename,
+            media_config,
+            f"slide {slide_number} of {path}",
+        )
+        if mf is not None:
+            media_files.append(mf)
+            texts.append(make_media_wikilink(path.stem, mf.filename))
+    return texts, media_files
 
 
 def _make_pptx_image_reader(shape: object, slide_number: int) -> Callable[[], bytes]:
