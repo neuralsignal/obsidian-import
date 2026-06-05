@@ -79,8 +79,11 @@ def _build_converter(media_config: MediaConfig) -> DocumentConverter:
                 InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options),
             }
         )
-    except (ImportError, AttributeError):
-        log.warning("Docling image pipeline options not available; using defaults")
+    except ImportError as exc:
+        log.warning("Docling PDF pipeline options unavailable (missing import): %s; using defaults", exc)
+        return DocumentConverter()
+    except AttributeError as exc:
+        log.warning("Docling PDF pipeline options API mismatch: %s; using defaults", exc)
         return DocumentConverter()
 
 
