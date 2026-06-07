@@ -64,6 +64,8 @@ A high-quality ML-based extraction backend. Best for documents with complex layo
 pip install obsidian-import[docling]
 ```
 
+> **Security note:** The docling backend depends on `transformers`, which has a known deserialization vulnerability (PYSEC-2025-217) in the X-CLIP checkpoint flow. Only process documents from trusted sources when using this backend.
+
 ## Backend Selection
 
 Configure which backend to use per file type in `config.yaml`:

@@ -2,6 +2,11 @@
 
 Requires the [docling] extra: pip install obsidian-import[docling]
 Supports image extraction via PdfPipelineOptions when available.
+
+Security: docling pulls in ``transformers`` which has a known RCE via
+malicious X-CLIP checkpoints (PYSEC-2025-217 / ZDI-CAN-28308).  Only
+process documents and model checkpoints from trusted sources until an
+upstream fix is available.  See also CVE-2026-1839 (issue #129).
 """
 
 from __future__ import annotations
