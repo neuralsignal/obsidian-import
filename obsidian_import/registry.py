@@ -66,7 +66,8 @@ def _resolve_module_path(backend_name: str, extension: str) -> str:
     """
     if backend_name == "native":
         native_map = _BACKEND_MODULES["native"]
-        assert isinstance(native_map, dict)
+        if not isinstance(native_map, dict):
+            raise UnsupportedFormatError(f"Internal: native backend map misconfigured for '{extension}'")
         if extension not in native_map:
             raise UnsupportedFormatError(
                 f"No native backend for extension '{extension}'. "
@@ -75,7 +76,8 @@ def _resolve_module_path(backend_name: str, extension: str) -> str:
         module_path = native_map[extension]
     elif backend_name in ("markitdown", "docling"):
         module_path = _BACKEND_MODULES[backend_name]
-        assert isinstance(module_path, str)
+        if not isinstance(module_path, str):
+            raise UnsupportedFormatError(f"Internal: backend module path misconfigured for '{backend_name}'")
     else:
         raise UnsupportedFormatError(f"Unknown backend '{backend_name}' for extension '{extension}'")
 

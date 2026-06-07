@@ -8,7 +8,13 @@ import pytest
 
 from obsidian_import.config import BackendsConfig, MediaConfig
 from obsidian_import.exceptions import UnsupportedFormatError
-from obsidian_import.registry import check_backend_available, extract_with_backend, get_backend_module
+from obsidian_import.registry import (
+    _BACKEND_MODULES,
+    _resolve_module_path,
+    check_backend_available,
+    extract_with_backend,
+    get_backend_module,
+)
 
 _TEST_MEDIA_CONFIG = MediaConfig(
     extract_images=True,
@@ -214,6 +220,22 @@ class TestExtractWithBackend:
             )
 
         assert received["max_rows_per_sheet"] == 42
+
+
+class TestResolveModulePath:
+    def test_native_map_misconfigured_raises(self):
+        with (
+            patch.dict(_BACKEND_MODULES, {"native": "not-a-dict"}),
+            pytest.raises(UnsupportedFormatError, match="native backend map misconfigured"),
+        ):
+            _resolve_module_path("native", ".pdf")
+
+    def test_non_native_module_path_misconfigured_raises(self):
+        with (
+            patch.dict(_BACKEND_MODULES, {"markitdown": {"unexpected": "dict"}}),
+            pytest.raises(UnsupportedFormatError, match="backend module path misconfigured"),
+        ):
+            _resolve_module_path("markitdown", ".pdf")
 
 
 class TestCheckBackendAvailable:
