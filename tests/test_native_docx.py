@@ -507,6 +507,21 @@ class TestExtractParagraphEdgeCases:
         result = _extract_paragraph(para)
         assert result == f"{'#' * (level + 1)} Text"
 
+    @given(level=st.integers(min_value=7, max_value=999_999_999))
+    def test_heading_level_capped_at_six(self, level):
+        """Heading levels above 6 are clamped to 6 to prevent memory exhaustion."""
+        ns = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+        para = Element(f"{{{ns}}}p")
+        ppr = SubElement(para, f"{{{ns}}}pPr")
+        pstyle = SubElement(ppr, f"{{{ns}}}pStyle")
+        pstyle.set(f"{{{ns}}}val", f"Heading{level}")
+        run = SubElement(para, f"{{{ns}}}r")
+        t = SubElement(run, f"{{{ns}}}t")
+        t.text = "Text"
+
+        result = _extract_paragraph(para)
+        assert result == "####### Text"
+
 
 class TestDecompressionBombGuard:
     """Verify that oversized ZIP entries are rejected before decompression."""
