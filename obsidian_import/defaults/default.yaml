@@ -28,6 +28,21 @@ extraction:
   timeout_seconds: 120
   max_file_size_mb: 100
   xlsx_max_rows_per_sheet: 500
+  # Where the extraction work runs while the timeout is enforced:
+  #   thread  — daemon thread; lower latency per file, but a timed-out
+  #             extraction keeps running (and holding memory) in the
+  #             background. Best for one-shot CLI use.
+  #   process — separate process; true cancellation (the process is killed
+  #             on timeout) plus memory isolation. Recommended for
+  #             long-running daemons. Two costs vs thread mode: each call
+  #             spawns a fresh interpreter, so backend imports are re-paid
+  #             per file and count against timeout_seconds (negligible for
+  #             native backends, several seconds to tens of seconds for
+  #             docling/torch — raise timeout_seconds or prefer thread mode
+  #             for docling batch runs). Script callers must invoke
+  #             extract_file/extract_text under `if __name__ == "__main__":`
+  #             because spawn re-imports the calling module in the child.
+  isolation: thread
 
 media:
   extract_images: true

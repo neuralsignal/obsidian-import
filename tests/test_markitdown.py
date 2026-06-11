@@ -28,7 +28,7 @@ class TestMarkitdownExtract:
             import obsidian_import.backends.markitdown as mod
 
             importlib.reload(mod)
-            result = mod.extract(test_file, timeout_seconds=30)
+            result = mod.extract(test_file, timeout_seconds=30, isolation="thread")
 
         assert "Extracted content" in result
 
@@ -50,7 +50,7 @@ class TestMarkitdownExtract:
             import obsidian_import.backends.markitdown as mod
 
             importlib.reload(mod)
-            result = mod.extract(test_file, timeout_seconds=30)
+            result = mod.extract(test_file, timeout_seconds=30, isolation="thread")
 
         assert "No text content" in result
 
@@ -64,4 +64,4 @@ class TestMarkitdownExtract:
             import obsidian_import.backends.markitdown as mod
 
             importlib.reload(mod)
-            mod.extract(Path("/tmp/test.html"), timeout_seconds=30)
+            mod.extract(Path("/tmp/test.html"), timeout_seconds=30, isolation="thread")

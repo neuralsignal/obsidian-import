@@ -42,9 +42,13 @@ class _DocxZipContext:
     max_bytes: int
 
 
-def extract(path: Path, timeout_seconds: int, media_config: MediaConfig, max_file_size_mb: int) -> ExtractionResult:
+def extract(
+    path: Path, timeout_seconds: int, isolation: str, media_config: MediaConfig, max_file_size_mb: int
+) -> ExtractionResult:
     """Extract text and images from a DOCX file, returning ExtractionResult."""
-    return run_with_timeout(lambda: _extract_docx(path, media_config, max_file_size_mb), timeout_seconds, "DOCX", path)
+    return run_with_timeout(
+        _extract_docx, (path, media_config, max_file_size_mb), timeout_seconds, "DOCX", path, isolation
+    )
 
 
 def _check_zip_entry_size(zf: zipfile.ZipFile, entry_name: str, max_bytes: int, path: Path) -> None:

@@ -105,6 +105,7 @@ def extract_with_backend(
     backends: BackendsConfig,
     timeout_seconds: int,
     media_config: MediaConfig,
+    isolation: str,
     **kwargs: object,
 ) -> ExtractionResult:
     """Extract a file using the appropriate backend.
@@ -113,12 +114,14 @@ def extract_with_backend(
     Format-specific kwargs (e.g. max_rows_per_sheet for xlsx) are filtered to
     only those the chosen backend's extract() function accepts. If a kwarg is
     dropped, a warning is emitted so the capability gap is visible.
+    media_config and isolation are forwarded only to backends whose extract()
+    accepts them (backends without a timeout wrapper take no isolation arg).
     """
     extension = path.suffix.lower()
     module = get_backend_module(extension, backends)
 
     sig = inspect.signature(module.extract)
-    accepted = set(sig.parameters.keys()) - {"path", "timeout_seconds", "media_config"}
+    accepted = set(sig.parameters.keys()) - {"path", "timeout_seconds", "media_config", "isolation"}
     unsupported = {k for k in kwargs if k not in accepted}
     if unsupported:
         backend_name = module.__name__.split(".")[-1]
@@ -128,12 +131,13 @@ def extract_with_backend(
             sorted(unsupported),
             extension,
         )
-    filtered_kwargs = {k: v for k, v in kwargs.items() if k not in unsupported}
-
+    call_kwargs = {k: v for k, v in kwargs.items() if k not in unsupported}
     if "media_config" in sig.parameters:
-        result = module.extract(path, timeout_seconds=timeout_seconds, media_config=media_config, **filtered_kwargs)
-    else:
-        result = module.extract(path, timeout_seconds=timeout_seconds, **filtered_kwargs)
+        call_kwargs["media_config"] = media_config
+    if "isolation" in sig.parameters:
+        call_kwargs["isolation"] = isolation
+
+    result = module.extract(path, timeout_seconds=timeout_seconds, **call_kwargs)
 
     if isinstance(result, str):
         return ExtractionResult(markdown=result, media_files=())

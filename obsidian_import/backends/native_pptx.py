@@ -26,9 +26,9 @@ log = logging.getLogger(__name__)
 _PICTURE_SHAPE_TYPE = 13
 
 
-def extract(path: Path, timeout_seconds: int, media_config: MediaConfig) -> ExtractionResult:
+def extract(path: Path, timeout_seconds: int, isolation: str, media_config: MediaConfig) -> ExtractionResult:
     """Extract text and images from a PPTX file, returning ExtractionResult."""
-    return run_with_timeout(lambda: _extract_pptx(path, media_config), timeout_seconds, "PPTX", path)
+    return run_with_timeout(_extract_pptx, (path, media_config), timeout_seconds, "PPTX", path, isolation)
 
 
 def _extract_pptx(path: Path, media_config: MediaConfig) -> ExtractionResult:

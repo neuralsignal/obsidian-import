@@ -10,3 +10,4 @@ build/
 .ruff_cache/
 .coverage
 site/
+.coverage.*

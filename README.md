@@ -79,6 +79,34 @@ text = extract_text(Path("document.docx"), config)
 
 This sets all backends to the specified backend name. All parameters are required — no hidden defaults.
 
+### `config_from_overrides()` — Partial Overrides
+
+For library consumers that need full control over individual config keys without writing a YAML file. The overrides dict deep-merges onto the bundled defaults, exactly like `load_config` does for user YAML:
+
+```python
+from pathlib import Path
+from obsidian_import import extract_text, config_from_overrides
+
+if __name__ == "__main__":
+    config = config_from_overrides(
+        {
+            "extraction": {"max_file_size_mb": 25, "isolation": "process"},
+            "backends": {"pdf": "docling"},
+        }
+    )
+    text = extract_text(Path("document.pdf"), config)
+```
+
+With `isolation: "process"`, extraction calls in a script must run under an
+`if __name__ == "__main__":` guard: multiprocessing spawn re-imports the
+calling module in the child, and an unguarded top-level call crashes the
+child before it can extract anything. (Installed CLI entry points and pytest
+are unaffected.) Process mode also spawns a fresh interpreter per file, so
+backend imports are re-paid on every call and count against
+`timeout_seconds` — negligible for native backends, but several seconds to
+tens of seconds for docling/torch. Prefer `thread` mode for docling batch
+runs, or raise `timeout_seconds`.
+
 ## Configuration
 
 Create a `config.yaml`:
@@ -115,8 +143,14 @@ backends:
 
 extraction:
   timeout_seconds: 120
-  max_file_size_mb: 100
+  max_file_size_mb: 100        # enforced both in discovery and at the
+                               # extract_file/extract_text entry points
   xlsx_max_rows_per_sheet: 500
+  isolation: thread            # thread = lower latency (one-shot CLI use);
+                               # process = killed on timeout + memory isolation
+                               # (recommended for long-running daemons; see
+                               # the __main__-guard and per-file import-cost
+                               # notes above)
 
 # Pass-through: copy files as-is without extraction
 passthrough:
