@@ -1,16 +1,16 @@
-"""Tests for DOCX extraction (mock defusedxml)."""
+"""Tests for DOCX text/structure extraction (mock defusedxml).
 
-import io
-import logging
+Embedded-image and decompression-limit tests live in test_native_docx_images.py.
+"""
+
 import zipfile
 from pathlib import Path
-from unittest.mock import patch
 from xml.etree.ElementTree import Element, SubElement
 
 import pytest
+from conftest import make_test_media_config
 from hypothesis import given
 from hypothesis import strategies as st
-from PIL import Image
 
 from obsidian_import.backends.native_docx import (
     _extract_paragraph,
@@ -18,17 +18,9 @@ from obsidian_import.backends.native_docx import (
     _local_name,
     extract,
 )
-from obsidian_import.config import MediaConfig
 from obsidian_import.exceptions import ExtractionError
 
-_TEST_MEDIA_CONFIG = MediaConfig(
-    extract_images=True,
-    image_format="png",
-    image_max_dimension=0,
-    image_max_bytes=50_000_000,
-    image_max_pixels=50_000_000,
-    image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
-)
+_TEST_MEDIA_CONFIG = make_test_media_config()
 
 
 def _make_docx(tmp_path: Path, name: str, xml_content: str) -> Path:
@@ -81,19 +73,25 @@ _TABLE_DOC = """<?xml version="1.0" encoding="UTF-8"?>
 class TestNativeDocxExtract:
     def test_extracts_simple_text(self, tmp_path):
         docx = _make_docx(tmp_path, "simple.docx", _SIMPLE_DOC)
-        result = extract(docx, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=50)
+        result = extract(
+            docx, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=50
+        )
         assert "# simple" in result.markdown
         assert "Hello World" in result.markdown
 
     def test_extracts_headings(self, tmp_path):
         docx = _make_docx(tmp_path, "heading.docx", _HEADING_DOC)
-        result = extract(docx, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=50)
+        result = extract(
+            docx, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=50
+        )
         assert "## Title" in result.markdown
         assert "Body text" in result.markdown
 
     def test_extracts_tables(self, tmp_path):
         docx = _make_docx(tmp_path, "table.docx", _TABLE_DOC)
-        result = extract(docx, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=50)
+        result = extract(
+            docx, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=50
+        )
         assert "Col1" in result.markdown
         assert "Col2" in result.markdown
         assert "|" in result.markdown
@@ -102,339 +100,28 @@ class TestNativeDocxExtract:
         bad_file = tmp_path / "bad.docx"
         bad_file.write_bytes(b"not a zip")
         with pytest.raises(ExtractionError, match="Not a valid DOCX"):
-            extract(bad_file, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=50)
+            extract(
+                bad_file, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=50
+            )
 
     def test_missing_document_xml_raises(self, tmp_path):
         docx_path = tmp_path / "empty.docx"
         with zipfile.ZipFile(str(docx_path), "w") as zf:
             zf.writestr("content.xml", "<root/>")
         with pytest.raises(ExtractionError, match="No word/document.xml"):
-            extract(docx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=50)
+            extract(
+                docx_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=50
+            )
 
     def test_no_body_returns_message(self, tmp_path):
         xml = """<?xml version="1.0" encoding="UTF-8"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
 </w:document>"""
         docx = _make_docx(tmp_path, "nobody.docx", xml)
-        result = extract(docx, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=50)
-        assert "No body content" in result.markdown
-
-    def test_extracts_embedded_images(self, tmp_path):
-        """DOCX with an embedded image extracts it and adds per-document wikilink."""
-        xml = """<?xml version="1.0" encoding="UTF-8"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-            xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
-            xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
-            xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
-  <w:body>
-    <w:p>
-      <w:r><w:t>Before image</w:t></w:r>
-      <w:r>
-        <w:drawing>
-          <wp:inline>
-            <a:graphic>
-              <a:graphicData>
-                <a:blip r:embed="rId1"/>
-              </a:graphicData>
-            </a:graphic>
-          </wp:inline>
-        </w:drawing>
-      </w:r>
-    </w:p>
-  </w:body>
-</w:document>"""
-
-        rels_xml = """<?xml version="1.0" encoding="UTF-8"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Target="media/image1.png"
-    Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"/>
-</Relationships>"""
-
-        img = Image.new("RGB", (10, 10), color="red")
-        buf = io.BytesIO()
-        img.save(buf, format="PNG")
-        img_bytes = buf.getvalue()
-
-        docx_path = tmp_path / "withimage.docx"
-        with zipfile.ZipFile(str(docx_path), "w") as zf:
-            zf.writestr("word/document.xml", xml)
-            zf.writestr("word/_rels/document.xml.rels", rels_xml)
-            zf.writestr("word/media/image1.png", img_bytes)
-
-        result = extract(docx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=50)
-        assert len(result.media_files) == 1
-        assert "![[withimage/" in result.markdown
-        assert "![[media/" not in result.markdown
-        assert result.media_files[0].media_type == "image"
-
-    def test_image_only_paragraph(self, tmp_path):
-        """Paragraph with image but no text runs produces wikilink (line 106)."""
-        xml = """<?xml version="1.0" encoding="UTF-8"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-            xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
-            xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
-            xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
-  <w:body>
-    <w:p>
-      <w:r>
-        <w:drawing>
-          <wp:inline>
-            <a:graphic>
-              <a:graphicData>
-                <a:blip r:embed="rId1"/>
-              </a:graphicData>
-            </a:graphic>
-          </wp:inline>
-        </w:drawing>
-      </w:r>
-    </w:p>
-  </w:body>
-</w:document>"""
-
-        rels_xml = """<?xml version="1.0" encoding="UTF-8"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Target="media/image1.png"
-    Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"/>
-</Relationships>"""
-
-        img = Image.new("RGB", (10, 10), color="blue")
-        buf = io.BytesIO()
-        img.save(buf, format="PNG")
-        img_bytes = buf.getvalue()
-
-        docx_path = tmp_path / "imageonly.docx"
-        with zipfile.ZipFile(str(docx_path), "w") as zf:
-            zf.writestr("word/document.xml", xml)
-            zf.writestr("word/_rels/document.xml.rels", rels_xml)
-            zf.writestr("word/media/image1.png", img_bytes)
-
-        result = extract(docx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=50)
-        assert len(result.media_files) == 1
-        assert "![[imageonly/" in result.markdown
-
-    def test_path_traversal_in_relationship_target_skipped(self, tmp_path):
-        """DOCX with path traversal in relationship target skips the image."""
-        xml = """<?xml version="1.0" encoding="UTF-8"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-            xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
-            xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
-            xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
-  <w:body>
-    <w:p>
-      <w:r><w:t>Text</w:t></w:r>
-      <w:r>
-        <w:drawing>
-          <wp:inline>
-            <a:graphic>
-              <a:graphicData>
-                <a:blip r:embed="rId1"/>
-              </a:graphicData>
-            </a:graphic>
-          </wp:inline>
-        </w:drawing>
-      </w:r>
-    </w:p>
-  </w:body>
-</w:document>"""
-
-        rels_xml = """<?xml version="1.0" encoding="UTF-8"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Target="../docProps/core.xml"
-    Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"/>
-</Relationships>"""
-
-        docx_path = tmp_path / "traversal.docx"
-        with zipfile.ZipFile(str(docx_path), "w") as zf:
-            zf.writestr("word/document.xml", xml)
-            zf.writestr("word/_rels/document.xml.rels", rels_xml)
-            zf.writestr("docProps/core.xml", b"<secret>data</secret>")
-
-        result = extract(docx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=50)
-        assert result.media_files == ()
-
-    def test_non_media_relationship_target_skipped(self, tmp_path):
-        """DOCX with relationship target outside word/media/ is skipped."""
-        xml = """<?xml version="1.0" encoding="UTF-8"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-            xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
-            xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
-            xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
-  <w:body>
-    <w:p>
-      <w:r><w:t>Text</w:t></w:r>
-      <w:r>
-        <w:drawing>
-          <wp:inline>
-            <a:graphic>
-              <a:graphicData>
-                <a:blip r:embed="rId1"/>
-              </a:graphicData>
-            </a:graphic>
-          </wp:inline>
-        </w:drawing>
-      </w:r>
-    </w:p>
-  </w:body>
-</w:document>"""
-
-        rels_xml = """<?xml version="1.0" encoding="UTF-8"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Target="embeddings/oleObject1.bin"
-    Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"/>
-</Relationships>"""
-
-        docx_path = tmp_path / "nonmedia.docx"
-        with zipfile.ZipFile(str(docx_path), "w") as zf:
-            zf.writestr("word/document.xml", xml)
-            zf.writestr("word/_rels/document.xml.rels", rels_xml)
-            zf.writestr("word/embeddings/oleObject1.bin", b"binary data")
-
-        result = extract(docx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=50)
-        assert result.media_files == ()
-
-    def test_no_images_when_disabled(self, tmp_path):
-        """When extract_images=False, no images should be extracted."""
-        docx = _make_docx(tmp_path, "simple.docx", _SIMPLE_DOC)
-        config = MediaConfig(
-            extract_images=False,
-            image_format="png",
-            image_max_dimension=0,
-            image_max_bytes=50_000_000,
-            image_max_pixels=50_000_000,
-            image_allowed_formats=frozenset({"PNG", "JPEG", "GIF", "BMP", "TIFF", "WEBP"}),
+        result = extract(
+            docx, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=50
         )
-        result = extract(docx, timeout_seconds=30, media_config=config, max_file_size_mb=50)
-        assert result.media_files == ()
-
-    def test_image_extraction_error_logs_warning(self, tmp_path, caplog):
-        """When save_media_to_temp raises ExtractionError, warning is logged and extraction continues."""
-        xml = """<?xml version="1.0" encoding="UTF-8"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-            xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
-            xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
-            xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
-  <w:body>
-    <w:p>
-      <w:r><w:t>Text with broken image</w:t></w:r>
-      <w:r>
-        <w:drawing>
-          <wp:inline>
-            <a:graphic>
-              <a:graphicData>
-                <a:blip r:embed="rId1"/>
-              </a:graphicData>
-            </a:graphic>
-          </wp:inline>
-        </w:drawing>
-      </w:r>
-    </w:p>
-  </w:body>
-</w:document>"""
-
-        rels_xml = """<?xml version="1.0" encoding="UTF-8"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Target="media/image1.png"
-    Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"/>
-</Relationships>"""
-
-        docx_path = tmp_path / "broken_img.docx"
-        with zipfile.ZipFile(str(docx_path), "w") as zf:
-            zf.writestr("word/document.xml", xml)
-            zf.writestr("word/_rels/document.xml.rels", rels_xml)
-            zf.writestr("word/media/image1.png", b"not valid image bytes")
-
-        with (
-            patch(
-                "obsidian_import.media.save_media_to_temp",
-                side_effect=ExtractionError("PIL failed"),
-            ),
-            caplog.at_level(logging.WARNING),
-        ):
-            result = extract(docx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=50)
-
-        assert result.media_files == ()
-        assert "Text with broken image" in result.markdown
-        assert "Failed to extract image" in caplog.text
-
-    def test_embed_id_not_in_rel_map_is_skipped(self, tmp_path):
-        """DOCX with a blip referencing an embed ID absent from rel_map skips silently."""
-        xml = """<?xml version="1.0" encoding="UTF-8"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-            xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
-            xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
-            xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
-  <w:body>
-    <w:p>
-      <w:r><w:t>Text with dangling embed</w:t></w:r>
-      <w:r>
-        <w:drawing>
-          <wp:inline>
-            <a:graphic>
-              <a:graphicData>
-                <a:blip r:embed="rId99"/>
-              </a:graphicData>
-            </a:graphic>
-          </wp:inline>
-        </w:drawing>
-      </w:r>
-    </w:p>
-  </w:body>
-</w:document>"""
-
-        rels_xml = """<?xml version="1.0" encoding="UTF-8"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Target="media/image1.png"
-    Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"/>
-</Relationships>"""
-
-        docx_path = tmp_path / "dangling.docx"
-        with zipfile.ZipFile(str(docx_path), "w") as zf:
-            zf.writestr("word/document.xml", xml)
-            zf.writestr("word/_rels/document.xml.rels", rels_xml)
-
-        result = extract(docx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=50)
-        assert result.media_files == ()
-        assert "Text with dangling embed" in result.markdown
-
-    def test_media_path_missing_from_zip_is_skipped(self, tmp_path):
-        """DOCX with rel_map resolving to a path not present in the zip skips silently."""
-        xml = """<?xml version="1.0" encoding="UTF-8"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-            xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
-            xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
-            xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
-  <w:body>
-    <w:p>
-      <w:r><w:t>Text with truncated archive</w:t></w:r>
-      <w:r>
-        <w:drawing>
-          <wp:inline>
-            <a:graphic>
-              <a:graphicData>
-                <a:blip r:embed="rId1"/>
-              </a:graphicData>
-            </a:graphic>
-          </wp:inline>
-        </w:drawing>
-      </w:r>
-    </w:p>
-  </w:body>
-</w:document>"""
-
-        rels_xml = """<?xml version="1.0" encoding="UTF-8"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Target="media/image1.png"
-    Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"/>
-</Relationships>"""
-
-        docx_path = tmp_path / "missing_media.docx"
-        with zipfile.ZipFile(str(docx_path), "w") as zf:
-            zf.writestr("word/document.xml", xml)
-            zf.writestr("word/_rels/document.xml.rels", rels_xml)
-
-        result = extract(docx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=50)
-        assert result.media_files == ()
-        assert "Text with truncated archive" in result.markdown
+        assert "No body content" in result.markdown
 
     def test_extract_table_empty_rows(self):
         """A w:tbl with no w:tr children returns empty string."""
@@ -506,84 +193,3 @@ class TestExtractParagraphEdgeCases:
 
         result = _extract_paragraph(para)
         assert result == f"{'#' * (level + 1)} Text"
-
-
-class TestDecompressionBombGuard:
-    """Verify that oversized ZIP entries are rejected before decompression."""
-
-    def test_oversized_document_xml_raises(self, tmp_path):
-        """document.xml with uncompressed size exceeding limit raises ExtractionError."""
-        large_xml = (
-            '<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>'
-            + ("A" * 2_000_000)
-            + "</w:t></w:r></w:p></w:body></w:document>"
-        )
-        docx_path = tmp_path / "bomb.docx"
-        with zipfile.ZipFile(str(docx_path), "w", compression=zipfile.ZIP_DEFLATED) as zf:
-            zf.writestr("word/document.xml", large_xml)
-
-        with pytest.raises(ExtractionError, match="uncompressed size"):
-            extract(docx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=1)
-
-    def test_oversized_rels_xml_raises(self, tmp_path):
-        """document.xml.rels with uncompressed size exceeding limit raises ExtractionError."""
-        small_doc = _SIMPLE_DOC
-        large_rels = (
-            '<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-            + ("<!-- " + "X" * 1000 + " -->\n") * 2000
-            + "</Relationships>"
-        )
-        docx_path = tmp_path / "bomb_rels.docx"
-        with zipfile.ZipFile(str(docx_path), "w", compression=zipfile.ZIP_DEFLATED) as zf:
-            zf.writestr("word/document.xml", small_doc)
-            zf.writestr("word/_rels/document.xml.rels", large_rels)
-
-        with pytest.raises(ExtractionError, match="uncompressed size"):
-            extract(docx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=1)
-
-    def test_oversized_media_entry_raises(self, tmp_path):
-        """Media file with uncompressed size exceeding limit raises ExtractionError."""
-        xml = """<?xml version="1.0" encoding="UTF-8"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-            xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
-            xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
-            xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
-  <w:body>
-    <w:p>
-      <w:r>
-        <w:drawing>
-          <wp:inline>
-            <a:graphic>
-              <a:graphicData>
-                <a:blip r:embed="rId1"/>
-              </a:graphicData>
-            </a:graphic>
-          </wp:inline>
-        </w:drawing>
-      </w:r>
-    </w:p>
-  </w:body>
-</w:document>"""
-
-        rels_xml = """<?xml version="1.0" encoding="UTF-8"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Target="media/image1.png"
-    Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"/>
-</Relationships>"""
-
-        large_image = b"\x00" * 2_000_000
-
-        docx_path = tmp_path / "bomb_media.docx"
-        with zipfile.ZipFile(str(docx_path), "w", compression=zipfile.ZIP_DEFLATED) as zf:
-            zf.writestr("word/document.xml", xml)
-            zf.writestr("word/_rels/document.xml.rels", rels_xml)
-            zf.writestr("word/media/image1.png", large_image)
-
-        with pytest.raises(ExtractionError, match="uncompressed size"):
-            extract(docx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=1)
-
-    def test_within_limit_succeeds(self, tmp_path):
-        """DOCX within the size limit extracts successfully."""
-        docx = _make_docx(tmp_path, "ok.docx", _SIMPLE_DOC)
-        result = extract(docx, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=50)
-        assert "Hello World" in result.markdown

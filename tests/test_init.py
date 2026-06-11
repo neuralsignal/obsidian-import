@@ -44,51 +44,66 @@ class TestEstimatePageCount:
 # ---------------------------------------------------------------------------
 
 
+def _touch(tmp_path: Path, name: str) -> Path:
+    """Create a small real file — extract_file/extract_text stat the path for the size guard."""
+    path = tmp_path / name
+    path.write_bytes(b"stub")
+    return path
+
+
 class TestExtractFile:
-    def test_xlsx_forwards_max_rows_per_sheet(self) -> None:
+    def test_xlsx_forwards_max_rows_per_sheet(self, tmp_path: Path) -> None:
         config = _config()
         fake_result = ExtractionResult(markdown="table data", media_files=())
 
         with patch("obsidian_import.extract_with_backend", return_value=fake_result) as mock:
-            doc = extract_file(Path("/tmp/sheet.xlsx"), config)
+            doc = extract_file(_touch(tmp_path, "sheet.xlsx"), config)
             call_kwargs = mock.call_args
             assert call_kwargs.kwargs["max_rows_per_sheet"] == config.extraction.xlsx_max_rows_per_sheet
             assert doc.markdown == "table data"
 
-    def test_image_file_sets_associated_files(self) -> None:
+    def test_isolation_forwarded_from_config(self, tmp_path: Path) -> None:
+        config = _config()
+        fake_result = ExtractionResult(markdown="text", media_files=())
+
+        with patch("obsidian_import.extract_with_backend", return_value=fake_result) as mock:
+            extract_file(_touch(tmp_path, "report.pdf"), config)
+            assert mock.call_args.kwargs["isolation"] == config.extraction.isolation
+
+    def test_image_file_sets_associated_files(self, tmp_path: Path) -> None:
         config = _config()
         fake_result = ExtractionResult(markdown="![img](data)", media_files=())
-        path = Path("/tmp/photo.png")
+        path = _touch(tmp_path, "photo.png")
 
         with patch("obsidian_import.extract_with_backend", return_value=fake_result):
             doc = extract_file(path, config)
             assert doc.associated_files == (path,)
 
-    def test_non_image_file_has_no_associated_files(self) -> None:
+    def test_non_image_file_has_no_associated_files(self, tmp_path: Path) -> None:
         config = _config()
         fake_result = ExtractionResult(markdown="text", media_files=())
 
         with patch("obsidian_import.extract_with_backend", return_value=fake_result):
-            doc = extract_file(Path("/tmp/report.pdf"), config)
+            doc = extract_file(_touch(tmp_path, "report.pdf"), config)
             assert doc.associated_files == ()
 
-    def test_media_files_appended_as_wikilinks(self) -> None:
+    def test_media_files_appended_as_wikilinks(self, tmp_path: Path) -> None:
         config = _config()
         mf = MediaFile(source_path=Path("/tmp/img.png"), filename="img.png", media_type="image/png")
         fake_result = ExtractionResult(markdown="content", media_files=(mf,))
 
         with patch("obsidian_import.extract_with_backend", return_value=fake_result):
-            doc = extract_file(Path("/tmp/report.pdf"), config)
+            doc = extract_file(_touch(tmp_path, "report.pdf"), config)
             assert "![[report/img.png]]" in doc.markdown
 
-    def test_media_wikilink_not_duplicated(self) -> None:
+    def test_media_wikilink_not_duplicated(self, tmp_path: Path) -> None:
         config = _config()
         mf = MediaFile(source_path=Path("/tmp/img.png"), filename="img.png", media_type="image/png")
         existing_md = "content\n\n![[report/img.png]]"
         fake_result = ExtractionResult(markdown=existing_md, media_files=(mf,))
 
         with patch("obsidian_import.extract_with_backend", return_value=fake_result):
-            doc = extract_file(Path("/tmp/report.pdf"), config)
+            doc = extract_file(_touch(tmp_path, "report.pdf"), config)
             assert doc.markdown.count("![[report/img.png]]") == 1
 
 
@@ -98,18 +113,18 @@ class TestExtractFile:
 
 
 class TestExtractText:
-    def test_returns_plain_markdown(self) -> None:
+    def test_returns_plain_markdown(self, tmp_path: Path) -> None:
         config = _config()
         fake_result = ExtractionResult(markdown="hello world", media_files=())
 
         with patch("obsidian_import.extract_with_backend", return_value=fake_result):
-            text = extract_text(Path("/tmp/doc.pdf"), config)
+            text = extract_text(_touch(tmp_path, "doc.pdf"), config)
             assert text == "hello world"
 
-    def test_xlsx_forwards_max_rows_per_sheet(self) -> None:
+    def test_xlsx_forwards_max_rows_per_sheet(self, tmp_path: Path) -> None:
         config = _config()
         fake_result = ExtractionResult(markdown="table", media_files=())
 
         with patch("obsidian_import.extract_with_backend", return_value=fake_result) as mock:
-            extract_text(Path("/tmp/sheet.xlsx"), config)
+            extract_text(_touch(tmp_path, "sheet.xlsx"), config)
             assert mock.call_args.kwargs["max_rows_per_sheet"] == config.extraction.xlsx_max_rows_per_sheet

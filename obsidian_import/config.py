@@ -11,6 +11,7 @@ from typing import Any
 import yaml
 
 from obsidian_import.exceptions import ConfigError
+from obsidian_import.timeout import validated_isolation
 
 
 @dataclass(frozen=True)
@@ -58,6 +59,15 @@ class ExtractionConfig:
     timeout_seconds: int
     max_file_size_mb: int
     xlsx_max_rows_per_sheet: int
+    isolation: str
+
+    def exceeds_max_file_size(self, size_bytes: int) -> bool:
+        """True iff size_bytes is strictly over the max_file_size_mb limit.
+
+        Single source of truth for the size gate: discover_files filters with
+        it and the extract_file/extract_text entry guard rejects with it.
+        """
+        return size_bytes > self.max_file_size_mb * 1024 * 1024
 
 
 @dataclass(frozen=True)
@@ -164,6 +174,7 @@ def _build_config(raw: dict[str, Any], config_dir: Path | None) -> ImportConfig:
             timeout_seconds=int(extraction_raw["timeout_seconds"]),
             max_file_size_mb=int(extraction_raw["max_file_size_mb"]),
             xlsx_max_rows_per_sheet=int(extraction_raw["xlsx_max_rows_per_sheet"]),
+            isolation=validated_isolation(extraction_raw["isolation"]),
         ),
         passthrough=PassthroughConfig(
             extensions=tuple(passthrough_raw.get("extensions", ())),
@@ -201,6 +212,19 @@ def config_for_backend(
     base["extraction"]["xlsx_max_rows_per_sheet"] = xlsx_max_rows_per_sheet
     base["media"]["extract_images"] = extract_images
     return _build_config(base, config_dir=None)
+
+
+def config_from_overrides(overrides: dict[str, Any]) -> ImportConfig:
+    """Build an ImportConfig from a partial overrides dict merged onto the bundled defaults.
+
+    This is the supported public API for library consumers (e.g. m365-extract)
+    that need a config from a partial dict without writing a YAML file.
+    Overrides deep-merge onto the bundled default.yaml, exactly like
+    load_config does for user YAML files. Relative paths are not resolved
+    (there is no config file directory to resolve against).
+    """
+    merged = _deep_merge(_load_default_yaml(), overrides)
+    return _build_config(merged, config_dir=None)
 
 
 def default_config() -> ImportConfig:

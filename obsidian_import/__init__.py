@@ -4,6 +4,7 @@ Public API:
     extract_file(path, config) -> ExtractedDocument
     extract_text(path, config) -> str
     discover_files(config) -> Iterator[DiscoveredFile]
+    config_from_overrides(overrides) -> ImportConfig
 """
 
 from __future__ import annotations
@@ -14,8 +15,10 @@ from pathlib import Path
 from obsidian_import.backends.native_image import is_image_extension
 from obsidian_import.config import ImportConfig
 from obsidian_import.config import config_for_backend as config_for_backend
+from obsidian_import.config import config_from_overrides as config_from_overrides
 from obsidian_import.discovery import DiscoveredFile
 from obsidian_import.discovery import discover_files as _discover_files
+from obsidian_import.exceptions import ExtractionError
 from obsidian_import.extraction_result import ExtractionResult
 from obsidian_import.formatting import make_media_wikilink
 from obsidian_import.output import ExtractedDocument
@@ -32,8 +35,38 @@ def _build_extra_kwargs(extension: str, config: ImportConfig) -> dict[str, objec
     return extra_kwargs
 
 
+def _check_size_limit(path: Path, config: ImportConfig) -> None:
+    """Reject files exceeding extraction.max_file_size_mb before any backend work.
+
+    Without this guard, callers that pass paths directly (bypassing
+    discover_files) only find out via the extraction timeout. Uses the same
+    ExtractionConfig.exceeds_max_file_size predicate as discover_files.
+    """
+    try:
+        size_bytes = path.stat().st_size
+    except OSError as exc:
+        # Keep the ObsidianImportError contract: a file deleted between
+        # discovery and extraction must not crash CLI batch runs.
+        raise ExtractionError(
+            f"Cannot stat {path} for the max_file_size_mb check: {exc}. "
+            "The file may have been moved or deleted since discovery; "
+            "verify it exists and is readable."
+        ) from exc
+    limit_mb = config.extraction.max_file_size_mb
+    if config.extraction.exceeds_max_file_size(size_bytes):
+        size_mb = size_bytes / (1024 * 1024)
+        raise ExtractionError(
+            f"{path.name} is {size_mb:.1f} MB, exceeding the configured max_file_size_mb "
+            f"limit of {limit_mb} MB; refusing extraction"
+        )
+
+
 def _call_backend(path: Path, config: ImportConfig) -> ExtractionResult:
-    """Run the configured backend on a file, including format-specific kwargs."""
+    """Run the configured backend on a file, including format-specific kwargs.
+
+    Enforces the file-size limit before backend dispatch.
+    """
+    _check_size_limit(path, config)
     extension = path.suffix.lower()
     extra_kwargs = _build_extra_kwargs(extension, config)
     return extract_with_backend(
@@ -41,6 +74,7 @@ def _call_backend(path: Path, config: ImportConfig) -> ExtractionResult:
         backends=config.backends,
         timeout_seconds=config.extraction.timeout_seconds,
         media_config=config.media,
+        isolation=config.extraction.isolation,
         **extra_kwargs,
     )
 

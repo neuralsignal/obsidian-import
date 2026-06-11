@@ -11,9 +11,9 @@ from obsidian_import.formatting import render_markdown_table
 from obsidian_import.timeout import run_with_timeout
 
 
-def extract(path: Path, timeout_seconds: int, max_rows_per_sheet: int) -> str:
+def extract(path: Path, timeout_seconds: int, isolation: str, max_rows_per_sheet: int) -> str:
     """Extract data from an XLSX file, returning markdown."""
-    return run_with_timeout(lambda: _extract_xlsx(path, max_rows_per_sheet), timeout_seconds, "XLSX", path)
+    return run_with_timeout(_extract_xlsx, (path, max_rows_per_sheet), timeout_seconds, "XLSX", path, isolation)
 
 
 def _extract_xlsx(path: Path, max_rows_per_sheet: int) -> str:
