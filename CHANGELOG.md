@@ -5,6 +5,21 @@
 
 ### Features
 
+* extraction guards — size limit at entry, process isolation, public config API ([1f24d66](https://github.com/neuralsignal/obsidian-import/commit/1f24d66c953a1945f4cb27bf99c7f704cc6e0dbd))
+* extraction guards — size limit at entry, process isolation, public config API (1.2.0) ([ecce207](https://github.com/neuralsignal/obsidian-import/commit/ecce2078fef58c4a5becd237f3bd7b1ef5f7a858))
+
+
+### Bug Fixes
+
+* replace assert isinstance() with explicit runtime type checks in registry.py ([#206](https://github.com/neuralsignal/obsidian-import/issues/206)) ([2ee0ee8](https://github.com/neuralsignal/obsidian-import/commit/2ee0ee81c74058c3900f4cf8153ed7790339bee7))
+* replace assert isinstance() with explicit runtime type guards in registry.py ([13e27aa](https://github.com/neuralsignal/obsidian-import/commit/13e27aa648aefcb2171cfb495aa669ea163f66f2))
+* replace assert isinstance() with explicit runtime type guards in registry.py ([#206](https://github.com/neuralsignal/obsidian-import/issues/206)) ([c1d2e85](https://github.com/neuralsignal/obsidian-import/commit/c1d2e8573774dcf5805773d4dc58255231da74b0))
+
+## [1.2.0](https://github.com/neuralsignal/obsidian-import/compare/v1.1.2...v1.2.0) (2026-06-11)
+
+
+### Features
+
 * enforce max_file_size_mb at the extract_file/extract_text entry points — oversized files raise ExtractionError instantly before backend dispatch, instead of running into the extraction timeout when callers bypass discover_files
 * add config_from_overrides() public API: build an ImportConfig from a partial overrides dict deep-merged onto the bundled defaults (the supported path for library consumers such as m365-extract)
 * add extraction.isolation config ("thread" | "process", default "thread"): process mode runs each extraction in a separate spawned process that is killed on timeout — true cancellation and memory isolation for long-running daemons
