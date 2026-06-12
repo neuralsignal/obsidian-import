@@ -193,3 +193,99 @@ class TestExtractParagraphEdgeCases:
 
         result = _extract_paragraph(para)
         assert result == f"{'#' * (level + 1)} Text"
+
+    @given(level=st.integers(min_value=7, max_value=999_999_999))
+    def test_heading_level_capped_at_six(self, level):
+        """Heading levels above 6 are clamped to 6 to prevent memory exhaustion."""
+        ns = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+        para = Element(f"{{{ns}}}p")
+        ppr = SubElement(para, f"{{{ns}}}pPr")
+        pstyle = SubElement(ppr, f"{{{ns}}}pStyle")
+        pstyle.set(f"{{{ns}}}val", f"Heading{level}")
+        run = SubElement(para, f"{{{ns}}}r")
+        t = SubElement(run, f"{{{ns}}}t")
+        t.text = "Text"
+
+        result = _extract_paragraph(para)
+        assert result == "####### Text"
+
+
+class TestDecompressionBombGuard:
+    """Verify that oversized ZIP entries are rejected before decompression."""
+
+    def test_oversized_document_xml_raises(self, tmp_path):
+        """document.xml with uncompressed size exceeding limit raises ExtractionError."""
+        large_xml = (
+            '<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>'
+            + ("A" * 2_000_000)
+            + "</w:t></w:r></w:p></w:body></w:document>"
+        )
+        docx_path = tmp_path / "bomb.docx"
+        with zipfile.ZipFile(str(docx_path), "w", compression=zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("word/document.xml", large_xml)
+
+        with pytest.raises(ExtractionError, match="uncompressed size"):
+            extract(docx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=1)
+
+    def test_oversized_rels_xml_raises(self, tmp_path):
+        """document.xml.rels with uncompressed size exceeding limit raises ExtractionError."""
+        small_doc = _SIMPLE_DOC
+        large_rels = (
+            '<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            + ("<!-- " + "X" * 1000 + " -->\n") * 2000
+            + "</Relationships>"
+        )
+        docx_path = tmp_path / "bomb_rels.docx"
+        with zipfile.ZipFile(str(docx_path), "w", compression=zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("word/document.xml", small_doc)
+            zf.writestr("word/_rels/document.xml.rels", large_rels)
+
+        with pytest.raises(ExtractionError, match="uncompressed size"):
+            extract(docx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=1)
+
+    def test_oversized_media_entry_raises(self, tmp_path):
+        """Media file with uncompressed size exceeding limit raises ExtractionError."""
+        xml = """<?xml version="1.0" encoding="UTF-8"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+            xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+            xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+            xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+  <w:body>
+    <w:p>
+      <w:r>
+        <w:drawing>
+          <wp:inline>
+            <a:graphic>
+              <a:graphicData>
+                <a:blip r:embed="rId1"/>
+              </a:graphicData>
+            </a:graphic>
+          </wp:inline>
+        </w:drawing>
+      </w:r>
+    </w:p>
+  </w:body>
+</w:document>"""
+
+        rels_xml = """<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Target="media/image1.png"
+    Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"/>
+</Relationships>"""
+
+        large_image = b"\x00" * 2_000_000
+
+        docx_path = tmp_path / "bomb_media.docx"
+        with zipfile.ZipFile(str(docx_path), "w", compression=zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("word/document.xml", xml)
+            zf.writestr("word/_rels/document.xml.rels", rels_xml)
+            zf.writestr("word/media/image1.png", large_image)
+
+        with pytest.raises(ExtractionError, match="uncompressed size"):
+            extract(docx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=1)
+
+    def test_within_limit_succeeds(self, tmp_path):
+        """DOCX within the size limit extracts successfully."""
+        docx = _make_docx(tmp_path, "ok.docx", _SIMPLE_DOC)
+        result = extract(docx, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=50)
+        assert "Hello World" in result.markdown

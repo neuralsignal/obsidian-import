@@ -210,7 +210,7 @@ def _extract_paragraph(para: Element) -> str:
             style_val = pstyle.get(f"{{{_NS['w']}}}val", "")
             if style_val.startswith("Heading"):
                 try:
-                    heading_level = int(style_val.replace("Heading", ""))
+                    heading_level = min(int(style_val.replace("Heading", "")), 6)
                 except ValueError:
                     heading_level = 0
 
