@@ -36,7 +36,7 @@ class TestNativeXlsxExtract:
         )
 
         with patch("openpyxl.load_workbook", return_value=wb):
-            result = extract(xlsx_path, timeout_seconds=30, max_rows_per_sheet=500)
+            result = extract(xlsx_path, timeout_seconds=30, isolation="thread", max_rows_per_sheet=500)
 
         assert "# test" in result
         assert "Sheet: Sheet1" in result
@@ -56,7 +56,7 @@ class TestNativeXlsxExtract:
         )
 
         with patch("openpyxl.load_workbook", return_value=wb):
-            result = extract(xlsx_path, timeout_seconds=30, max_rows_per_sheet=500)
+            result = extract(xlsx_path, timeout_seconds=30, isolation="thread", max_rows_per_sheet=500)
 
         assert "Sheet: Data" in result
         assert "Sheet: Summary" in result
@@ -73,7 +73,7 @@ class TestNativeXlsxExtract:
         )
 
         with patch("openpyxl.load_workbook", return_value=wb):
-            result = extract(xlsx_path, timeout_seconds=30, max_rows_per_sheet=500)
+            result = extract(xlsx_path, timeout_seconds=30, isolation="thread", max_rows_per_sheet=500)
 
         assert "Empty" not in result
         assert "HasData" in result
@@ -86,7 +86,7 @@ class TestNativeXlsxExtract:
         wb = _mock_workbook({"Sheet1": rows})
 
         with patch("openpyxl.load_workbook", return_value=wb):
-            result = extract(xlsx_path, timeout_seconds=30, max_rows_per_sheet=5)
+            result = extract(xlsx_path, timeout_seconds=30, isolation="thread", max_rows_per_sheet=5)
 
         assert "Truncated" in result
 
@@ -97,6 +97,6 @@ class TestNativeXlsxExtract:
         wb = _mock_workbook({"Sheet1": [("A|B",), ("C|D",)]})
 
         with patch("openpyxl.load_workbook", return_value=wb):
-            result = extract(xlsx_path, timeout_seconds=30, max_rows_per_sheet=500)
+            result = extract(xlsx_path, timeout_seconds=30, isolation="thread", max_rows_per_sheet=500)
 
         assert "A\\|B" in result

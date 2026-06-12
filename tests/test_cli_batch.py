@@ -96,6 +96,42 @@ class TestBatchCommand:
         assert "FAIL" in result.output
         assert "1 failed" in result.output
 
+    def test_batch_continues_when_file_vanishes_after_discovery(self, tmp_path):
+        """A file deleted between discovery and extraction (a realistic race over
+        synced directories) must print FAIL and continue — not crash the batch."""
+        input_dir = tmp_path / "input"
+        input_dir.mkdir()
+        docx_path = input_dir / "test.docx"
+        make_test_docx(docx_path, "Still here")
+
+        config_file = make_config_yaml(tmp_path, input_dir)
+        out_dir = tmp_path / "batch_out"
+
+        vanished = DiscoveredFile(
+            path=input_dir / "vanished.docx",
+            extension=".docx",
+            size_bytes=100,
+            source_directory=str(input_dir),
+        )
+        remaining = DiscoveredFile(
+            path=docx_path,
+            extension=".docx",
+            size_bytes=docx_path.stat().st_size,
+            source_directory=str(input_dir),
+        )
+
+        runner = CliRunner()
+        with patch("obsidian_import.cli.discover_files", return_value=[vanished, remaining]):
+            result = runner.invoke(
+                main,
+                ["batch", "--config", str(config_file), "--output-dir", str(out_dir)],
+            )
+        assert result.exit_code == 0, result.output
+        assert "FAIL" in result.output
+        assert "vanished.docx" in result.output
+        assert "1 extracted" in result.output
+        assert "1 failed" in result.output
+
     def test_batch_passthrough_failure(self, tmp_path):
         input_dir = tmp_path / "input"
         input_dir.mkdir()

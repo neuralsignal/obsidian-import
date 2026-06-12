@@ -41,7 +41,7 @@ class TestNativePdfExtract:
             patch("pdfplumber.open", return_value=mock_pdf),
             patch("pypdf.PdfReader", return_value=mock_reader),
         ):
-            result = extract(pdf_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG)
+            result = extract(pdf_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG)
 
         assert "# test" in result.markdown
         assert "Hello world" in result.markdown
@@ -69,7 +69,7 @@ class TestNativePdfExtract:
             patch("pdfplumber.open", return_value=mock_pdf),
             patch("pypdf.PdfReader", return_value=mock_reader),
         ):
-            result = extract(pdf_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG)
+            result = extract(pdf_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG)
 
         assert "Header1" in result.markdown
         assert "val1" in result.markdown
@@ -103,7 +103,7 @@ class TestNativePdfExtract:
             patch("pdfplumber.open", return_value=mock_pdf),
             patch("pypdf.PdfReader", return_value=mock_reader),
         ):
-            result = extract(pdf_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG)
+            result = extract(pdf_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG)
 
         assert "# My PDF" in result.markdown
         assert "Author Name" in result.markdown
@@ -138,7 +138,7 @@ class TestNativePdfExtract:
             patch("pdfplumber.open", return_value=mock_pdf),
             patch("pypdf.PdfReader", return_value=mock_reader),
         ):
-            result = extract(pdf_path, timeout_seconds=30, media_config=config)
+            result = extract(pdf_path, timeout_seconds=30, isolation="thread", media_config=config)
 
         assert result.media_files == ()
 
@@ -184,7 +184,7 @@ class TestNativePdfExtract:
             mock_save.return_value = MediaFile(
                 source_path=Path("/tmp/img.png"), filename="page1_img1.png", media_type="image"
             )
-            result = extract(pdf_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG)
+            result = extract(pdf_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG)
 
         assert "![[report/page1_img1.png]]" in result.markdown
         assert "![[media/" not in result.markdown
@@ -215,7 +215,7 @@ class TestNativePdfExtract:
             patch("pdfplumber.open", return_value=mock_pdf),
             patch("pypdf.PdfReader", return_value=mock_reader),
         ):
-            result = extract(pdf_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG)
+            result = extract(pdf_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG)
 
         assert "## Form Fields" in result.markdown
         assert "**FullName** (/Tx): Alice" in result.markdown
@@ -248,7 +248,7 @@ class TestNativePdfExtract:
             patch("pdfplumber.open", return_value=mock_pdf),
             patch("pypdf.PdfReader", return_value=mock_reader),
         ):
-            result = extract(pdf_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG)
+            result = extract(pdf_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG)
 
         assert "## Injected Heading" not in result.markdown
         assert "\n\n---" not in result.markdown
@@ -301,7 +301,7 @@ class TestNativePdfExtract:
             patch("pdfplumber.open", return_value=mock_pdf),
             patch("pypdf.PdfReader", return_value=mock_reader),
         ):
-            result = extract(pdf_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG)
+            result = extract(pdf_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG)
 
         assert "Header" in result.markdown
         assert "val" in result.markdown

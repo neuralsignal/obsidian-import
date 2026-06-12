@@ -1,5 +1,39 @@
 # Changelog
 
+## [1.2.0](https://github.com/neuralsignal/obsidian-import/compare/v1.1.2...v1.2.0) (2026-06-11)
+
+
+### Features
+
+* extraction guards — size limit at entry, process isolation, public config API ([1f24d66](https://github.com/neuralsignal/obsidian-import/commit/1f24d66c953a1945f4cb27bf99c7f704cc6e0dbd))
+* extraction guards — size limit at entry, process isolation, public config API (1.2.0) ([ecce207](https://github.com/neuralsignal/obsidian-import/commit/ecce2078fef58c4a5becd237f3bd7b1ef5f7a858))
+
+
+### Bug Fixes
+
+* replace assert isinstance() with explicit runtime type checks in registry.py ([#206](https://github.com/neuralsignal/obsidian-import/issues/206)) ([2ee0ee8](https://github.com/neuralsignal/obsidian-import/commit/2ee0ee81c74058c3900f4cf8153ed7790339bee7))
+* replace assert isinstance() with explicit runtime type guards in registry.py ([13e27aa](https://github.com/neuralsignal/obsidian-import/commit/13e27aa648aefcb2171cfb495aa669ea163f66f2))
+* replace assert isinstance() with explicit runtime type guards in registry.py ([#206](https://github.com/neuralsignal/obsidian-import/issues/206)) ([c1d2e85](https://github.com/neuralsignal/obsidian-import/commit/c1d2e8573774dcf5805773d4dc58255231da74b0))
+
+## [1.2.0](https://github.com/neuralsignal/obsidian-import/compare/v1.1.2...v1.2.0) (2026-06-11)
+
+
+### Features
+
+* enforce max_file_size_mb at the extract_file/extract_text entry points — oversized files raise ExtractionError instantly before backend dispatch, instead of running into the extraction timeout when callers bypass discover_files
+* add config_from_overrides() public API: build an ImportConfig from a partial overrides dict deep-merged onto the bundled defaults (the supported path for library consumers such as m365-extract)
+* add extraction.isolation config ("thread" | "process", default "thread"): process mode runs each extraction in a separate spawned process that is killed on timeout — true cancellation and memory isolation for long-running daemons
+* include the source file size in ExtractionTimeoutError messages alongside label, timeout, and path
+
+
+### Bug Fixes
+
+* process isolation enforces the deadline on every parent-side wait: receiving the payload is bounded by a watchdog that kills a stalled child, and the worker is reaped (bounded join, then kill) on success, error, and interrupt paths — a child kept alive by a leftover non-daemon thread can no longer block the caller indefinitely
+* worker exceptions that cannot survive the pickle round-trip are reported as ExtractionError with the original message, instead of escaping as a raw TypeError that aborted CLI batch runs; payloads that still fail to unpickle parent-side are wrapped defensively
+* the extraction worker process is no longer daemonic, so backends may spawn their own worker processes (e.g. docling's torch DataLoader)
+* stat() failures in the entry-point size guard (file vanished between discovery and extraction) raise ExtractionError, keeping the ObsidianImportError contract so CLI batch runs print FAIL and continue
+* the "process died without a result" error now explains the `if __name__ == "__main__":` guard required for script consumers under spawn
+
 ## [1.1.2](https://github.com/neuralsignal/obsidian-import/compare/v1.1.1...v1.1.2) (2026-05-20)
 
 

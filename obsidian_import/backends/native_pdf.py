@@ -26,9 +26,9 @@ from obsidian_import.timeout import run_with_timeout
 log = logging.getLogger(__name__)
 
 
-def extract(path: Path, timeout_seconds: int, media_config: MediaConfig) -> ExtractionResult:
+def extract(path: Path, timeout_seconds: int, isolation: str, media_config: MediaConfig) -> ExtractionResult:
     """Extract text, tables, and images from a PDF file, returning ExtractionResult."""
-    return run_with_timeout(lambda: _extract_pdf(path, media_config), timeout_seconds, "PDF", path)
+    return run_with_timeout(_extract_pdf, (path, media_config), timeout_seconds, "PDF", path, isolation)
 
 
 def _extract_pdf(path: Path, media_config: MediaConfig) -> ExtractionResult:

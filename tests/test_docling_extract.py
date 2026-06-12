@@ -63,7 +63,7 @@ class TestDoclingExtract:
         mock_converter.convert.return_value = conv_result
 
         with patch("obsidian_import.backends.docling._build_converter", return_value=mock_converter):
-            result = extract(pdf_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG)
+            result = extract(pdf_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG)
 
         assert "Report" in result.markdown
         assert "Some content here." in result.markdown
@@ -80,7 +80,7 @@ class TestDoclingExtract:
         mock_converter.convert.return_value = conv_result
 
         with patch("obsidian_import.backends.docling._build_converter", return_value=mock_converter):
-            result = extract(pdf_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG)
+            result = extract(pdf_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG)
 
         assert "No text content extracted" in result.markdown
         assert "empty.pdf" in result.markdown
@@ -96,7 +96,7 @@ class TestDoclingExtract:
         mock_converter.convert.return_value = conv_result
 
         with patch("obsidian_import.backends.docling._build_converter", return_value=mock_converter):
-            result = extract(pdf_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG)
+            result = extract(pdf_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG)
 
         assert "No text content extracted" in result.markdown
 
@@ -111,7 +111,7 @@ class TestDoclingExtract:
         mock_converter.convert.return_value = conv_result
 
         with patch("obsidian_import.backends.docling._build_converter", return_value=mock_converter):
-            result = extract(pdf_path, timeout_seconds=30, media_config=_NO_IMAGES_CONFIG)
+            result = extract(pdf_path, timeout_seconds=30, isolation="thread", media_config=_NO_IMAGES_CONFIG)
 
         assert result.media_files == ()
 
@@ -132,7 +132,7 @@ class TestDoclingExtract:
         mock_converter.convert.return_value = conv_result
 
         with patch("obsidian_import.backends.docling._build_converter", return_value=mock_converter):
-            result = extract(pdf_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG)
+            result = extract(pdf_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG)
 
         assert len(result.media_files) == 1
         assert result.media_files[0].media_type == "image"
@@ -158,7 +158,7 @@ class TestDoclingExtract:
         mock_converter.convert.return_value = conv_result
 
         with patch("obsidian_import.backends.docling._build_converter", return_value=mock_converter):
-            result = extract(pdf_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG)
+            result = extract(pdf_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG)
 
         assert len(result.media_files) == 3
         assert result.markdown.count("![[multi/") == 3
@@ -181,7 +181,7 @@ class TestDoclingExtract:
         mock_converter.convert.return_value = conv_result
 
         with patch("obsidian_import.backends.docling._build_converter", return_value=mock_converter):
-            result = extract(pdf_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG)
+            result = extract(pdf_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG)
 
         assert len(result.media_files) == 1
 
@@ -199,7 +199,7 @@ class TestDoclingExtract:
         mock_converter.convert.return_value = conv_result
 
         with patch("obsidian_import.backends.docling._build_converter", return_value=mock_converter):
-            result = extract(pdf_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG)
+            result = extract(pdf_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG)
 
         assert len(result.media_files) == 0
 
@@ -211,7 +211,7 @@ class TestDoclingExtract:
             patch("importlib.util.find_spec", return_value=None),
             pytest.raises(BackendNotAvailableError, match="docling is not installed"),
         ):
-            extract(pdf_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG)
+            extract(pdf_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG)
 
     def test_no_pictures_attribute_returns_empty(self, tmp_path: Path) -> None:
         pdf_path = tmp_path / "nopic.pdf"
@@ -226,7 +226,7 @@ class TestDoclingExtract:
         mock_converter.convert.return_value = conv_result
 
         with patch("obsidian_import.backends.docling._build_converter", return_value=mock_converter):
-            result = extract(pdf_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG)
+            result = extract(pdf_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG)
 
         assert result.media_files == ()
 

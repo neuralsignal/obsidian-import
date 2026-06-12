@@ -25,8 +25,6 @@ def discover_files(config: ImportConfig) -> Iterator[DiscoveredFile]:
 
     Respects exclude patterns and max_file_size_mb limit.
     """
-    max_size = config.extraction.max_file_size_mb * 1024 * 1024
-
     for dir_config in config.input.directories:
         directory = Path(dir_config.path)
         if not directory.is_dir():
@@ -52,7 +50,7 @@ def discover_files(config: ImportConfig) -> Iterator[DiscoveredFile]:
                 continue
 
             size = file_path.stat().st_size
-            if size > max_size:
+            if config.extraction.exceeds_max_file_size(size):
                 continue
 
             yield DiscoveredFile(

@@ -36,7 +36,7 @@ class TestNativePptxExtract:
             patch("pptx.Presentation", return_value=mock_prs),
             patch("pptx.util.Inches", return_value=914400),
         ):
-            result = extract(pptx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG)
+            result = extract(pptx_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG)
 
         assert "# test" in result.markdown
         assert "Slide 1: Intro" in result.markdown
@@ -56,7 +56,7 @@ class TestNativePptxExtract:
             patch("pptx.Presentation", return_value=mock_prs),
             patch("pptx.util.Inches", return_value=914400),
         ):
-            result = extract(pptx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG)
+            result = extract(pptx_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG)
 
         assert "Slide 1: Slide One" in result.markdown
         assert "Slide 2: Slide Two" in result.markdown
@@ -75,7 +75,7 @@ class TestNativePptxExtract:
             patch("pptx.Presentation", return_value=mock_prs),
             patch("pptx.util.Inches", return_value=914400),
         ):
-            result = extract(pptx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG)
+            result = extract(pptx_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG)
 
         assert "## Slide 1" in result.markdown
 
@@ -98,7 +98,7 @@ class TestNativePptxExtract:
             patch("pptx.Presentation", return_value=mock_prs),
             patch("pptx.util.Inches", return_value=914400),
         ):
-            result = extract(pptx_path, timeout_seconds=30, media_config=config)
+            result = extract(pptx_path, timeout_seconds=30, isolation="thread", media_config=config)
 
         assert result.media_files == ()
 
@@ -127,7 +127,7 @@ class TestNativePptxExtract:
             mock_save.return_value = MediaFile(
                 source_path=Path("/tmp/img.png"), filename="slide1_img1.png", media_type="image"
             )
-            result = extract(pptx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG)
+            result = extract(pptx_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG)
 
         assert "![[slides/slide1_img1.png]]" in result.markdown
         assert "![[media/" not in result.markdown
@@ -161,7 +161,7 @@ class TestNativePptxExtract:
             patch("pptx.Presentation", return_value=mock_prs),
             patch("pptx.util.Inches", return_value=914400),
         ):
-            result = extract(pptx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG)
+            result = extract(pptx_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG)
 
         assert "  - Level one" in result.markdown
         assert "    - Level two" in result.markdown
@@ -199,7 +199,7 @@ class TestNativePptxExtract:
             patch("pptx.Presentation", return_value=mock_prs),
             patch("pptx.util.Inches", return_value=914400),
         ):
-            result = extract(pptx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG)
+            result = extract(pptx_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG)
 
         assert "Header A" in result.markdown
         assert "Header B" in result.markdown
@@ -232,7 +232,7 @@ class TestNativePptxExtract:
             ),
             caplog.at_level(logging.WARNING),
         ):
-            result = extract(pptx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG)
+            result = extract(pptx_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG)
 
         assert "Failed to extract image" in caplog.text
         assert "Some text" in result.markdown
@@ -263,7 +263,7 @@ class TestNativePptxExtract:
             ),
             caplog.at_level(logging.WARNING),
         ):
-            extract(pptx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG)
+            extract(pptx_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG)
 
         assert "Failed to extract image" in caplog.text
 
@@ -295,7 +295,7 @@ class TestNativePptxExtract:
             patch("obsidian_import.media.save_media_to_temp"),
             caplog.at_level(logging.WARNING),
         ):
-            result = extract(pptx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG)
+            result = extract(pptx_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG)
 
         assert "Failed to extract image" in caplog.text
         assert "Some text" in result.markdown
@@ -313,7 +313,7 @@ class TestNativePptxExtract:
             patch("pptx.Presentation", return_value=mock_prs),
             patch("pptx.util.Inches", return_value=914400),
         ):
-            result = extract(pptx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG)
+            result = extract(pptx_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG)
 
         assert "> **Speaker Notes:** Remember to pause here" in result.markdown
 
@@ -330,6 +330,6 @@ class TestNativePptxExtract:
             patch("pptx.Presentation", return_value=mock_prs),
             patch("pptx.util.Inches", return_value=914400),
         ):
-            result = extract(pptx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG)
+            result = extract(pptx_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG)
 
         assert "Speaker Notes" not in result.markdown

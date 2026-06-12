@@ -34,31 +34,33 @@ from obsidian_import.timeout import run_with_timeout
 log = logging.getLogger(__name__)
 
 
-def extract(path: Path, timeout_seconds: int, media_config: MediaConfig) -> ExtractionResult:
+def extract(path: Path, timeout_seconds: int, isolation: str, media_config: MediaConfig) -> ExtractionResult:
     """Extract text and images using docling for high-quality document conversion."""
     if importlib.util.find_spec("docling") is None:
         raise BackendNotAvailableError("docling is not installed. Install with: pip install obsidian-import[docling]")
 
-    def _do_extract() -> ExtractionResult:
-        converter = _build_converter(media_config)
-        doc_result = converter.convert(str(path))
-        doc = doc_result.document
+    return run_with_timeout(_extract_docling, (path, media_config), timeout_seconds, "docling", path, isolation)
 
-        media_files: list[MediaFile] = []
-        if media_config.extract_images:
-            media_files = _extract_docling_images(doc, path, media_config)
 
-        text = doc.export_to_markdown()
-        if not text or not text.strip():
-            text = f"*No text content extracted from `{path.name}`.*"
+def _extract_docling(path: Path, media_config: MediaConfig) -> ExtractionResult:
+    """Internal docling extraction logic (module-level for process isolation)."""
+    converter = _build_converter(media_config)
+    doc_result = converter.convert(str(path))
+    doc = doc_result.document
 
-        result_media = tuple(media_files)
-        if media_files:
-            text = _replace_image_refs_with_wikilinks(text, media_files, path.stem)
+    media_files: list[MediaFile] = []
+    if media_config.extract_images:
+        media_files = _extract_docling_images(doc, path, media_config)
 
-        return ExtractionResult(markdown=text, media_files=result_media)
+    text = doc.export_to_markdown()
+    if not text or not text.strip():
+        text = f"*No text content extracted from `{path.name}`.*"
 
-    return run_with_timeout(_do_extract, timeout_seconds, "docling", path)
+    result_media = tuple(media_files)
+    if media_files:
+        text = _replace_image_refs_with_wikilinks(text, media_files, path.stem)
+
+    return ExtractionResult(markdown=text, media_files=result_media)
 
 
 def _build_converter(media_config: MediaConfig) -> DocumentConverter:

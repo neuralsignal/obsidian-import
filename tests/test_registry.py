@@ -190,6 +190,7 @@ class TestExtractWithBackend:
                 backends=self._markitdown_backends(),
                 timeout_seconds=30,
                 media_config=_TEST_MEDIA_CONFIG,
+                isolation="thread",
                 max_rows_per_sheet=100,
             )
 
@@ -216,6 +217,7 @@ class TestExtractWithBackend:
                 backends=_native_backends(),
                 timeout_seconds=30,
                 media_config=_TEST_MEDIA_CONFIG,
+                isolation="thread",
                 max_rows_per_sheet=42,
             )
 
