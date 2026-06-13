@@ -1,7 +1,9 @@
 """Tests for image bytes validation in media processing."""
 
+import builtins
 import io
 import threading
+from unittest import mock
 
 import pytest
 from conftest import make_png_bytes
@@ -394,3 +396,24 @@ class TestEncodeImageProperties:
         result = _encode_image(img, config)
         decoded = Image.open(io.BytesIO(result))
         assert decoded.mode == "RGB"
+
+
+class TestOpenImageSafelyPillowMissing:
+    def test_raises_extraction_error_when_pillow_not_installed(self) -> None:
+        real_import = builtins.__import__
+
+        def import_blocker(name: str, *args: object, **kwargs: object) -> object:
+            if name == "PIL":
+                raise ImportError("No module named 'PIL'")
+            return real_import(name, *args, **kwargs)
+
+        img_bytes = make_png_bytes(10, 10, "RGB")
+        config = _make_config(
+            image_max_bytes=50_000_000,
+            image_allowed_formats=frozenset({"PNG"}),
+        )
+        with (
+            mock.patch("builtins.__import__", side_effect=import_blocker),
+            pytest.raises(ExtractionError, match="Pillow is required"),
+        ):
+            _open_image_safely(img_bytes, config)
