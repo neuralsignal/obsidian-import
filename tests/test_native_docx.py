@@ -225,7 +225,9 @@ class TestDecompressionBombGuard:
             zf.writestr("word/document.xml", large_xml)
 
         with pytest.raises(ExtractionError, match="uncompressed size"):
-            extract(docx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=1)
+            extract(
+                docx_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=1
+            )
 
     def test_oversized_rels_xml_raises(self, tmp_path):
         """document.xml.rels with uncompressed size exceeding limit raises ExtractionError."""
@@ -241,7 +243,9 @@ class TestDecompressionBombGuard:
             zf.writestr("word/_rels/document.xml.rels", large_rels)
 
         with pytest.raises(ExtractionError, match="uncompressed size"):
-            extract(docx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=1)
+            extract(
+                docx_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=1
+            )
 
     def test_oversized_media_entry_raises(self, tmp_path):
         """Media file with uncompressed size exceeding limit raises ExtractionError."""
@@ -282,10 +286,14 @@ class TestDecompressionBombGuard:
             zf.writestr("word/media/image1.png", large_image)
 
         with pytest.raises(ExtractionError, match="uncompressed size"):
-            extract(docx_path, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=1)
+            extract(
+                docx_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=1
+            )
 
     def test_within_limit_succeeds(self, tmp_path):
         """DOCX within the size limit extracts successfully."""
         docx = _make_docx(tmp_path, "ok.docx", _SIMPLE_DOC)
-        result = extract(docx, timeout_seconds=30, media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=50)
+        result = extract(
+            docx, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=50
+        )
         assert "Hello World" in result.markdown
