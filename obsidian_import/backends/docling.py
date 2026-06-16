@@ -4,9 +4,11 @@ Requires the [docling] extra: pip install obsidian-import[docling]
 Supports image extraction via PdfPipelineOptions when available.
 
 Security: docling pulls in ``transformers`` which has a known RCE via
-malicious X-CLIP checkpoints (PYSEC-2025-217 / ZDI-CAN-28308).  Only
-process documents and model checkpoints from trusted sources until an
-upstream fix is available.  See also CVE-2026-1839 (issue #129).
+malicious X-CLIP checkpoints (PYSEC-2025-217 / ZDI-CAN-28308).  It also
+depends on ``torch``, which has a known deserialization vulnerability
+(PYSEC-2026-139) in the pt2 loading handler.  Only process documents and
+model checkpoints from trusted sources until upstream fixes are available.
+See also CVE-2026-1839 (issue #129).
 """
 
 from __future__ import annotations
@@ -15,6 +17,7 @@ import importlib.util
 import io
 import logging
 import re
+import warnings
 from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -38,6 +41,13 @@ def extract(path: Path, timeout_seconds: int, isolation: str, media_config: Medi
     """Extract text and images using docling for high-quality document conversion."""
     if importlib.util.find_spec("docling") is None:
         raise BackendNotAvailableError("docling is not installed. Install with: pip install obsidian-import[docling]")
+
+    warnings.warn(
+        "PYSEC-2026-139: docling depends on torch, which has a known deserialization "
+        "vulnerability. Only load models from trusted sources. "
+        "See https://github.com/pytorch/pytorch for upstream status.",
+        stacklevel=2,
+    )
 
     return run_with_timeout(_extract_docling, (path, media_config), timeout_seconds, "docling", path, isolation)
 

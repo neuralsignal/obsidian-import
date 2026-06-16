@@ -268,3 +268,16 @@ class TestBuildConverter:
         ):
             _build_converter(_TEST_MEDIA_CONFIG)
             mock_dc.assert_called()
+
+    def test_attribute_error_falls_back_to_default(self) -> None:
+        mock_dc = MagicMock()
+        with (
+            patch("docling.document_converter.DocumentConverter", mock_dc),
+            patch(
+                "docling.datamodel.pipeline_options.PdfPipelineOptions",
+                side_effect=AttributeError("API mismatch"),
+            ),
+        ):
+            converter = _build_converter(_TEST_MEDIA_CONFIG)
+            assert converter is not None
+            mock_dc.assert_called_with()
