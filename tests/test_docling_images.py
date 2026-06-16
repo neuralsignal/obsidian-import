@@ -1,7 +1,8 @@
 """Tests for docling image extraction and wikilink replacement."""
 
+import warnings
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from conftest import make_pil_image
 from hypothesis import given, settings
@@ -10,9 +11,33 @@ from hypothesis import strategies as st
 from obsidian_import.backends.docling import (
     _extract_docling_images,
     _replace_image_refs_with_wikilinks,
+    extract,
 )
 from obsidian_import.config import MediaConfig
 from obsidian_import.extraction_result import MediaFile
+
+
+class TestDoclingSecurityWarning:
+    def test_extract_emits_pysec_2026_139_warning(self) -> None:
+        mock_doc = MagicMock()
+        mock_doc.export_to_markdown.return_value = "extracted text"
+        mock_doc.pictures = []
+        mock_result = MagicMock()
+        mock_result.document = mock_doc
+        mock_converter = MagicMock()
+        mock_converter.convert.return_value = mock_result
+
+        with (
+            patch("obsidian_import.backends.docling.importlib.util.find_spec", return_value=True),
+            patch("obsidian_import.backends.docling._build_converter", return_value=mock_converter),
+            warnings.catch_warnings(record=True) as caught,
+        ):
+            warnings.simplefilter("always")
+            extract(Path("test.pdf"), 60, "thread", _TEST_MEDIA_CONFIG)
+
+        pysec_warnings = [w for w in caught if "PYSEC-2026-139" in str(w.message)]
+        assert len(pysec_warnings) == 1
+
 
 _TEST_MEDIA_CONFIG = MediaConfig(
     extract_images=True,

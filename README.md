@@ -167,6 +167,12 @@ passthrough:
 | `markitdown` | Any | `[markitdown]` extra | Good fallback for HTML, etc. |
 | `docling` | Any | `[docling]` extra | Best for complex layouts, tables |
 
+> **Security note (docling backend):** The `docling` extra depends on `torch`, which has a
+> known deserialization vulnerability ([PYSEC-2026-139](https://github.com/pytorch/pytorch))
+> in the pt2 loading handler. No upstream fix is available as of 2026-05-25. Do not load
+> untrusted model checkpoints when using the docling backend. Only use models from verified,
+> trusted sources.
+
 ### Format-Specific Behavior
 
 | Format | Native Backend Output |
