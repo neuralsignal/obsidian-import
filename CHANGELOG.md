@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.2.1](https://github.com/neuralsignal/obsidian-import/compare/v1.2.0...v1.2.1) (2026-06-16)
+
+
+### Bug Fixes
+
+* add missing isolation arg to TestDecompressionBombGuard extract() calls ([592a115](https://github.com/neuralsignal/obsidian-import/commit/592a115804ca2eb5c3bf308330b5822aa0e33383))
+* add missing isolation arg to TestDecompressionBombGuard tests ([b830426](https://github.com/neuralsignal/obsidian-import/commit/b8304269f7ca9f1fae1e7ae38a1072f0bd968191))
+* bump pypdf lower bound to &gt;=6.12.0 for CVE-2026-48155/48156 ([#232](https://github.com/neuralsignal/obsidian-import/issues/232)) ([c3189e7](https://github.com/neuralsignal/obsidian-import/commit/c3189e7b5daf91af5eac5ab535730242bb683a4c))
+* pass missing isolation argument in TestDecompressionBombGuard tests ([#228](https://github.com/neuralsignal/obsidian-import/issues/228)) ([1ed867b](https://github.com/neuralsignal/obsidian-import/commit/1ed867b3656d6878ae5687647fd4e850ebc49a4d))
+
 ## [1.2.0](https://github.com/neuralsignal/obsidian-import/compare/v1.1.2...v1.2.0) (2026-06-11)
 
 
