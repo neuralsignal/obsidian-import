@@ -119,6 +119,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/6d/c1/e419ef3723a074172b68aaa89c9f3de486ed4c2399e2dbd8113a4fdcaf9e/colorlog-6.10.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/6e/89/f7a07dc961b60645dbbf42e80f2bc85ade7feb9a491b11a1e973aa00071f/nvidia_nccl_cu12-2.27.5-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/75/0f/2bf7e3b5a4a65f623cb820feb5793e243fad58ae561015ee15a6152f67a2/python_discovery-1.1.1-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/77/c1/6e422f34e569cf8e18df68d1939c81c099d2b61e4f7d9621c8a77560799c/pydantic_settings-2.14.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/77/f5/21d2de20e8b8b0408f0681956ca2c69f1320a3848ac50e6e7f39c6159675/babel-2.18.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/78/3a/af5b4fa5961d9a1e6237b530eb87dd04aea6eb83da09d2a4073d81b54ccf/pytest_cov-5.0.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/78/55/896b06bf93a49bec0f4ae2a6f1ed12bd05c8860744ac3a70eda041064e4d/virtualenv-21.1.0-py3-none-any.whl
@@ -155,7 +156,6 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/a8/af/48ac8483240de756d2438c380746e7130d1c6f75802ef22f3c6d49982787/huggingface_hub-0.36.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a9/7e/4f120ecc54ba26ddf3dc348eeb9eb063f421de65c05fc961941798feea18/numpy-2.4.3-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/aa/cb/d9b0b67d037922d60cbe0359e0c86457c2da721bc714381a63e2c8e35eba/tree_sitter_python-0.25.0-cp310-abi3-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl
-      - pypi: https://files.pythonhosted.org/packages/ae/8d/f1af3832f5e6eb13ba94ee809e72b8ecb5eef226d27ee0bef7d963d943c7/pydantic_settings-2.14.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/af/75/be12ba31a6eb20dccef2320cd8ccb3f7d9013b68ba4c70156259fee9e409/backrefs-6.2-py314-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b5/09/6ea3ea725f82e1e76684f0708bbedd871fc96da89945adeba65c3835a64c/nvidia_nvshmem_cu12-3.4.5-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
@@ -303,6 +303,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/72/3a/5b39b51c64159f470f1ca3b1c2a87da290657ca022f7cd11442606f607d1/pandas-3.0.1-cp314-cp314-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/74/1a/145646e5687e8d9a1e8d09acb278c8535ebe9e972e1f162ed338a622f193/pydantic_core-2.41.5-cp314-cp314-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/75/0f/2bf7e3b5a4a65f623cb820feb5793e243fad58ae561015ee15a6152f67a2/python_discovery-1.1.1-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/77/c1/6e422f34e569cf8e18df68d1939c81c099d2b61e4f7d9621c8a77560799c/pydantic_settings-2.14.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/77/f5/21d2de20e8b8b0408f0681956ca2c69f1320a3848ac50e6e7f39c6159675/babel-2.18.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/78/3a/af5b4fa5961d9a1e6237b530eb87dd04aea6eb83da09d2a4073d81b54ccf/pytest_cov-5.0.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/78/55/896b06bf93a49bec0f4ae2a6f1ed12bd05c8860744ac3a70eda041064e4d/virtualenv-21.1.0-py3-none-any.whl
@@ -332,7 +333,6 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/a3/5e/ecf12fdb62546d64385c158514e9b2b671f7832108ef2ecd2020ce0af2d1/pyjwt-2.13.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a8/41/52f3a3e812b816a91e89aa504199d8bf989a1f873192b10762be66cf2009/pyopenssl-26.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a8/af/48ac8483240de756d2438c380746e7130d1c6f75802ef22f3c6d49982787/huggingface_hub-0.36.2-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/ae/8d/f1af3832f5e6eb13ba94ee809e72b8ecb5eef226d27ee0bef7d963d943c7/pydantic_settings-2.14.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/af/75/be12ba31a6eb20dccef2320cd8ccb3f7d9013b68ba4c70156259fee9e409/backrefs-6.2-py314-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b1/8f/6b4b2bc90d8ab3955856ce852cc9d1e82c81d7ab9646385f0e75ffd5b5d3/tree_sitter_javascript-0.25.0-cp310-abi3-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl
@@ -2684,6 +2684,22 @@ packages:
   - pytest>=8.3.5 ; extra == 'testing'
   - setuptools>=75.1 ; extra == 'testing'
   requires_python: '>=3.8'
+- pypi: https://files.pythonhosted.org/packages/77/c1/6e422f34e569cf8e18df68d1939c81c099d2b61e4f7d9621c8a77560799c/pydantic_settings-2.14.2-py3-none-any.whl
+  name: pydantic-settings
+  version: 2.14.2
+  sha256: a20c97b37910b6550d5ea50fbcc2d4187defe58cd57070b73863d069419c9440
+  requires_dist:
+  - pydantic>=2.7.0
+  - python-dotenv>=0.21.0
+  - typing-inspection>=0.4.0
+  - boto3>=1.35.0 ; extra == 'aws-secrets-manager'
+  - types-boto3[secretsmanager] ; extra == 'aws-secrets-manager'
+  - azure-identity>=1.16.0 ; extra == 'azure-key-vault'
+  - azure-keyvault-secrets>=4.8.0 ; extra == 'azure-key-vault'
+  - google-cloud-secret-manager>=2.23.1 ; extra == 'gcp-secret-manager'
+  - tomli>=2.0.1 ; extra == 'toml'
+  - pyyaml>=6.0.1 ; extra == 'yaml'
+  requires_python: '>=3.10'
 - pypi: https://files.pythonhosted.org/packages/77/f5/21d2de20e8b8b0408f0681956ca2c69f1320a3848ac50e6e7f39c6159675/babel-2.18.0-py3-none-any.whl
   name: babel
   version: 2.18.0
@@ -3386,22 +3402,6 @@ packages:
   sha256: 86f118e5eecad616ecdb81d171a36dde9bef5a0b21ed71ea9c3e390813c3baf5
   requires_dist:
   - tree-sitter~=0.24 ; extra == 'core'
-  requires_python: '>=3.10'
-- pypi: https://files.pythonhosted.org/packages/ae/8d/f1af3832f5e6eb13ba94ee809e72b8ecb5eef226d27ee0bef7d963d943c7/pydantic_settings-2.14.1-py3-none-any.whl
-  name: pydantic-settings
-  version: 2.14.1
-  sha256: 6e3c7edfd8277687cdc598f56e5cff0e9bfff0910a3749deaa8d4401c3a2b9de
-  requires_dist:
-  - pydantic>=2.7.0
-  - python-dotenv>=0.21.0
-  - typing-inspection>=0.4.0
-  - boto3>=1.35.0 ; extra == 'aws-secrets-manager'
-  - types-boto3[secretsmanager] ; extra == 'aws-secrets-manager'
-  - azure-identity>=1.16.0 ; extra == 'azure-key-vault'
-  - azure-keyvault-secrets>=4.8.0 ; extra == 'azure-key-vault'
-  - google-cloud-secret-manager>=2.23.1 ; extra == 'gcp-secret-manager'
-  - tomli>=2.0.1 ; extra == 'toml'
-  - pyyaml>=6.0.1 ; extra == 'yaml'
   requires_python: '>=3.10'
 - pypi: https://files.pythonhosted.org/packages/af/75/be12ba31a6eb20dccef2320cd8ccb3f7d9013b68ba4c70156259fee9e409/backrefs-6.2-py314-none-any.whl
   name: backrefs
