@@ -16,7 +16,7 @@ obsidian-import = {path = ".", editable = true}
 pyyaml = ">=6.0,<7"
 click = ">=8.0,<9"
 pdfplumber = ">=0.11,<1"
-pypdf = ">=6.10.2,<7"
+pypdf = ">=6.13.3,<7"
 defusedxml = ">=0.7,<1"
 python-pptx = ">=1.0,<2"
 openpyxl = ">=3.1,<4"
@@ -37,7 +37,7 @@ jinja2 = ">=3.1.6,<4"
 pyjwt = ">=2.13.0,<3"  # PYSEC-2026-175/177/178/179: algorithm confusion, SSRF
 urllib3 = ">=2.7.0,<3"
 pyopenssl = ">=26.0.0,<27"
-cryptography = ">=46.0.7,<47"
+cryptography = ">=48.0.1,<49"  # GHSA-537c-gmf6-5ccf: bundled OpenSSL vuln
 pydantic-settings = ">=2.14.2,<3"  # GHSA-4xgf-cpjx-pc3j: symlink path traversal in NestedSecretsSettingsSource
 
 [tasks]
