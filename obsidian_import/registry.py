@@ -6,11 +6,23 @@ import importlib
 import inspect
 import logging
 import types
+from dataclasses import dataclass
 from pathlib import Path
 
 from obsidian_import.config import BackendsConfig, MediaConfig
 from obsidian_import.exceptions import BackendNotAvailableError, UnsupportedFormatError
 from obsidian_import.extraction_result import ExtractionResult
+
+
+@dataclass(frozen=True)
+class ExtractionContext:
+    """Groups the config-sourced parameters for backend extraction dispatch."""
+
+    backends: BackendsConfig
+    timeout_seconds: int
+    media_config: MediaConfig
+    isolation: str
+
 
 log = logging.getLogger(__name__)
 
@@ -102,10 +114,7 @@ def get_backend_module(extension: str, backends: BackendsConfig) -> types.Module
 
 def extract_with_backend(
     path: Path,
-    backends: BackendsConfig,
-    timeout_seconds: int,
-    media_config: MediaConfig,
-    isolation: str,
+    context: ExtractionContext,
     **kwargs: object,
 ) -> ExtractionResult:
     """Extract a file using the appropriate backend.
@@ -118,7 +127,7 @@ def extract_with_backend(
     accepts them (backends without a timeout wrapper take no isolation arg).
     """
     extension = path.suffix.lower()
-    module = get_backend_module(extension, backends)
+    module = get_backend_module(extension, context.backends)
 
     sig = inspect.signature(module.extract)
     accepted = set(sig.parameters.keys()) - {"path", "timeout_seconds", "media_config", "isolation"}
@@ -133,11 +142,11 @@ def extract_with_backend(
         )
     call_kwargs = {k: v for k, v in kwargs.items() if k not in unsupported}
     if "media_config" in sig.parameters:
-        call_kwargs["media_config"] = media_config
+        call_kwargs["media_config"] = context.media_config
     if "isolation" in sig.parameters:
-        call_kwargs["isolation"] = isolation
+        call_kwargs["isolation"] = context.isolation
 
-    result = module.extract(path, timeout_seconds=timeout_seconds, **call_kwargs)
+    result = module.extract(path, timeout_seconds=context.timeout_seconds, **call_kwargs)
 
     if isinstance(result, str):
         return ExtractionResult(markdown=result, media_files=())

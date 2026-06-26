@@ -8,7 +8,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from obsidian_import.exceptions import BackendNotAvailableError
-from obsidian_import.timeout import run_with_timeout
+from obsidian_import.timeout import TimeoutContext, run_with_timeout
 
 
 def extract(path: Path, timeout_seconds: int, isolation: str) -> str:
@@ -20,7 +20,8 @@ def extract(path: Path, timeout_seconds: int, isolation: str) -> str:
             "markitdown is not installed. Install with: pip install obsidian-import[markitdown]"
         ) from exc
 
-    return run_with_timeout(_extract_markitdown, (path,), timeout_seconds, "markitdown", path, isolation)
+    ctx = TimeoutContext(timeout_seconds=timeout_seconds, label="markitdown", path=path, isolation=isolation)
+    return run_with_timeout(_extract_markitdown, (path,), ctx)
 
 
 def _extract_markitdown(path: Path) -> str:

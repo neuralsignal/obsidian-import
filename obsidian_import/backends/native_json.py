@@ -8,12 +8,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from obsidian_import.timeout import run_with_timeout
+from obsidian_import.timeout import TimeoutContext, run_with_timeout
 
 
 def extract(path: Path, timeout_seconds: int, isolation: str) -> str:
     """Extract a JSON file as a fenced code block in markdown."""
-    return run_with_timeout(_extract_json, (path,), timeout_seconds, "JSON", path, isolation)
+    ctx = TimeoutContext(timeout_seconds=timeout_seconds, label="JSON", path=path, isolation=isolation)
+    return run_with_timeout(_extract_json, (path,), ctx)
 
 
 def _extract_json(path: Path) -> str:

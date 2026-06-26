@@ -9,12 +9,13 @@ import csv
 from pathlib import Path
 
 from obsidian_import.formatting import render_markdown_table
-from obsidian_import.timeout import run_with_timeout
+from obsidian_import.timeout import TimeoutContext, run_with_timeout
 
 
 def extract(path: Path, timeout_seconds: int, isolation: str) -> str:
     """Extract a CSV file as a GFM markdown table."""
-    return run_with_timeout(_extract_csv, (path,), timeout_seconds, "CSV", path, isolation)
+    ctx = TimeoutContext(timeout_seconds=timeout_seconds, label="CSV", path=path, isolation=isolation)
+    return run_with_timeout(_extract_csv, (path,), ctx)
 
 
 def _extract_csv(path: Path) -> str:

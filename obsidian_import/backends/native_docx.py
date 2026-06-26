@@ -21,7 +21,7 @@ from obsidian_import.exceptions import ExtractionError
 from obsidian_import.extraction_result import ExtractionResult, MediaFile
 from obsidian_import.formatting import make_media_wikilink, render_markdown_table
 from obsidian_import.media import attempt_save_image, generate_media_filename
-from obsidian_import.timeout import run_with_timeout
+from obsidian_import.timeout import TimeoutContext, run_with_timeout
 
 _NS = {
     "w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
@@ -46,9 +46,8 @@ def extract(
     path: Path, timeout_seconds: int, isolation: str, media_config: MediaConfig, max_file_size_mb: int
 ) -> ExtractionResult:
     """Extract text and images from a DOCX file, returning ExtractionResult."""
-    return run_with_timeout(
-        _extract_docx, (path, media_config, max_file_size_mb), timeout_seconds, "DOCX", path, isolation
-    )
+    ctx = TimeoutContext(timeout_seconds=timeout_seconds, label="DOCX", path=path, isolation=isolation)
+    return run_with_timeout(_extract_docx, (path, media_config, max_file_size_mb), ctx)
 
 
 def _check_zip_entry_size(zf: zipfile.ZipFile, entry_name: str, max_bytes: int, path: Path) -> None:

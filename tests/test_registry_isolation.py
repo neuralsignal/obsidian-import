@@ -10,7 +10,7 @@ from unittest.mock import patch
 from conftest import make_test_media_config
 
 from obsidian_import.config import BackendsConfig
-from obsidian_import.registry import extract_with_backend
+from obsidian_import.registry import ExtractionContext, extract_with_backend
 
 _TEST_MEDIA_CONFIG = make_test_media_config()
 
@@ -45,13 +45,13 @@ class TestIsolationForwarding:
         fake_module.extract = fake_extract  # type: ignore[attr-defined]
 
         with patch("obsidian_import.registry.get_backend_module", return_value=fake_module):
-            extract_with_backend(
-                csv_file,
+            ctx = ExtractionContext(
                 backends=_native_backends(),
                 timeout_seconds=30,
                 media_config=_TEST_MEDIA_CONFIG,
                 isolation="process",
             )
+            extract_with_backend(csv_file, ctx)
 
         assert received["isolation"] == "process"
 
@@ -64,12 +64,12 @@ class TestIsolationForwarding:
         fake_module.extract = lambda path, timeout_seconds: "extracted"  # type: ignore[attr-defined]
 
         with patch("obsidian_import.registry.get_backend_module", return_value=fake_module):
-            result = extract_with_backend(
-                png_file,
+            ctx = ExtractionContext(
                 backends=_native_backends(),
                 timeout_seconds=30,
                 media_config=_TEST_MEDIA_CONFIG,
                 isolation="process",
             )
+            result = extract_with_backend(png_file, ctx)
 
         assert result.markdown == "extracted"
