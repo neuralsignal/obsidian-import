@@ -38,6 +38,7 @@ pyjwt = ">=2.13.0,<3"  # PYSEC-2026-175/177/178/179: algorithm confusion, SSRF
 urllib3 = ">=2.7.0,<3"
 pyopenssl = ">=26.0.0,<27"
 cryptography = ">=48.0.1,<49"  # GHSA-537c-gmf6-5ccf: bundled OpenSSL vuln
+pydantic-settings = ">=2.14.2,<3"  # GHSA-4xgf-cpjx-pc3j: symlink path traversal in NestedSecretsSettingsSource
 
 [tasks]
 lint = "ruff check obsidian_import/ tests/"
