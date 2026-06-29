@@ -6,8 +6,10 @@ Supports image extraction via PdfPipelineOptions when available.
 Security: docling pulls in ``transformers`` which has a known RCE via
 malicious X-CLIP checkpoints (PYSEC-2025-217 / ZDI-CAN-28308).  It also
 depends on ``torch``, which has a known deserialization vulnerability
-(PYSEC-2026-139) in the pt2 loading handler.  Only process documents and
-model checkpoints from trusted sources until upstream fixes are available.
+(PYSEC-2026-139) in the pt2 loading handler and a memory corruption
+vulnerability (CVE-2025-3000 / GHSA-rrmf-rvhw-rf47) in
+``torch.jit.script``.  Only process documents and model checkpoints from
+trusted sources until upstream fixes are available.
 See also CVE-2026-1839 (issue #129).
 """
 
@@ -43,8 +45,9 @@ def extract(path: Path, timeout_seconds: int, isolation: str, media_config: Medi
         raise BackendNotAvailableError("docling is not installed. Install with: pip install obsidian-import[docling]")
 
     warnings.warn(
-        "PYSEC-2026-139: docling depends on torch, which has a known deserialization "
-        "vulnerability. Only load models from trusted sources. "
+        "docling depends on torch, which has known vulnerabilities: "
+        "PYSEC-2026-139 (deserialization) and CVE-2025-3000 (memory corruption "
+        "in torch.jit.script). Only load models from trusted sources. "
         "See https://github.com/pytorch/pytorch for upstream status.",
         stacklevel=2,
     )
