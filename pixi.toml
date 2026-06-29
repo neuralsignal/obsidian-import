@@ -31,7 +31,7 @@ mkdocs = ">=1.6,<2"
 mkdocs-material = ">=9.5,<10"
 pymdown-extensions = ">=10.21.3,<11"  # CVE-2026-46338: snippets path traversal
 mkdocstrings = {version = ">=0.29,<1", extras = ["python"]}
-docling = ">=2.94.0,<3"  # CVE-2026-44017/44018/44019/44023/47214: docling/docling-core Zip Slip, XXE, file:// + SSRF (fixed >=2.94.0); PYSEC-2026-139: transitive torch deserialization vuln, no fix as of 2026-05-25; PYSEC-2025-217: transitive transformers X-CLIP RCE, no fix available as of 2026-06-07
+docling = ">=2.94.0,<3"  # CVE-2026-44017/44018/44019/44023/47214: docling/docling-core Zip Slip, XXE, file:// + SSRF (fixed >=2.94.0); PYSEC-2026-139: transitive torch deserialization vuln, no fix as of 2026-05-25; PYSEC-2025-217: transitive transformers X-CLIP RCE, no fix available as of 2026-06-29
 pyasn1 = ">=0.6.3,<1"
 jinja2 = ">=3.1.6,<4"
 pyjwt = ">=2.13.0,<3"  # PYSEC-2026-175/177/178/179: algorithm confusion, SSRF
