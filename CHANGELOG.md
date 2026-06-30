@@ -99,6 +99,7 @@
 * drop direct twisted dep to remove CVE-2026-42304 exposure ([#185](https://github.com/neuralsignal/obsidian-import/issues/185))
 * track CVE-2026-3219 in pip (build-only dep, no fix available yet) ([#182](https://github.com/neuralsignal/obsidian-import/issues/182))
 * track PYSEC-2026-139 in torch (transitive via docling, deserialization vuln, no fix available) ([#200](https://github.com/neuralsignal/obsidian-import/issues/200))
+* track CVE-2025-3000 in torch (transitive via docling, memory corruption in torch.jit.script, no fix available) ([#250](https://github.com/neuralsignal/obsidian-import/issues/250))
 * bump pypdf >=6.10.2 to address multiple High-severity DoS CVEs (CVE-2026-40260, GHSA-jj6c-8h6c-hppx, GHSA-4pxv-j86v-mhcw, GHSA-7gw9-cf7v-778f, GHSA-x284-j5p8-9c5p) ([#126](https://github.com/neuralsignal/obsidian-import/issues/126))
 
 ## [1.0.4](https://github.com/neuralsignal/obsidian-import/compare/v1.0.3...v1.0.4) (2026-04-13)
