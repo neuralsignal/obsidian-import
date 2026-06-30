@@ -81,10 +81,6 @@ def _extract_docx(path: Path, media_config: MediaConfig, max_file_size_mb: int) 
         rel_map = _build_rel_map(zf, fromstring, max_bytes, path)
         zip_ctx = _DocxZipContext(zf=zf, rel_map=rel_map, path=path, max_bytes=max_bytes)
 
-        media_files: list[MediaFile] = []
-        image_index = 0
-
-        sections: list[str] = [f"# {path.stem}"]
         body = root.find(f"{{{_NS['w']}}}body")
         if body is None:
             return ExtractionResult(
@@ -92,36 +88,66 @@ def _extract_docx(path: Path, media_config: MediaConfig, max_file_size_mb: int) 
                 media_files=(),
             )
 
-        for element in body:
-            tag = _local_name(element)
-
-            if tag == "p":
-                text = _extract_paragraph(element)
-
-                if media_config.extract_images:
-                    extracted, image_index = _extract_docx_images(
-                        element,
-                        zip_ctx,
-                        media_config,
-                        image_index,
-                    )
-                    media_files.extend(extracted)
-                    for mf in extracted:
-                        embed = make_media_wikilink(path.stem, mf.filename)
-                        text = f"{text}\n\n{embed}" if text else embed
-
-                if text:
-                    sections.append(text)
-
-            elif tag == "tbl":
-                table_md = _extract_table(element)
-                if table_md:
-                    sections.append(table_md)
+        sections, media_files = _process_body_elements(body, path, zip_ctx, media_config)
 
     return ExtractionResult(
         markdown="\n\n".join(sections),
         media_files=tuple(media_files),
     )
+
+
+def _process_body_elements(
+    body: Element,
+    path: Path,
+    zip_ctx: _DocxZipContext,
+    media_config: MediaConfig,
+) -> tuple[list[str], list[MediaFile]]:
+    """Walk body elements, extracting paragraphs, tables, and images."""
+    sections: list[str] = [f"# {path.stem}"]
+    media_files: list[MediaFile] = []
+    image_index = 0
+
+    for element in body:
+        tag = _local_name(element)
+
+        if tag == "p":
+            text, para_media, image_index = _process_paragraph(element, path, zip_ctx, media_config, image_index)
+            media_files.extend(para_media)
+            if text:
+                sections.append(text)
+
+        elif tag == "tbl":
+            table_md = _extract_table(element)
+            if table_md:
+                sections.append(table_md)
+
+    return sections, media_files
+
+
+def _process_paragraph(
+    element: Element,
+    path: Path,
+    zip_ctx: _DocxZipContext,
+    media_config: MediaConfig,
+    image_index: int,
+) -> tuple[str, list[MediaFile], int]:
+    """Extract text and images from a single paragraph element."""
+    text = _extract_paragraph(element)
+    extracted_media: list[MediaFile] = []
+
+    if media_config.extract_images:
+        extracted, image_index = _extract_docx_images(
+            element,
+            zip_ctx,
+            media_config,
+            image_index,
+        )
+        extracted_media.extend(extracted)
+        for mf in extracted:
+            embed = make_media_wikilink(path.stem, mf.filename)
+            text = f"{text}\n\n{embed}" if text else embed
+
+    return text, extracted_media, image_index
 
 
 def _build_rel_map(zf: zipfile.ZipFile, fromstring: object, max_bytes: int, path: Path) -> dict[str, str]:
