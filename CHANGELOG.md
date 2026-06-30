@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.2.2](https://github.com/neuralsignal/obsidian-import/compare/v1.2.1...v1.2.2) (2026-06-30)
+
+
+### Bug Fixes
+
+* bump pypdf lower bound to &gt;=6.13.3 for GHSA-jm82-fx9c-mx94 ([#238](https://github.com/neuralsignal/obsidian-import/issues/238)) ([03fd94e](https://github.com/neuralsignal/obsidian-import/commit/03fd94eb05420a34867ad3f2ed7a6c3cbdd2f743))
+* remove type: ignore suppressions in native_pptx.py ([e613f35](https://github.com/neuralsignal/obsidian-import/commit/e613f3549848cc5a02e23464e3ca98fc05bce885))
+* remove type: ignore suppressions in native_pptx.py ([#246](https://github.com/neuralsignal/obsidian-import/issues/246)) ([c54c3c6](https://github.com/neuralsignal/obsidian-import/commit/c54c3c6ddfbc92e49a384f0c33d0380b5ebaddc7))
+* upgrade cryptography to &gt;=48.0.1 for GHSA-537c-gmf6-5ccf ([#237](https://github.com/neuralsignal/obsidian-import/issues/237)) ([80d78f9](https://github.com/neuralsignal/obsidian-import/commit/80d78f94c6943f48d3615fb11e3800dcbf6789ac))
+
 ## [1.2.1](https://github.com/neuralsignal/obsidian-import/compare/v1.2.0...v1.2.1) (2026-06-16)
 
 
