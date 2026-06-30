@@ -13,6 +13,8 @@ from typing import TYPE_CHECKING
 from obsidian_import.config import MediaConfig
 
 if TYPE_CHECKING:
+    from pptx.shapes.base import BaseShape
+    from pptx.slide import Slide
     from pptx.table import Table
 
 from obsidian_import.exceptions import ExtractionError
@@ -88,13 +90,13 @@ def _extract_pptx(path: Path, media_config: MediaConfig) -> ExtractionResult:
 
 
 def _extract_slide_content(
-    slide: object,
+    slide: Slide,
     slide_number: int,
     path: Path,
     media_config: MediaConfig,
 ) -> tuple[list[str], list[MediaFile]]:
     """Extract text, tables, and images from all shapes on a single slide."""
-    title_shape = slide.shapes.title  # type: ignore[attr-defined]
+    title_shape = slide.shapes.title
     body_texts = _extract_text_from_shapes(slide, title_shape)
     body_texts.extend(_extract_tables_from_shapes(slide))
     image_texts, media_files = _extract_images_from_shapes(slide, slide_number, path, media_config)
@@ -102,10 +104,10 @@ def _extract_slide_content(
     return body_texts, media_files
 
 
-def _extract_text_from_shapes(slide: object, title_shape: object | None) -> list[str]:
+def _extract_text_from_shapes(slide: Slide, title_shape: BaseShape | None) -> list[str]:
     """Extract text content from all text-frame shapes, skipping the title shape."""
     texts: list[str] = []
-    for shape in slide.shapes:  # type: ignore[attr-defined]
+    for shape in slide.shapes:
         if not shape.has_text_frame or shape == title_shape:
             continue
         for para in shape.text_frame.paragraphs:
@@ -119,10 +121,10 @@ def _extract_text_from_shapes(slide: object, title_shape: object | None) -> list
     return texts
 
 
-def _extract_tables_from_shapes(slide: object) -> list[str]:
+def _extract_tables_from_shapes(slide: Slide) -> list[str]:
     """Extract markdown tables from all table shapes."""
     tables: list[str] = []
-    for shape in slide.shapes:  # type: ignore[attr-defined]
+    for shape in slide.shapes:
         if shape.has_table:
             table_md = _extract_table(shape.table)
             if table_md:
@@ -131,7 +133,7 @@ def _extract_tables_from_shapes(slide: object) -> list[str]:
 
 
 def _extract_images_from_shapes(
-    slide: object,
+    slide: Slide,
     slide_number: int,
     path: Path,
     media_config: MediaConfig,
@@ -140,7 +142,7 @@ def _extract_images_from_shapes(
     texts: list[str] = []
     media_files: list[MediaFile] = []
     image_index = 0
-    for shape in slide.shapes:  # type: ignore[attr-defined]
+    for shape in slide.shapes:
         if not (media_config.extract_images and shape.shape_type == _PICTURE_SHAPE_TYPE):
             continue
         image_index += 1
@@ -161,12 +163,12 @@ def _extract_images_from_shapes(
     return texts, media_files
 
 
-def _make_pptx_image_reader(shape: object, slide_number: int) -> Callable[[], bytes]:
+def _make_pptx_image_reader(shape: BaseShape, slide_number: int) -> Callable[[], bytes]:
     """Return a callable that reads image bytes from a PPTX shape."""
 
     def _read() -> bytes:
         try:
-            return shape.image.blob  # type: ignore[union-attr]
+            return shape.image.blob
         except (AttributeError, ValueError) as exc:
             raise ExtractionError(f"PPTX image on slide {slide_number} unavailable: {exc}") from exc
 
