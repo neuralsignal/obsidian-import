@@ -16,7 +16,7 @@ import pytest
 
 from obsidian_import.exceptions import ExtractionError, ExtractionTimeoutError
 from obsidian_import.extraction_result import ExtractionResult
-from obsidian_import.timeout import _recv_result, run_with_timeout
+from obsidian_import.timeout import TimeoutContext, _recv_result, run_with_timeout
 
 
 def _echo(value: str) -> str:
@@ -119,14 +119,18 @@ class TestRunWithTimeoutProcess:
     def test_returns_result_on_success(self, tmp_path: Path) -> None:
         path = tmp_path / "f.csv"
         path.write_text("x")
-        result = run_with_timeout(_echo, ("hello",), timeout_seconds=30, label="test", path=path, isolation="process")
+        result = run_with_timeout(
+            _echo, ("hello",), TimeoutContext(timeout_seconds=30, label="test", path=path, isolation="process")
+        )
         assert result == "hello"
 
     def test_extraction_result_survives_pickling(self, tmp_path: Path) -> None:
         path = tmp_path / "f.pdf"
         path.write_text("x")
         result = run_with_timeout(
-            _return_extraction_result, ("# doc",), timeout_seconds=30, label="test", path=path, isolation="process"
+            _return_extraction_result,
+            ("# doc",),
+            TimeoutContext(timeout_seconds=30, label="test", path=path, isolation="process"),
         )
         assert result == ExtractionResult(markdown="# doc", media_files=())
 
@@ -134,7 +138,11 @@ class TestRunWithTimeoutProcess:
         path = tmp_path / "f.csv"
         path.write_text("x")
         with pytest.raises(ExtractionError, match="failed for") as exc_info:
-            run_with_timeout(_raise_value_error, (), timeout_seconds=30, label="test", path=path, isolation="process")
+            run_with_timeout(
+                _raise_value_error,
+                (),
+                TimeoutContext(timeout_seconds=30, label="test", path=path, isolation="process"),
+            )
         assert isinstance(exc_info.value.__cause__, ValueError)
 
     def test_timeout_raises_and_kills_child_process(self, tmp_path: Path) -> None:
@@ -142,14 +150,18 @@ class TestRunWithTimeoutProcess:
         path = tmp_path / "slow.pdf"
         path.write_bytes(b"\0" * (2 * 1024 * 1024))
 
-        # Warm-up call so multiprocessing helper processes (if any) are
-        # excluded from the before/after child-PID comparison.
-        run_with_timeout(_echo, ("warm",), timeout_seconds=30, label="test", path=path, isolation="process")
+        run_with_timeout(
+            _echo, ("warm",), TimeoutContext(timeout_seconds=30, label="test", path=path, isolation="process")
+        )
         before = _child_pids()
 
         start = time.monotonic()
         with pytest.raises(ExtractionTimeoutError) as exc_info:
-            run_with_timeout(_sleep_forever, (), timeout_seconds=2, label="PDF", path=path, isolation="process")
+            run_with_timeout(
+                _sleep_forever,
+                (),
+                TimeoutContext(timeout_seconds=2, label="PDF", path=path, isolation="process"),
+            )
         elapsed = time.monotonic() - start
 
         message = str(exc_info.value)
@@ -180,7 +192,9 @@ class TestRunWithTimeoutProcess:
 
         start = time.monotonic()
         result = run_with_timeout(
-            _return_with_lingering_thread, (), timeout_seconds=30, label="test", path=path, isolation="process"
+            _return_with_lingering_thread,
+            (),
+            TimeoutContext(timeout_seconds=30, label="test", path=path, isolation="process"),
         )
         elapsed = time.monotonic() - start
 
@@ -199,14 +213,20 @@ class TestRunWithTimeoutProcess:
         path = tmp_path / "f.csv"
         path.write_text("x")
         with pytest.raises(ExtractionError, match="42: boom"):
-            run_with_timeout(_raise_two_arg_error, (), timeout_seconds=30, label="test", path=path, isolation="process")
+            run_with_timeout(
+                _raise_two_arg_error,
+                (),
+                TimeoutContext(timeout_seconds=30, label="test", path=path, isolation="process"),
+            )
 
     def test_undumpable_child_exception_preserves_message(self, tmp_path: Path) -> None:
         path = tmp_path / "f.csv"
         path.write_text("x")
         with pytest.raises(ExtractionError, match="cannot pickle me") as exc_info:
             run_with_timeout(
-                _raise_unpicklable_error, (), timeout_seconds=30, label="test", path=path, isolation="process"
+                _raise_unpicklable_error,
+                (),
+                TimeoutContext(timeout_seconds=30, label="test", path=path, isolation="process"),
             )
         assert "UnpicklableError" in str(exc_info.value)
 
@@ -226,7 +246,9 @@ class TestRunWithTimeoutProcess:
         path = tmp_path / "f.pdf"
         path.write_text("x")
         result = run_with_timeout(
-            _spawn_grandchild, (), timeout_seconds=60, label="test", path=path, isolation="process"
+            _spawn_grandchild,
+            (),
+            TimeoutContext(timeout_seconds=60, label="test", path=path, isolation="process"),
         )
         assert result == "grandchild-ok"
 
@@ -234,7 +256,11 @@ class TestRunWithTimeoutProcess:
         path = tmp_path / "f.csv"
         path.write_text("x")
         with pytest.raises(ExtractionError, match="returned no result"):
-            run_with_timeout(_return_none, (), timeout_seconds=30, label="test", path=path, isolation="process")
+            run_with_timeout(
+                _return_none,
+                (),
+                TimeoutContext(timeout_seconds=30, label="test", path=path, isolation="process"),
+            )
 
     def test_child_death_without_result_mentions_main_guard(self, tmp_path: Path) -> None:
         """The 'died without a result' error must hint at the spawn __main__-guard
@@ -243,6 +269,8 @@ class TestRunWithTimeoutProcess:
         path.write_text("x")
         with pytest.raises(ExtractionError, match="__main__") as exc_info:
             run_with_timeout(
-                _exit_without_sending, (), timeout_seconds=30, label="test", path=path, isolation="process"
+                _exit_without_sending,
+                (),
+                TimeoutContext(timeout_seconds=30, label="test", path=path, isolation="process"),
             )
         assert "died without a result" in str(exc_info.value)

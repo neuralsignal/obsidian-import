@@ -22,7 +22,7 @@ from obsidian_import.exceptions import ExtractionError
 from obsidian_import.extraction_result import ExtractionResult
 from obsidian_import.formatting import make_media_wikilink
 from obsidian_import.output import ExtractedDocument
-from obsidian_import.registry import extract_with_backend
+from obsidian_import.registry import ExtractionContext, extract_with_backend
 
 
 def _build_extra_kwargs(extension: str, config: ImportConfig) -> dict[str, object]:
@@ -69,14 +69,13 @@ def _call_backend(path: Path, config: ImportConfig) -> ExtractionResult:
     _check_size_limit(path, config)
     extension = path.suffix.lower()
     extra_kwargs = _build_extra_kwargs(extension, config)
-    return extract_with_backend(
-        path,
+    context = ExtractionContext(
         backends=config.backends,
         timeout_seconds=config.extraction.timeout_seconds,
         media_config=config.media,
         isolation=config.extraction.isolation,
-        **extra_kwargs,
     )
+    return extract_with_backend(path, context, **extra_kwargs)
 
 
 def extract_file(path: Path, config: ImportConfig) -> ExtractedDocument:

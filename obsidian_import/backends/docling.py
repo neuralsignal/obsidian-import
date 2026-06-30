@@ -34,7 +34,7 @@ from obsidian_import.exceptions import BackendNotAvailableError, ExtractionError
 from obsidian_import.extraction_result import ExtractionResult, MediaFile
 from obsidian_import.formatting import make_media_wikilink
 from obsidian_import.media import attempt_save_image, generate_media_filename
-from obsidian_import.timeout import run_with_timeout
+from obsidian_import.timeout import TimeoutContext, run_with_timeout
 
 log = logging.getLogger(__name__)
 
@@ -52,7 +52,8 @@ def extract(path: Path, timeout_seconds: int, isolation: str, media_config: Medi
         stacklevel=2,
     )
 
-    return run_with_timeout(_extract_docling, (path, media_config), timeout_seconds, "docling", path, isolation)
+    ctx = TimeoutContext(timeout_seconds=timeout_seconds, label="docling", path=path, isolation=isolation)
+    return run_with_timeout(_extract_docling, (path, media_config), ctx)
 
 
 def _extract_docling(path: Path, media_config: MediaConfig) -> ExtractionResult:

@@ -10,6 +10,7 @@ from obsidian_import.config import BackendsConfig, MediaConfig
 from obsidian_import.exceptions import UnsupportedFormatError
 from obsidian_import.registry import (
     _BACKEND_MODULES,
+    ExtractionContext,
     _resolve_module_path,
     check_backend_available,
     extract_with_backend,
@@ -185,14 +186,13 @@ class TestExtractWithBackend:
             patch("obsidian_import.registry.get_backend_module", return_value=fake_module),
             caplog.at_level(logging.WARNING, logger="obsidian_import.registry"),
         ):
-            result = extract_with_backend(
-                xlsx_file,
+            ctx = ExtractionContext(
                 backends=self._markitdown_backends(),
                 timeout_seconds=30,
                 media_config=_TEST_MEDIA_CONFIG,
                 isolation="thread",
-                max_rows_per_sheet=100,
             )
+            result = extract_with_backend(xlsx_file, ctx, max_rows_per_sheet=100)
 
         assert result.markdown == "extracted"
         assert any("max_rows_per_sheet" in r.message for r in caplog.records)
@@ -212,14 +212,13 @@ class TestExtractWithBackend:
         fake_module.extract = fake_extract  # type: ignore[attr-defined]
 
         with patch("obsidian_import.registry.get_backend_module", return_value=fake_module):
-            extract_with_backend(
-                xlsx_file,
+            ctx = ExtractionContext(
                 backends=_native_backends(),
                 timeout_seconds=30,
                 media_config=_TEST_MEDIA_CONFIG,
                 isolation="thread",
-                max_rows_per_sheet=42,
             )
+            extract_with_backend(xlsx_file, ctx, max_rows_per_sheet=42)
 
         assert received["max_rows_per_sheet"] == 42
 

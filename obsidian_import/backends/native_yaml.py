@@ -10,12 +10,13 @@ from pathlib import Path
 
 import yaml
 
-from obsidian_import.timeout import run_with_timeout
+from obsidian_import.timeout import TimeoutContext, run_with_timeout
 
 
 def extract(path: Path, timeout_seconds: int, isolation: str) -> str:
     """Extract a YAML file as a fenced code block in markdown."""
-    return run_with_timeout(_extract_yaml, (path,), timeout_seconds, "YAML", path, isolation)
+    ctx = TimeoutContext(timeout_seconds=timeout_seconds, label="YAML", path=path, isolation=isolation)
+    return run_with_timeout(_extract_yaml, (path,), ctx)
 
 
 def _extract_yaml(path: Path) -> str:

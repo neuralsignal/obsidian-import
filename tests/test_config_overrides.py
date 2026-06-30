@@ -14,7 +14,7 @@ from obsidian_import.config import (
     load_config,
 )
 from obsidian_import.exceptions import ConfigError
-from obsidian_import.timeout import VALID_ISOLATION_MODES, run_with_timeout
+from obsidian_import.timeout import VALID_ISOLATION_MODES, TimeoutContext, run_with_timeout
 
 
 class TestConfigFromOverrides:
@@ -73,5 +73,7 @@ class TestIsolationConfig:
         with pytest.raises(ConfigError) as config_exc:
             config_from_overrides({"extraction": {"isolation": "fiber"}})
         with pytest.raises(ConfigError) as timeout_exc:
-            run_with_timeout(str, ("x",), timeout_seconds=5, label="test", path=Path("/tmp/f.txt"), isolation="fiber")
+            run_with_timeout(
+                str, ("x",), TimeoutContext(timeout_seconds=5, label="test", path=Path("/tmp/f.txt"), isolation="fiber")
+            )
         assert str(config_exc.value) == str(timeout_exc.value)

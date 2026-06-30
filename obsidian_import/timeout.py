@@ -23,12 +23,24 @@ import pickle
 import threading
 import time
 from collections.abc import Callable
+from dataclasses import dataclass
 from multiprocessing.connection import Connection
 from pathlib import Path
 
 from obsidian_import.exceptions import ConfigError, ExtractionError, ExtractionTimeoutError
 
 VALID_ISOLATION_MODES: tuple[str, ...] = ("thread", "process")
+
+
+@dataclass(frozen=True)
+class TimeoutContext:
+    """Groups the parameters that describe how and where a timeout-guarded extraction runs."""
+
+    timeout_seconds: int
+    label: str
+    path: Path
+    isolation: str
+
 
 # Grace given to a worker process between SIGTERM and SIGKILL, and to a
 # finished worker to exit on its own before being terminated. Deliberately a
@@ -54,10 +66,7 @@ def validated_isolation(value: object) -> str:
 def run_with_timeout[T](
     fn: Callable[..., T],
     args: tuple[object, ...],
-    timeout_seconds: int,
-    label: str,
-    path: Path,
-    isolation: str,
+    context: TimeoutContext,
 ) -> T:
     """Run an extraction function with a timeout.
 
@@ -65,10 +74,8 @@ def run_with_timeout[T](
         fn: Top-level callable executing the extraction. Must be picklable
             (no closures/lambdas) when isolation is "process".
         args: Positional arguments for fn. Must be picklable in process mode.
-        timeout_seconds: Maximum seconds to wait before raising timeout.
-        label: Human-readable backend name for error messages (e.g. "PDF").
-        path: Source file path for error messages.
-        isolation: "thread" or "process" (see module docstring).
+        context: TimeoutContext grouping timeout_seconds, label, path, and
+            isolation mode.
 
     Returns:
         The result from fn(*args).
@@ -78,10 +85,10 @@ def run_with_timeout[T](
         ExtractionError: If fn raises or returns no result.
         ConfigError: If isolation is not a supported mode.
     """
-    mode = validated_isolation(isolation)
+    mode = validated_isolation(context.isolation)
     if mode == "thread":
-        return _run_in_thread(fn, args, timeout_seconds, label, path)
-    return _run_in_process(fn, args, timeout_seconds, label, path)
+        return _run_in_thread(fn, args, context.timeout_seconds, context.label, context.path)
+    return _run_in_process(fn, args, context.timeout_seconds, context.label, context.path)
 
 
 def _timeout_error(timeout_seconds: int, label: str, path: Path) -> ExtractionTimeoutError:

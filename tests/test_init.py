@@ -68,7 +68,8 @@ class TestExtractFile:
 
         with patch("obsidian_import.extract_with_backend", return_value=fake_result) as mock:
             extract_file(_touch(tmp_path, "report.pdf"), config)
-            assert mock.call_args.kwargs["isolation"] == config.extraction.isolation
+            context = mock.call_args.args[1]
+            assert context.isolation == config.extraction.isolation
 
     def test_image_file_sets_associated_files(self, tmp_path: Path) -> None:
         config = _config()

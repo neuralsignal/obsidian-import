@@ -15,6 +15,7 @@ import pytest
 from obsidian_import.exceptions import ExtractionTimeoutError
 from obsidian_import.timeout import (
     _TERMINATE_GRACE_SECONDS,
+    TimeoutContext,
     _kill_process,
     _reap_process,
     run_with_timeout,
@@ -106,5 +107,9 @@ class TestWatchdogRaceDuringRecv:
             patch("obsidian_import.timeout.threading.Timer", _SynchronousTimer),
         ):
             with pytest.raises(ExtractionTimeoutError, match="timed out") as exc_info:
-                run_with_timeout(_echo, ("hello",), timeout_seconds=5, label="test", path=path, isolation="process")
+                run_with_timeout(
+                    _echo,
+                    ("hello",),
+                    TimeoutContext(timeout_seconds=5, label="test", path=path, isolation="process"),
+                )
             assert isinstance(exc_info.value.__cause__, EOFError)
