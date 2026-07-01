@@ -50,14 +50,19 @@ def extract(
     return run_with_timeout(_extract_docx, (path, media_config, max_file_size_mb), ctx)
 
 
-def _check_zip_entry_size(zf: zipfile.ZipFile, entry_name: str, max_bytes: int, path: Path) -> None:
-    """Raise ExtractionError if a ZIP entry's uncompressed size exceeds max_bytes."""
-    info = zf.getinfo(entry_name)
-    if info.file_size > max_bytes:
-        raise ExtractionError(
-            f"ZIP entry '{entry_name}' in {path} has uncompressed size "
-            f"{info.file_size} bytes, exceeding limit of {max_bytes} bytes"
-        )
+def _read_zip_entry_bounded(zf: zipfile.ZipFile, entry_name: str, max_bytes: int, path: Path) -> bytes:
+    """Stream-decompress a ZIP entry, raising if actual size exceeds max_bytes."""
+    chunks: list[bytes] = []
+    total = 0
+    with zf.open(entry_name) as f:
+        while chunk := f.read(65_536):
+            total += len(chunk)
+            if total > max_bytes:
+                raise ExtractionError(
+                    f"ZIP entry '{entry_name}' in {path} exceeds decompressed limit of {max_bytes} bytes"
+                )
+            chunks.append(chunk)
+    return b"".join(chunks)
 
 
 def _extract_docx(path: Path, media_config: MediaConfig, max_file_size_mb: int) -> ExtractionResult:
@@ -73,8 +78,7 @@ def _extract_docx(path: Path, media_config: MediaConfig, max_file_size_mb: int) 
         if "word/document.xml" not in zf.namelist():
             raise ExtractionError(f"No word/document.xml found in: {path}")
 
-        _check_zip_entry_size(zf, "word/document.xml", max_bytes, path)
-        doc_xml = zf.read("word/document.xml")
+        doc_xml = _read_zip_entry_bounded(zf, "word/document.xml", max_bytes, path)
         root = fromstring(doc_xml)
 
         rel_map = _build_rel_map(zf, fromstring, max_bytes, path)
@@ -155,8 +159,7 @@ def _build_rel_map(zf: zipfile.ZipFile, fromstring: object, max_bytes: int, path
     if "word/_rels/document.xml.rels" not in zf.namelist():
         return rel_map
 
-    _check_zip_entry_size(zf, "word/_rels/document.xml.rels", max_bytes, path)
-    rels_xml = zf.read("word/_rels/document.xml.rels")
+    rels_xml = _read_zip_entry_bounded(zf, "word/_rels/document.xml.rels", max_bytes, path)
     rels_root = fromstring(rels_xml)  # type: ignore[operator]
     for rel in rels_root:
         rid = rel.get("Id", "")
@@ -192,9 +195,8 @@ def _extract_docx_images(
                 continue
             if media_path not in zip_ctx.zf.namelist():
                 continue
-            _check_zip_entry_size(zip_ctx.zf, media_path, zip_ctx.max_bytes, zip_ctx.path)
             image_index += 1
-            img_bytes = zip_ctx.zf.read(media_path)
+            img_bytes = _read_zip_entry_bounded(zip_ctx.zf, media_path, zip_ctx.max_bytes, zip_ctx.path)
             orig_ext = Path(media_path).suffix
             filename = generate_media_filename("doc", image_index, orig_ext)
             mf = attempt_save_image(

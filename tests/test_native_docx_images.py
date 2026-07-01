@@ -237,7 +237,7 @@ class TestDecompressionBombGuard:
         )
         docx_path = _make_docx(tmp_path, "bomb.docx", {"word/document.xml": large_xml})
 
-        with pytest.raises(ExtractionError, match="uncompressed size"):
+        with pytest.raises(ExtractionError, match="decompressed limit"):
             _extract(docx_path, _TEST_MEDIA_CONFIG, max_file_size_mb=1)
 
     def test_oversized_rels_xml_raises(self, tmp_path):
@@ -253,7 +253,7 @@ class TestDecompressionBombGuard:
             {"word/document.xml": _SIMPLE_DOC, "word/_rels/document.xml.rels": large_rels},
         )
 
-        with pytest.raises(ExtractionError, match="uncompressed size"):
+        with pytest.raises(ExtractionError, match="decompressed limit"):
             _extract(docx_path, _TEST_MEDIA_CONFIG, max_file_size_mb=1)
 
     def test_oversized_media_entry_raises(self, tmp_path):
@@ -268,7 +268,7 @@ class TestDecompressionBombGuard:
             },
         )
 
-        with pytest.raises(ExtractionError, match="uncompressed size"):
+        with pytest.raises(ExtractionError, match="decompressed limit"):
             _extract(docx_path, _TEST_MEDIA_CONFIG, max_file_size_mb=1)
 
     def test_within_limit_succeeds(self, tmp_path):
