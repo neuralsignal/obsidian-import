@@ -4,13 +4,14 @@ Requires the [docling] extra: pip install obsidian-import[docling]
 Supports image extraction via PdfPipelineOptions when available.
 
 Security: docling pulls in ``transformers`` which has a known RCE via
-malicious X-CLIP checkpoints (PYSEC-2025-217 / ZDI-CAN-28308).  It also
-depends on ``torch``, which has a known deserialization vulnerability
+malicious X-CLIP checkpoints (PYSEC-2025-217 / ZDI-CAN-28308).
+CVE-2026-4372 and CVE-2026-1839 in transformers are mitigated by the
+explicit ``transformers>=5.3.0`` pin in pixi.toml.  Docling also depends
+on ``torch``, which has a known deserialization vulnerability
 (PYSEC-2026-139) in the pt2 loading handler and a memory corruption
 vulnerability (CVE-2025-3000 / GHSA-rrmf-rvhw-rf47) in
 ``torch.jit.script``.  Only process documents and model checkpoints from
-trusted sources until upstream fixes are available.
-See also CVE-2026-1839 (issue #129).
+trusted sources until all upstream fixes are available.
 """
 
 from __future__ import annotations

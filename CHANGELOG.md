@@ -92,6 +92,7 @@
 ### Security
 
 * serialize Image.MAX_IMAGE_PIXELS mutation with threading.Lock for thread safety ([#194](https://github.com/neuralsignal/obsidian-import/issues/194))
+* pin transformers >=5.3.0 for CVE-2026-4372 and CVE-2026-1839 (transitive via docling) ([#260](https://github.com/neuralsignal/obsidian-import/issues/260))
 * track PYSEC-2025-217 in transformers (transitive via docling): X-CLIP checkpoint deserialization RCE, no fix available as of 2026-06-29 ([#251](https://github.com/neuralsignal/obsidian-import/issues/251))
 * bump pip floor to >=26.1 for CVE-2026-6357 ([#183](https://github.com/neuralsignal/obsidian-import/issues/183))
 * bump pytest floor to >=9.0.3 for CVE-2025-71176 ([#184](https://github.com/neuralsignal/obsidian-import/issues/184))
