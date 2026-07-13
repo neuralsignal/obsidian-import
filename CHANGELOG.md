@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Security
+
+* pin soupsieve >=2.8.4 for CVE-2026-49477/49476: ReDoS and memory exhaustion (#266)
+
 ## [1.2.1](https://github.com/neuralsignal/obsidian-import/compare/v1.2.0...v1.2.1) (2026-06-16)
 
 
