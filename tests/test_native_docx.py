@@ -224,7 +224,7 @@ class TestDecompressionBombGuard:
         with zipfile.ZipFile(str(docx_path), "w", compression=zipfile.ZIP_DEFLATED) as zf:
             zf.writestr("word/document.xml", large_xml)
 
-        with pytest.raises(ExtractionError, match="uncompressed size"):
+        with pytest.raises(ExtractionError, match="decompressed limit"):
             extract(
                 docx_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=1
             )
@@ -242,7 +242,7 @@ class TestDecompressionBombGuard:
             zf.writestr("word/document.xml", small_doc)
             zf.writestr("word/_rels/document.xml.rels", large_rels)
 
-        with pytest.raises(ExtractionError, match="uncompressed size"):
+        with pytest.raises(ExtractionError, match="decompressed limit"):
             extract(
                 docx_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=1
             )
@@ -285,7 +285,7 @@ class TestDecompressionBombGuard:
             zf.writestr("word/_rels/document.xml.rels", rels_xml)
             zf.writestr("word/media/image1.png", large_image)
 
-        with pytest.raises(ExtractionError, match="uncompressed size"):
+        with pytest.raises(ExtractionError, match="decompressed limit"):
             extract(
                 docx_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=1
             )
