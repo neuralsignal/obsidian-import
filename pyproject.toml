@@ -21,7 +21,7 @@ classifiers = [
 ]
 dependencies = [
     "pyyaml>=6.0,<7",
-    "click>=8.0,<9",
+    "click>=8.3.3,<9",
     "pdfplumber>=0.11,<1",
     "pypdf>=6.13.3,<7",
     "defusedxml>=0.7,<1",
