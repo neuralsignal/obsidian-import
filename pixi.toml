@@ -14,7 +14,7 @@ setuptools = ">=78.1.1,<79"
 [pypi-dependencies]
 obsidian-import = {path = ".", editable = true}
 pyyaml = ">=6.0,<7"
-click = ">=8.0,<9"
+click = ">=8.3.3,<9"
 pdfplumber = ">=0.11,<1"
 pypdf = ">=6.13.3,<7"
 defusedxml = ">=0.7,<1"
