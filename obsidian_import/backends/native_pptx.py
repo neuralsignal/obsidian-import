@@ -51,43 +51,54 @@ def _extract_pptx(path: Path, media_config: MediaConfig) -> ExtractionResult:
         sections.append(f'*Slide dimensions: {w_in:.1f}" x {h_in:.1f}"*')
 
     for i, slide in enumerate(prs.slides, 1):
-        slide_sections: list[str] = []
-
-        title = ""
-        if slide.shapes.title:
-            title = slide.shapes.title.text.strip()
-
-        if title:
-            slide_sections.append(f"## Slide {i}: {title}")
-        else:
-            slide_sections.append(f"## Slide {i}")
-
-        body_texts, slide_media = _extract_slide_content(
-            slide,
-            i,
-            path,
-            media_config,
-        )
+        slide_section, slide_media = _assemble_slide_section(slide, i, path, media_config)
+        sections.append(slide_section)
         media_files.extend(slide_media)
-
-        if body_texts:
-            slide_sections.append("\n".join(body_texts))
-
-        if slide.has_notes_slide:
-            notes_frame = slide.notes_slide.notes_text_frame
-            notes_text = notes_frame.text.strip() if notes_frame else ""
-            if notes_text:
-                slide_sections.append(f"\n> **Speaker Notes:** {notes_text}")
-
-        if len(slide_sections) > 1:
-            sections.append("\n\n".join(slide_sections))
-        else:
-            sections.append(slide_sections[0])
 
     return ExtractionResult(
         markdown="\n\n".join(sections),
         media_files=tuple(media_files),
     )
+
+
+def _assemble_slide_section(
+    slide: Slide,
+    slide_number: int,
+    path: Path,
+    media_config: MediaConfig,
+) -> tuple[str, list[MediaFile]]:
+    """Assemble the markdown section for a single slide."""
+    title = ""
+    if slide.shapes.title:
+        title = slide.shapes.title.text.strip()
+
+    if title:
+        slide_sections: list[str] = [f"## Slide {slide_number}: {title}"]
+    else:
+        slide_sections = [f"## Slide {slide_number}"]
+
+    body_texts, slide_media = _extract_slide_content(slide, slide_number, path, media_config)
+    if body_texts:
+        slide_sections.append("\n".join(body_texts))
+
+    notes = _extract_slide_notes(slide)
+    if notes is not None:
+        slide_sections.append(notes)
+
+    if len(slide_sections) > 1:
+        return "\n\n".join(slide_sections), slide_media
+    return slide_sections[0], slide_media
+
+
+def _extract_slide_notes(slide: Slide) -> str | None:
+    """Extract speaker notes from a slide, or None if empty/absent."""
+    if not slide.has_notes_slide:
+        return None
+    notes_frame = slide.notes_slide.notes_text_frame
+    notes_text = notes_frame.text.strip() if notes_frame else ""
+    if not notes_text:
+        return None
+    return f"\n> **Speaker Notes:** {notes_text}"
 
 
 def _extract_slide_content(

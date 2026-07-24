@@ -37,33 +37,14 @@ def _extract_pdf(path: Path, media_config: MediaConfig) -> ExtractionResult:
     import pdfplumber
     from pypdf import PdfReader
 
-    sections: list[str] = []
+    reader = PdfReader(str(path))
+    title, metadata_lines = _extract_pdf_metadata(reader, path)
+    sections: list[str] = [f"# {title}", *metadata_lines]
     media_files: list[MediaFile] = []
 
-    reader = PdfReader(str(path))
-    meta = reader.metadata
-    if meta:
-        title = meta.title or path.stem
-        if meta.author:
-            sections.append(f"**Author:** {meta.author}")
-        if meta.creation_date:
-            sections.append(f"**Created:** {meta.creation_date}")
-    else:
-        title = path.stem
-
-    sections.insert(0, f"# {title}")
-
-    fields = reader.get_fields()
-    if fields:
-        field_lines = ["", "## Form Fields", ""]
-        for name, field in fields.items():
-            field_type = field.get("/FT", "unknown")
-            value = field.get("/V", "")
-            safe_name = sanitize_markdown_inline(str(name))
-            safe_type = sanitize_markdown_inline(str(field_type))
-            safe_value = sanitize_markdown_inline(str(value))
-            field_lines.append(f"- **{safe_name}** ({safe_type}): {safe_value}")
-        sections.append("\n".join(field_lines))
+    form_section = _extract_form_fields(reader)
+    if form_section is not None:
+        sections.append(form_section)
 
     with pdfplumber.open(str(path)) as pdf:
         for i, page in enumerate(pdf.pages, 1):
@@ -82,6 +63,38 @@ def _extract_pdf(path: Path, media_config: MediaConfig) -> ExtractionResult:
         markdown="\n\n".join(sections),
         media_files=tuple(media_files),
     )
+
+
+def _extract_pdf_metadata(reader: PdfReader, path: Path) -> tuple[str, list[str]]:
+    """Extract title and metadata lines from a PDF reader."""
+    meta = reader.metadata
+    if not meta:
+        return path.stem, []
+
+    title = meta.title or path.stem
+    lines: list[str] = []
+    if meta.author:
+        lines.append(f"**Author:** {meta.author}")
+    if meta.creation_date:
+        lines.append(f"**Created:** {meta.creation_date}")
+    return title, lines
+
+
+def _extract_form_fields(reader: PdfReader) -> str | None:
+    """Render PDF form fields as a markdown section, or None if no fields exist."""
+    fields = reader.get_fields()
+    if not fields:
+        return None
+
+    field_lines = ["", "## Form Fields", ""]
+    for name, field in fields.items():
+        field_type = field.get("/FT", "unknown")
+        value = field.get("/V", "")
+        safe_name = sanitize_markdown_inline(str(name))
+        safe_type = sanitize_markdown_inline(str(field_type))
+        safe_value = sanitize_markdown_inline(str(value))
+        field_lines.append(f"- **{safe_name}** ({safe_type}): {safe_value}")
+    return "\n".join(field_lines)
 
 
 def _extract_page_content(
