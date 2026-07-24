@@ -198,6 +198,55 @@ def _reap_process(process: multiprocessing.process.BaseProcess) -> None:
         _kill_process(process)
 
 
+def _recv_with_watchdog(
+    parent_conn: Connection,
+    process: multiprocessing.process.BaseProcess,
+    deadline: float,
+    timeout_seconds: int,
+    label: str,
+    path: Path,
+) -> tuple[str, object]:
+    """Poll for data, receive with a deadline watchdog, and classify failures."""
+    timed_out = threading.Event()
+
+    def _enforce_deadline() -> None:
+        timed_out.set()
+        _kill_process(process)
+
+    if not parent_conn.poll(timeout_seconds):
+        raise _timeout_error(timeout_seconds, label, path)
+
+    # poll() only guarantees the first bytes arrived; recv() blocks until the
+    # full payload streams in. The watchdog kills the child at the deadline so
+    # recv() unblocks with EOFError instead of hanging on a stalled child.
+    watchdog = threading.Timer(max(deadline - time.monotonic(), 0.0), _enforce_deadline)
+    watchdog.start()
+    try:
+        return _recv_result(parent_conn, label, path)
+    except EOFError as exc:
+        if timed_out.is_set():
+            raise _timeout_error(timeout_seconds, label, path) from exc
+        raise ExtractionError(
+            f"{label} extraction process died without a result for {path}. "
+            "If this was called from a script with isolation='process', the call "
+            'must run under an `if __name__ == "__main__":` guard — '
+            "multiprocessing spawn re-imports the calling module in the child."
+        ) from exc
+    finally:
+        watchdog.cancel()
+
+
+def _dispatch_worker_result[T](status: str, payload: object, label: str, path: Path) -> T:
+    """Convert a worker's (status, payload) into the extraction result or raise."""
+    if status == "err":
+        if not isinstance(payload, BaseException):
+            raise ExtractionError(f"{label} extraction failed for {path}: {payload!r}")
+        raise ExtractionError(f"{label} extraction failed for {path}: {payload}") from payload
+    if payload is None:
+        raise ExtractionError(f"{label} extraction returned no result for {path}")
+    return payload
+
+
 def _run_in_process[T](
     fn: Callable[..., T], args: tuple[object, ...], timeout_seconds: int, label: str, path: Path
 ) -> T:
@@ -213,50 +262,14 @@ def _run_in_process[T](
     process.start()
     child_conn.close()
 
-    timed_out = threading.Event()
-
-    def _enforce_deadline() -> None:
-        timed_out.set()
-        _kill_process(process)
-
     try:
-        try:
-            if not parent_conn.poll(timeout_seconds):
-                raise _timeout_error(timeout_seconds, label, path)
-            # poll() only guarantees the first bytes arrived; recv() blocks
-            # until the full payload streams in. The watchdog kills the child
-            # at the deadline so recv() unblocks with EOFError instead of
-            # hanging on a stalled child.
-            watchdog = threading.Timer(max(deadline - time.monotonic(), 0.0), _enforce_deadline)
-            watchdog.start()
-            try:
-                status, payload = _recv_result(parent_conn, label, path)
-            except EOFError as exc:
-                if timed_out.is_set():
-                    raise _timeout_error(timeout_seconds, label, path) from exc
-                raise ExtractionError(
-                    f"{label} extraction process died without a result for {path}. "
-                    "If this was called from a script with isolation='process', the call "
-                    'must run under an `if __name__ == "__main__":` guard — '
-                    "multiprocessing spawn re-imports the calling module in the child."
-                ) from exc
-            finally:
-                watchdog.cancel()
-        except BaseException:
-            # Timeout, child death, unpicklable payload, or caller interrupt:
-            # never leave a worker behind.
-            if process.is_alive():
-                _kill_process(process)
-            raise
+        status, payload = _recv_with_watchdog(parent_conn, process, deadline, timeout_seconds, label, path)
+    except BaseException:
+        if process.is_alive():
+            _kill_process(process)
+        raise
     finally:
         parent_conn.close()
 
     _reap_process(process)
-
-    if status == "err":
-        if not isinstance(payload, BaseException):
-            raise ExtractionError(f"{label} extraction failed for {path}: {payload!r}")
-        raise ExtractionError(f"{label} extraction failed for {path}: {payload}") from payload
-    if payload is None:
-        raise ExtractionError(f"{label} extraction returned no result for {path}")
-    return payload
+    return _dispatch_worker_result(status, payload, label, path)
