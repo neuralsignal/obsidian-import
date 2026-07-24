@@ -107,22 +107,8 @@ def _load_default_yaml() -> dict[str, Any]:
     return yaml.safe_load(ref.read_text(encoding="utf-8"))
 
 
-def _build_config(raw: dict[str, Any], config_dir: Path | None) -> ImportConfig:
-    """Build ImportConfig from a raw dict. Resolve relative paths if config_dir given."""
-    if config_dir is not None and not config_dir.is_absolute():
-        config_dir = config_dir.resolve()
-
-    try:
-        input_raw = raw["input"]
-        output_raw = raw["output"]
-        backends_raw = raw["backends"]
-        extraction_raw = raw["extraction"]
-        media_raw = raw["media"]
-    except KeyError as exc:
-        raise ConfigError(f"Missing required config section: {exc}") from exc
-
-    passthrough_raw = raw.get("passthrough", {})
-
+def _build_input_config(input_raw: dict[str, Any]) -> InputConfig:
+    """Build InputConfig from the raw 'input' section."""
     directories: list[DirectoryConfig] = []
     for d in input_raw.get("directories", []):
         if isinstance(d, str):
@@ -143,52 +129,92 @@ def _build_config(raw: dict[str, Any], config_dir: Path | None) -> ImportConfig:
                 f"Directory config missing required key {exc}. "
                 "Each directory must have 'path', 'extensions', and 'exclude'."
             ) from exc
+    return InputConfig(directories=tuple(directories))
 
-    passthrough_patterns = tuple(passthrough_raw.get("patterns", ()))
-    for pattern in passthrough_patterns:
+
+def _build_output_config(output_raw: dict[str, Any]) -> OutputConfig:
+    """Build OutputConfig from the raw 'output' section."""
+    return OutputConfig(
+        directory=output_raw["directory"],
+        frontmatter=output_raw["frontmatter"],
+        metadata_fields=tuple(output_raw["metadata_fields"]),
+    )
+
+
+def _build_backends_config(backends_raw: dict[str, Any]) -> BackendsConfig:
+    """Build BackendsConfig from the raw 'backends' section."""
+    return BackendsConfig(
+        pdf=backends_raw["pdf"],
+        docx=backends_raw["docx"],
+        pptx=backends_raw["pptx"],
+        xlsx=backends_raw["xlsx"],
+        csv=backends_raw.get("csv", backends_raw["default"]),
+        json=backends_raw.get("json", backends_raw["default"]),
+        yaml=backends_raw.get("yaml", backends_raw["default"]),
+        image=backends_raw.get("image", backends_raw["default"]),
+        html=backends_raw.get("html", backends_raw["default"]),
+        default=backends_raw["default"],
+    )
+
+
+def _build_extraction_config(extraction_raw: dict[str, Any]) -> ExtractionConfig:
+    """Build ExtractionConfig from the raw 'extraction' section."""
+    return ExtractionConfig(
+        timeout_seconds=int(extraction_raw["timeout_seconds"]),
+        max_file_size_mb=int(extraction_raw["max_file_size_mb"]),
+        xlsx_max_rows_per_sheet=int(extraction_raw["xlsx_max_rows_per_sheet"]),
+        isolation=validated_isolation(extraction_raw["isolation"]),
+    )
+
+
+def _build_passthrough_config(passthrough_raw: dict[str, Any]) -> PassthroughConfig:
+    """Build PassthroughConfig from the raw 'passthrough' section."""
+    patterns = tuple(passthrough_raw.get("patterns", ()))
+    for pattern in patterns:
         try:
             re.compile(pattern)
         except re.error as exc:
             raise ConfigError(f"Invalid regex in passthrough.patterns: '{pattern}': {exc}") from exc
+    return PassthroughConfig(
+        extensions=tuple(passthrough_raw.get("extensions", ())),
+        paths=tuple(passthrough_raw.get("paths", ())),
+        patterns=patterns,
+    )
+
+
+def _build_media_config(media_raw: dict[str, Any]) -> MediaConfig:
+    """Build MediaConfig from the raw 'media' section."""
+    return MediaConfig(
+        extract_images=bool(media_raw["extract_images"]),
+        image_format=str(media_raw["image_format"]),
+        image_max_dimension=int(media_raw["image_max_dimension"]),
+        image_max_bytes=int(media_raw["image_max_bytes"]),
+        image_max_pixels=int(media_raw["image_max_pixels"]),
+        image_allowed_formats=frozenset(media_raw["image_allowed_formats"]),
+    )
+
+
+def _build_config(raw: dict[str, Any], config_dir: Path | None) -> ImportConfig:
+    """Build ImportConfig from a raw dict. Resolve relative paths if config_dir given."""
+    if config_dir is not None and not config_dir.is_absolute():
+        config_dir = config_dir.resolve()
+
+    try:
+        input_raw = raw["input"]
+        output_raw = raw["output"]
+        backends_raw = raw["backends"]
+        extraction_raw = raw["extraction"]
+        media_raw = raw["media"]
+    except KeyError as exc:
+        raise ConfigError(f"Missing required config section: {exc}") from exc
 
     return ImportConfig(
-        input=InputConfig(directories=tuple(directories)),
-        output=OutputConfig(
-            directory=output_raw["directory"],
-            frontmatter=output_raw["frontmatter"],
-            metadata_fields=tuple(output_raw["metadata_fields"]),
-        ),
-        backends=BackendsConfig(
-            pdf=backends_raw["pdf"],
-            docx=backends_raw["docx"],
-            pptx=backends_raw["pptx"],
-            xlsx=backends_raw["xlsx"],
-            csv=backends_raw.get("csv", backends_raw["default"]),
-            json=backends_raw.get("json", backends_raw["default"]),
-            yaml=backends_raw.get("yaml", backends_raw["default"]),
-            image=backends_raw.get("image", backends_raw["default"]),
-            html=backends_raw.get("html", backends_raw["default"]),
-            default=backends_raw["default"],
-        ),
-        extraction=ExtractionConfig(
-            timeout_seconds=int(extraction_raw["timeout_seconds"]),
-            max_file_size_mb=int(extraction_raw["max_file_size_mb"]),
-            xlsx_max_rows_per_sheet=int(extraction_raw["xlsx_max_rows_per_sheet"]),
-            isolation=validated_isolation(extraction_raw["isolation"]),
-        ),
-        passthrough=PassthroughConfig(
-            extensions=tuple(passthrough_raw.get("extensions", ())),
-            paths=tuple(passthrough_raw.get("paths", ())),
-            patterns=passthrough_patterns,
-        ),
-        media=MediaConfig(
-            extract_images=bool(media_raw["extract_images"]),
-            image_format=str(media_raw["image_format"]),
-            image_max_dimension=int(media_raw["image_max_dimension"]),
-            image_max_bytes=int(media_raw["image_max_bytes"]),
-            image_max_pixels=int(media_raw["image_max_pixels"]),
-            image_allowed_formats=frozenset(media_raw["image_allowed_formats"]),
-        ),
+        input=_build_input_config(input_raw),
+        output=_build_output_config(output_raw),
+        backends=_build_backends_config(backends_raw),
+        extraction=_build_extraction_config(extraction_raw),
+        passthrough=_build_passthrough_config(raw.get("passthrough", {})),
+        media=_build_media_config(media_raw),
     )
 
 
