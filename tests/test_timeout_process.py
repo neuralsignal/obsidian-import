@@ -5,6 +5,7 @@ The worker functions are module-level so the spawn context can pickle them.
 
 from __future__ import annotations
 
+import json
 import multiprocessing
 import os
 import subprocess
@@ -88,17 +89,6 @@ def _exit_without_sending() -> str:
     os._exit(0)
 
 
-def _boom_on_load() -> None:
-    raise TypeError("unpickle boom")
-
-
-class _EvilPayload:
-    """Pickles fine; raises TypeError when unpickled on the receiving side."""
-
-    def __reduce__(self) -> tuple[object, tuple[object, ...]]:
-        return (_boom_on_load, ())
-
-
 def _child_pids() -> set[int]:
     """PIDs of direct children of this process, via os-level ps (psutil is not a dep).
 
@@ -124,7 +114,7 @@ class TestRunWithTimeoutProcess:
         )
         assert result == "hello"
 
-    def test_extraction_result_survives_pickling(self, tmp_path: Path) -> None:
+    def test_extraction_result_survives_json_ipc(self, tmp_path: Path) -> None:
         path = tmp_path / "f.pdf"
         path.write_text("x")
         result = run_with_timeout(
@@ -143,7 +133,8 @@ class TestRunWithTimeoutProcess:
                 (),
                 TimeoutContext(timeout_seconds=30, label="test", path=path, isolation="process"),
             )
-        assert isinstance(exc_info.value.__cause__, ValueError)
+        assert "ValueError" in str(exc_info.value)
+        assert "bad input from child" in str(exc_info.value)
 
     def test_timeout_raises_and_kills_child_process(self, tmp_path: Path) -> None:
         """A timed-out extraction process must be killed — no zombie, no survivor."""
@@ -230,13 +221,68 @@ class TestRunWithTimeoutProcess:
             )
         assert "UnpicklableError" in str(exc_info.value)
 
-    def test_recv_unpickle_failure_wrapped_as_extraction_error(self) -> None:
-        """Parent-side defense: a payload that fails to unpickle out of the pipe
-        is wrapped in ExtractionError instead of escaping as TypeError."""
+    def test_recv_invalid_json_wrapped_as_extraction_error(self) -> None:
+        """Parent-side defense: non-JSON bytes are wrapped in ExtractionError."""
         parent_conn, child_conn = multiprocessing.Pipe(duplex=False)
-        child_conn.send(("err", _EvilPayload()))
+        child_conn.send_bytes(b"not valid json {{{")
         child_conn.close()
-        with pytest.raises(ExtractionError, match="unpickle"):
+        with pytest.raises(ExtractionError, match="failed to decode"):
+            _recv_result(parent_conn, "test", Path("/tmp/f.txt"))
+        parent_conn.close()
+
+    def test_recv_malformed_json_structure_raises_extraction_error(self) -> None:
+        """A valid JSON value that is not [status, payload] is rejected."""
+        parent_conn, child_conn = multiprocessing.Pipe(duplex=False)
+        child_conn.send_bytes(json.dumps({"unexpected": "object"}).encode("utf-8"))
+        child_conn.close()
+        with pytest.raises(ExtractionError, match="malformed"):
+            _recv_result(parent_conn, "test", Path("/tmp/f.txt"))
+        parent_conn.close()
+
+    def test_recv_pickle_bytes_rejected(self) -> None:
+        """Raw pickle bytes from a compromised child must not be deserialized."""
+        import pickle
+
+        parent_conn, child_conn = multiprocessing.Pipe(duplex=False)
+        child_conn.send_bytes(pickle.dumps(("ok", "injected")))
+        child_conn.close()
+        with pytest.raises(ExtractionError, match="failed to decode"):
+            _recv_result(parent_conn, "test", Path("/tmp/f.txt"))
+        parent_conn.close()
+
+    def test_recv_unknown_type_tag_raises_extraction_error(self) -> None:
+        """A JSON payload with an unknown type tag is rejected."""
+        parent_conn, child_conn = multiprocessing.Pipe(duplex=False)
+        child_conn.send_bytes(json.dumps(["ok", ["UnknownType", {}]]).encode("utf-8"))
+        child_conn.close()
+        with pytest.raises(ExtractionError, match="Unknown IPC type tag"):
+            _recv_result(parent_conn, "test", Path("/tmp/f.txt"))
+        parent_conn.close()
+
+    def test_recv_str_type_with_non_string_value_raises(self) -> None:
+        """A type tag of 'str' with a non-string value is rejected."""
+        parent_conn, child_conn = multiprocessing.Pipe(duplex=False)
+        child_conn.send_bytes(json.dumps(["ok", ["str", 42]]).encode("utf-8"))
+        child_conn.close()
+        with pytest.raises(ExtractionError, match="type tag 'str' but value is"):
+            _recv_result(parent_conn, "test", Path("/tmp/f.txt"))
+        parent_conn.close()
+
+    def test_recv_extraction_result_type_with_non_dict_raises(self) -> None:
+        """A type tag of 'ExtractionResult' with a non-dict value is rejected."""
+        parent_conn, child_conn = multiprocessing.Pipe(duplex=False)
+        child_conn.send_bytes(json.dumps(["ok", ["ExtractionResult", "not a dict"]]).encode("utf-8"))
+        child_conn.close()
+        with pytest.raises(ExtractionError, match="type tag 'ExtractionResult' but value is"):
+            _recv_result(parent_conn, "test", Path("/tmp/f.txt"))
+        parent_conn.close()
+
+    def test_recv_malformed_payload_not_list_raises(self) -> None:
+        """A JSON payload where the result is not a [type, value] list is rejected."""
+        parent_conn, child_conn = multiprocessing.Pipe(duplex=False)
+        child_conn.send_bytes(json.dumps(["ok", "bare_string"]).encode("utf-8"))
+        child_conn.close()
+        with pytest.raises(ExtractionError, match="Malformed IPC payload"):
             _recv_result(parent_conn, "test", Path("/tmp/f.txt"))
         parent_conn.close()
 
@@ -255,7 +301,7 @@ class TestRunWithTimeoutProcess:
     def test_none_result_raises_extraction_error(self, tmp_path: Path) -> None:
         path = tmp_path / "f.csv"
         path.write_text("x")
-        with pytest.raises(ExtractionError, match="returned no result"):
+        with pytest.raises(ExtractionError, match="cannot serialize NoneType"):
             run_with_timeout(
                 _return_none,
                 (),
