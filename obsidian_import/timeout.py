@@ -18,8 +18,8 @@ Supports two isolation modes (config: extraction.isolation):
 
 from __future__ import annotations
 
+import json
 import multiprocessing
-import pickle
 import threading
 import time
 from collections.abc import Callable
@@ -28,6 +28,7 @@ from multiprocessing.connection import Connection
 from pathlib import Path
 
 from obsidian_import.exceptions import ConfigError, ExtractionError, ExtractionTimeoutError
+from obsidian_import.extraction_result import ExtractionResult
 
 VALID_ISOLATION_MODES: tuple[str, ...] = ("thread", "process")
 
@@ -134,47 +135,81 @@ def _run_in_thread[T](
     return result[0]
 
 
+_WIRE_TYPE_STR = "str"
+_WIRE_TYPE_EXTRACTION_RESULT = "ExtractionResult"
+
+
+def _serialize_payload(result: object) -> list[object]:
+    """Convert an extraction result to a JSON-safe [type_tag, value] pair."""
+    if isinstance(result, str):
+        return [_WIRE_TYPE_STR, result]
+    if isinstance(result, ExtractionResult):
+        return [_WIRE_TYPE_EXTRACTION_RESULT, result.to_dict()]
+    raise ExtractionError(
+        f"Process IPC cannot serialize {type(result).__name__}; only str and ExtractionResult are supported"
+    )
+
+
+def _deserialize_payload(data: object) -> object:
+    """Reconstruct an extraction result from its JSON wire [type_tag, value] pair."""
+    if not isinstance(data, list) or len(data) != 2:  # noqa: PLR2004
+        raise ExtractionError(f"Malformed IPC payload: expected [type, value], got {type(data).__name__}")
+    wire_type, value = data
+    if wire_type == _WIRE_TYPE_STR:
+        if not isinstance(value, str):
+            raise ExtractionError(f"IPC type tag 'str' but value is {type(value).__name__}")
+        return value
+    if wire_type == _WIRE_TYPE_EXTRACTION_RESULT:
+        if not isinstance(value, dict):
+            raise ExtractionError(f"IPC type tag 'ExtractionResult' but value is {type(value).__name__}")
+        return ExtractionResult.from_dict(value)
+    raise ExtractionError(f"Unknown IPC type tag: {wire_type!r}")
+
+
+def _ipc_send(conn: Connection, status: str, payload: object) -> None:
+    """Send a [status, payload] message as JSON bytes over the connection."""
+    if status == "ok":
+        wire_payload = _serialize_payload(payload)
+    else:
+        wire_payload = str(payload)
+    conn.send_bytes(json.dumps([status, wire_payload]).encode("utf-8"))
+
+
 def _process_worker(conn: Connection, fn: Callable[..., object], args: tuple[object, ...]) -> None:
-    """Child-process entry point: run fn and send (status, payload) back."""
+    """Child-process entry point: run fn and send [status, payload] back via JSON."""
     try:
-        conn.send(("ok", fn(*args)))
+        _ipc_send(conn, "ok", fn(*args))
     except BaseException as exc:  # noqa: BLE001 — process boundary: re-raised in parent
-        _send_error(conn, exc)
+        _ipc_send(conn, "err", f"{type(exc).__name__}: {exc}")
     finally:
         conn.close()
 
 
-def _send_error(conn: Connection, exc: BaseException) -> None:
-    """Send the worker's exception, degrading to its string form when needed.
-
-    An exception that fails the pickle round-trip (unpicklable attributes, or
-    an __init__ that pickle cannot replay on load) would either kill this
-    child mid-send or raise out of the parent's recv() — losing the root
-    cause. The round-trip check catches both directions here, where the
-    original message is still available.
-    """
-    try:
-        pickle.loads(pickle.dumps(exc))
-    except Exception:  # noqa: BLE001 — corrective: fall back to string form
-        conn.send(("err", f"{type(exc).__name__}: {exc}"))
-        return
-    conn.send(("err", exc))
-
-
 def _recv_result(parent_conn: Connection, label: str, path: Path) -> tuple[str, object]:
-    """Receive the worker's (status, payload) pair.
+    """Receive the worker's [status, payload] pair via JSON deserialization.
+
+    Uses recv_bytes + json.loads instead of recv (pickle) to prevent a
+    compromised child from achieving code execution in the parent via
+    crafted pickle payloads.
 
     EOFError (child died without sending) propagates to the caller, which
-    distinguishes timeout kills from spontaneous child death. Any other
-    failure is an unpicklable payload and is wrapped in ExtractionError so
-    the CLI batch loop can contain it.
+    distinguishes timeout kills from spontaneous child death.
     """
     try:
-        return parent_conn.recv()
+        raw = parent_conn.recv_bytes()
+        data = json.loads(raw)
+        if not isinstance(data, list) or len(data) != 2:  # noqa: PLR2004
+            raise ExtractionError(f"{label} extraction IPC for {path}: malformed message structure")
+        status, wire_payload = data
+        if status == "ok":
+            return (status, _deserialize_payload(wire_payload))
+        return (status, wire_payload)
     except EOFError:
         raise
+    except ExtractionError:
+        raise
     except Exception as exc:
-        raise ExtractionError(f"{label} extraction result for {path} failed to unpickle: {exc!r}") from exc
+        raise ExtractionError(f"{label} extraction result for {path} failed to decode: {exc!r}") from exc
 
 
 def _kill_process(process: multiprocessing.process.BaseProcess) -> None:
@@ -254,9 +289,7 @@ def _run_in_process[T](
     _reap_process(process)
 
     if status == "err":
-        if not isinstance(payload, BaseException):
-            raise ExtractionError(f"{label} extraction failed for {path}: {payload!r}")
-        raise ExtractionError(f"{label} extraction failed for {path}: {payload}") from payload
+        raise ExtractionError(f"{label} extraction failed for {path}: {payload}")
     if payload is None:
         raise ExtractionError(f"{label} extraction returned no result for {path}")
     return payload

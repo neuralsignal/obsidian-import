@@ -100,7 +100,7 @@ class TestWatchdogRaceDuringRecv:
         mock_ctx.Pipe.return_value = (mock_parent, mock_child)
         mock_ctx.Process.return_value = mock_process
         mock_parent.poll.return_value = True
-        mock_parent.recv.side_effect = EOFError("pipe closed")
+        mock_parent.recv_bytes.side_effect = EOFError("pipe closed")
 
         with (
             patch("obsidian_import.timeout.multiprocessing.get_context", return_value=mock_ctx),
