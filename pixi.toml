@@ -31,7 +31,7 @@ mkdocs = ">=1.6,<2"
 mkdocs-material = ">=9.5,<10"
 pymdown-extensions = ">=11.0.0,<12"  # CVE-2026-46338: snippets path traversal; CVE-2026-61632: b64 path traversal
 mkdocstrings = {version = ">=0.29,<1", extras = ["python"]}
-docling = ">=2.94.0,<3"  # CVE-2026-44017/44018/44019/44023/47214: docling/docling-core Zip Slip, XXE, file:// + SSRF (fixed >=2.94.0); PYSEC-2026-139: transitive torch deserialization vuln, no fix as of 2026-05-25; PYSEC-2025-217: transitive transformers X-CLIP RCE, no fix available as of 2026-06-29; PYSEC-2026-87: transitive lxml vuln, pinned lxml>=6.1.0 separately
+docling = ">=2.94.0,<3"  # CVE-2026-44017/44018/44019/44023/47214: docling/docling-core Zip Slip, XXE, file:// + SSRF (fixed >=2.94.0); PYSEC-2026-139: transitive torch deserialization vuln, no fix as of 2026-05-25; PYSEC-2025-217: transitive transformers X-CLIP RCE, no fix available as of 2026-06-29; PYSEC-2026-87: transitive lxml vuln, pinned lxml>=6.1.0 separately; PYSEC-2025-194: transitive torch deserialization/execution vuln, pinned torch>=2.13.0 on linux-64 separately
 lxml = ">=6.1.0,<7"  # PYSEC-2026-87: vulnerability fix (transitive dep via docling)
 pyasn1 = ">=0.6.4,<1"  # PYSEC-2026-3455/3456/3457: BER tag parsing, OID quadratic decode, Real float DoS
 jinja2 = ">=3.1.6,<4"
@@ -43,6 +43,9 @@ pydantic-settings = ">=2.14.2,<3"  # GHSA-4xgf-cpjx-pc3j: symlink path traversal
 requests = ">=2.33.0,<3"  # PYSEC-2026-2275: moderate-high severity, fix available in 2.33.0
 soupsieve = ">=2.8.4,<3"  # CVE-2026-49477/49476: ReDoS and memory exhaustion
 pygments = ">=2.20.0,<3"  # PYSEC-2026-2987: vulnerability fix
+
+[target.linux-64.pypi-dependencies]
+torch = ">=2.13.0"  # PYSEC-2025-194: deserialization/execution path vuln (transitive via docling; no osx-arm64 wheel for macOS <14)
 
 [tasks]
 lint = "ruff check obsidian_import/ tests/"
