@@ -28,7 +28,7 @@ from multiprocessing.connection import Connection
 from pathlib import Path
 
 from obsidian_import.exceptions import ConfigError, ExtractionError, ExtractionTimeoutError
-from obsidian_import.extraction_result import ExtractionResult
+from obsidian_import.ipc_codec import deserialize_payload, is_envelope, send_message
 
 VALID_ISOLATION_MODES: tuple[str, ...] = ("thread", "process")
 
@@ -135,52 +135,12 @@ def _run_in_thread[T](
     return result[0]
 
 
-_WIRE_TYPE_STR = "str"
-_WIRE_TYPE_EXTRACTION_RESULT = "ExtractionResult"
-
-
-def _serialize_payload(result: object) -> list[object]:
-    """Convert an extraction result to a JSON-safe [type_tag, value] pair."""
-    if isinstance(result, str):
-        return [_WIRE_TYPE_STR, result]
-    if isinstance(result, ExtractionResult):
-        return [_WIRE_TYPE_EXTRACTION_RESULT, result.to_dict()]
-    raise ExtractionError(
-        f"Process IPC cannot serialize {type(result).__name__}; only str and ExtractionResult are supported"
-    )
-
-
-def _deserialize_payload(data: object) -> object:
-    """Reconstruct an extraction result from its JSON wire [type_tag, value] pair."""
-    if not isinstance(data, list) or len(data) != 2:  # noqa: PLR2004
-        raise ExtractionError(f"Malformed IPC payload: expected [type, value], got {type(data).__name__}")
-    wire_type, value = data
-    if wire_type == _WIRE_TYPE_STR:
-        if not isinstance(value, str):
-            raise ExtractionError(f"IPC type tag 'str' but value is {type(value).__name__}")
-        return value
-    if wire_type == _WIRE_TYPE_EXTRACTION_RESULT:
-        if not isinstance(value, dict):
-            raise ExtractionError(f"IPC type tag 'ExtractionResult' but value is {type(value).__name__}")
-        return ExtractionResult.from_dict(value)
-    raise ExtractionError(f"Unknown IPC type tag: {wire_type!r}")
-
-
-def _ipc_send(conn: Connection, status: str, payload: object) -> None:
-    """Send a [status, payload] message as JSON bytes over the connection."""
-    if status == "ok":
-        wire_payload = _serialize_payload(payload)
-    else:
-        wire_payload = str(payload)
-    conn.send_bytes(json.dumps([status, wire_payload]).encode("utf-8"))
-
-
 def _process_worker(conn: Connection, fn: Callable[..., object], args: tuple[object, ...]) -> None:
     """Child-process entry point: run fn and send [status, payload] back via JSON."""
     try:
-        _ipc_send(conn, "ok", fn(*args))
+        send_message(conn, "ok", fn(*args))
     except BaseException as exc:  # noqa: BLE001 — process boundary: re-raised in parent
-        _ipc_send(conn, "err", f"{type(exc).__name__}: {exc}")
+        send_message(conn, "err", f"{type(exc).__name__}: {exc}")
     finally:
         conn.close()
 
@@ -196,13 +156,12 @@ def _recv_result(parent_conn: Connection, label: str, path: Path) -> tuple[str, 
     distinguishes timeout kills from spontaneous child death.
     """
     try:
-        raw = parent_conn.recv_bytes()
-        data = json.loads(raw)
-        if not isinstance(data, list) or len(data) != 2:  # noqa: PLR2004
+        data = json.loads(parent_conn.recv_bytes())
+        if not is_envelope(data):
             raise ExtractionError(f"{label} extraction IPC for {path}: malformed message structure")
         status, wire_payload = data
         if status == "ok":
-            return (status, _deserialize_payload(wire_payload))
+            return (status, deserialize_payload(wire_payload))
         return (status, wire_payload)
     except EOFError:
         raise
