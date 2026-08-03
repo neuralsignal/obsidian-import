@@ -18,8 +18,8 @@ Supports two isolation modes (config: extraction.isolation):
 
 from __future__ import annotations
 
+import json
 import multiprocessing
-import pickle
 import threading
 import time
 from collections.abc import Callable
@@ -28,6 +28,7 @@ from multiprocessing.connection import Connection
 from pathlib import Path
 
 from obsidian_import.exceptions import ConfigError, ExtractionError, ExtractionTimeoutError
+from obsidian_import.ipc_codec import deserialize_payload, is_envelope, send_message
 
 VALID_ISOLATION_MODES: tuple[str, ...] = ("thread", "process")
 
@@ -135,46 +136,39 @@ def _run_in_thread[T](
 
 
 def _process_worker(conn: Connection, fn: Callable[..., object], args: tuple[object, ...]) -> None:
-    """Child-process entry point: run fn and send (status, payload) back."""
+    """Child-process entry point: run fn and send [status, payload] back via JSON."""
     try:
-        conn.send(("ok", fn(*args)))
+        send_message(conn, "ok", fn(*args))
     except BaseException as exc:  # noqa: BLE001 — process boundary: re-raised in parent
-        _send_error(conn, exc)
+        send_message(conn, "err", f"{type(exc).__name__}: {exc}")
     finally:
         conn.close()
 
 
-def _send_error(conn: Connection, exc: BaseException) -> None:
-    """Send the worker's exception, degrading to its string form when needed.
-
-    An exception that fails the pickle round-trip (unpicklable attributes, or
-    an __init__ that pickle cannot replay on load) would either kill this
-    child mid-send or raise out of the parent's recv() — losing the root
-    cause. The round-trip check catches both directions here, where the
-    original message is still available.
-    """
-    try:
-        pickle.loads(pickle.dumps(exc))
-    except Exception:  # noqa: BLE001 — corrective: fall back to string form
-        conn.send(("err", f"{type(exc).__name__}: {exc}"))
-        return
-    conn.send(("err", exc))
-
-
 def _recv_result(parent_conn: Connection, label: str, path: Path) -> tuple[str, object]:
-    """Receive the worker's (status, payload) pair.
+    """Receive the worker's [status, payload] pair via JSON deserialization.
+
+    Uses recv_bytes + json.loads instead of recv (pickle) to prevent a
+    compromised child from achieving code execution in the parent via
+    crafted pickle payloads.
 
     EOFError (child died without sending) propagates to the caller, which
-    distinguishes timeout kills from spontaneous child death. Any other
-    failure is an unpicklable payload and is wrapped in ExtractionError so
-    the CLI batch loop can contain it.
+    distinguishes timeout kills from spontaneous child death.
     """
     try:
-        return parent_conn.recv()
+        data = json.loads(parent_conn.recv_bytes())
+        if not is_envelope(data):
+            raise ExtractionError(f"{label} extraction IPC for {path}: malformed message structure")
+        status, wire_payload = data
+        if status == "ok":
+            return (status, deserialize_payload(wire_payload))
+        return (status, wire_payload)
     except EOFError:
         raise
+    except ExtractionError:
+        raise
     except Exception as exc:
-        raise ExtractionError(f"{label} extraction result for {path} failed to unpickle: {exc!r}") from exc
+        raise ExtractionError(f"{label} extraction result for {path} failed to decode: {exc!r}") from exc
 
 
 def _kill_process(process: multiprocessing.process.BaseProcess) -> None:
@@ -198,6 +192,57 @@ def _reap_process(process: multiprocessing.process.BaseProcess) -> None:
         _kill_process(process)
 
 
+def _recv_with_watchdog(
+    parent_conn: Connection,
+    process: multiprocessing.process.BaseProcess,
+    deadline: float,
+    timeout_seconds: int,
+    label: str,
+    path: Path,
+) -> tuple[str, object]:
+    """Poll for data, receive with a deadline watchdog, and classify failures."""
+    timed_out = threading.Event()
+
+    def _enforce_deadline() -> None:
+        timed_out.set()
+        _kill_process(process)
+
+    if not parent_conn.poll(timeout_seconds):
+        raise _timeout_error(timeout_seconds, label, path)
+
+    # poll() only guarantees the first bytes arrived; recv() blocks until the
+    # full payload streams in. The watchdog kills the child at the deadline so
+    # recv() unblocks with EOFError instead of hanging on a stalled child.
+    watchdog = threading.Timer(max(deadline - time.monotonic(), 0.0), _enforce_deadline)
+    watchdog.start()
+    try:
+        return _recv_result(parent_conn, label, path)
+    except EOFError as exc:
+        if timed_out.is_set():
+            raise _timeout_error(timeout_seconds, label, path) from exc
+        raise ExtractionError(
+            f"{label} extraction process died without a result for {path}. "
+            "If this was called from a script with isolation='process', the call "
+            'must run under an `if __name__ == "__main__":` guard — '
+            "multiprocessing spawn re-imports the calling module in the child."
+        ) from exc
+    finally:
+        watchdog.cancel()
+
+
+def _dispatch_worker_result[T](status: str, payload: object, label: str, path: Path) -> T:
+    """Convert a worker's [status, payload] into the extraction result or raise.
+
+    The err payload is always the child's stringified exception: the JSON wire
+    format cannot carry an exception object, so there is no type to inspect.
+    """
+    if status == "err":
+        raise ExtractionError(f"{label} extraction failed for {path}: {payload}")
+    if payload is None:
+        raise ExtractionError(f"{label} extraction returned no result for {path}")
+    return payload
+
+
 def _run_in_process[T](
     fn: Callable[..., T], args: tuple[object, ...], timeout_seconds: int, label: str, path: Path
 ) -> T:
@@ -213,50 +258,14 @@ def _run_in_process[T](
     process.start()
     child_conn.close()
 
-    timed_out = threading.Event()
-
-    def _enforce_deadline() -> None:
-        timed_out.set()
-        _kill_process(process)
-
     try:
-        try:
-            if not parent_conn.poll(timeout_seconds):
-                raise _timeout_error(timeout_seconds, label, path)
-            # poll() only guarantees the first bytes arrived; recv() blocks
-            # until the full payload streams in. The watchdog kills the child
-            # at the deadline so recv() unblocks with EOFError instead of
-            # hanging on a stalled child.
-            watchdog = threading.Timer(max(deadline - time.monotonic(), 0.0), _enforce_deadline)
-            watchdog.start()
-            try:
-                status, payload = _recv_result(parent_conn, label, path)
-            except EOFError as exc:
-                if timed_out.is_set():
-                    raise _timeout_error(timeout_seconds, label, path) from exc
-                raise ExtractionError(
-                    f"{label} extraction process died without a result for {path}. "
-                    "If this was called from a script with isolation='process', the call "
-                    'must run under an `if __name__ == "__main__":` guard — '
-                    "multiprocessing spawn re-imports the calling module in the child."
-                ) from exc
-            finally:
-                watchdog.cancel()
-        except BaseException:
-            # Timeout, child death, unpicklable payload, or caller interrupt:
-            # never leave a worker behind.
-            if process.is_alive():
-                _kill_process(process)
-            raise
+        status, payload = _recv_with_watchdog(parent_conn, process, deadline, timeout_seconds, label, path)
+    except BaseException:
+        if process.is_alive():
+            _kill_process(process)
+        raise
     finally:
         parent_conn.close()
 
     _reap_process(process)
-
-    if status == "err":
-        if not isinstance(payload, BaseException):
-            raise ExtractionError(f"{label} extraction failed for {path}: {payload!r}")
-        raise ExtractionError(f"{label} extraction failed for {path}: {payload}") from payload
-    if payload is None:
-        raise ExtractionError(f"{label} extraction returned no result for {path}")
-    return payload
+    return _dispatch_worker_result(status, payload, label, path)
