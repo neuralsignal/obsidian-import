@@ -6,6 +6,26 @@
 
 * pin soupsieve >=2.8.4 for CVE-2026-49477/49476: ReDoS and memory exhaustion (#266)
 
+## [1.2.2](https://github.com/neuralsignal/obsidian-import/compare/v1.2.1...v1.2.2) (2026-08-05)
+
+
+### Bug Fixes
+
+* bump pypdf lower bound to &gt;=6.13.3 for GHSA-jm82-fx9c-mx94 ([#238](https://github.com/neuralsignal/obsidian-import/issues/238)) ([03fd94e](https://github.com/neuralsignal/obsidian-import/commit/03fd94eb05420a34867ad3f2ed7a6c3cbdd2f743))
+* pin pyasn1 &gt;=0.6.4 for PYSEC-2026-3455/3456/3457 DoS vulnerabilities ([#281](https://github.com/neuralsignal/obsidian-import/issues/281)) ([17ecb78](https://github.com/neuralsignal/obsidian-import/commit/17ecb78d4fcf92ba76d1b487adc8f96aa6914617))
+* pin pygments &gt;=2.20.0 for PYSEC-2026-2987 vulnerability ([#289](https://github.com/neuralsignal/obsidian-import/issues/289)) ([8c68c9f](https://github.com/neuralsignal/obsidian-import/commit/8c68c9f6c7a2e7cc7d621cbccada3382c1bfb3ad))
+* pin pymdown-extensions &gt;=11.0.0 for CVE-2026-61632 b64 path traversal ([#283](https://github.com/neuralsignal/obsidian-import/issues/283)) ([bd77ef7](https://github.com/neuralsignal/obsidian-import/commit/bd77ef7ac13dacbc809f26d813adbf872edf562b))
+* pin pypdf &gt;=6.14.2 for CVE-2026-59935/59936/59937/59938 DoS vulnerabilities ([#282](https://github.com/neuralsignal/obsidian-import/issues/282)) ([6ee9a5f](https://github.com/neuralsignal/obsidian-import/commit/6ee9a5fdde6dee2dfa8cdc2e94a287e1284bc23d))
+* pin requests &gt;=2.33.0 for PYSEC-2026-2275 vulnerability ([#290](https://github.com/neuralsignal/obsidian-import/issues/290)) ([85dc238](https://github.com/neuralsignal/obsidian-import/commit/85dc2380fb53a1f4e79d3de06a249820c5bae241))
+* pin soupsieve &gt;=2.8.4 for CVE-2026-49477/49476 ReDoS and memory exhaustion ([#266](https://github.com/neuralsignal/obsidian-import/issues/266)) ([ae37ca1](https://github.com/neuralsignal/obsidian-import/commit/ae37ca13112c992f164323f0a916f55b1c7e33df))
+* pin torch &gt;=2.13.0 for PYSEC-2025-194 deserialization vulnerability ([#291](https://github.com/neuralsignal/obsidian-import/issues/291)) ([da1e9c3](https://github.com/neuralsignal/obsidian-import/commit/da1e9c3d120767de5bfd6dbe79a8db481a9b7984))
+* remove type: ignore suppressions in native_pptx.py ([e613f35](https://github.com/neuralsignal/obsidian-import/commit/e613f3549848cc5a02e23464e3ca98fc05bce885))
+* remove type: ignore suppressions in native_pptx.py ([#246](https://github.com/neuralsignal/obsidian-import/issues/246)) ([c54c3c6](https://github.com/neuralsignal/obsidian-import/commit/c54c3c6ddfbc92e49a384f0c33d0380b5ebaddc7))
+* replace pickle IPC with JSON to prevent code execution from compromised child ([#287](https://github.com/neuralsignal/obsidian-import/issues/287)) ([d396795](https://github.com/neuralsignal/obsidian-import/commit/d3967951aaf59f6d02b0c8f73d1fc6538a25ed16))
+* stream-verify ZIP entry sizes to prevent zip bomb via falsified metadata ([#254](https://github.com/neuralsignal/obsidian-import/issues/254)) ([4d7c7a0](https://github.com/neuralsignal/obsidian-import/commit/4d7c7a0679e414e17dfc572e8f4bc16f5cf751d2))
+* upgrade cryptography to &gt;=48.0.1 for GHSA-537c-gmf6-5ccf ([#237](https://github.com/neuralsignal/obsidian-import/issues/237)) ([80d78f9](https://github.com/neuralsignal/obsidian-import/commit/80d78f94c6943f48d3615fb11e3800dcbf6789ac))
+* upgrade Pillow &gt;=12.3.0 for PYSEC-2026-2253/2254/2255/2256/2257 ([#265](https://github.com/neuralsignal/obsidian-import/issues/265)) ([c84b3ed](https://github.com/neuralsignal/obsidian-import/commit/c84b3ed1a08d810ac4fc87a2e730ed999e7fbc16))
+
 ## [1.2.1](https://github.com/neuralsignal/obsidian-import/compare/v1.2.0...v1.2.1) (2026-06-16)
 
 
