@@ -1,0 +1,122 @@
+name: PR Branch Sync
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "30 5 * * *" # Daily 05:30 UTC, catches PRs missed by push runs
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: "PR number to sync (blank syncs every open claude/* PR)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: pr-branch-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Merge main into open PR branches
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.FACTORY_PAT }}
+
+      - name: Set up pixi
+        uses: prefix-dev/setup-pixi@v0.8.8
+        with:
+          cache: true
+          locked: false
+          run-install: false
+
+      - name: Merge main and relock conflicted branches
+        env:
+          GH_TOKEN: ${{ secrets.FACTORY_PAT }}
+          REPO: ${{ github.repository }}
+          PR_INPUT: ${{ inputs.pr }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          GIT_EDITOR: "true"
+          MARKER: "<!-- factory:pr-branch-sync -->"
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git fetch origin main
+          BASE_SHA=$(git rev-parse origin/main)
+
+          if [ -n "$PR_INPUT" ]; then
+            PR_NUMBERS="$PR_INPUT"
+          else
+            PR_NUMBERS=$(gh pr list --repo "$REPO" --state open --base main \
+              --json number,headRefName,isCrossRepository \
+              --jq '.[] | select(.isCrossRepository == false)
+                        | select(.headRefName | startswith("claude/")) | .number')
+          fi
+
+          if [ -z "$PR_NUMBERS" ]; then
+            echo "No open claude/* PRs to sync."
+            exit 0
+          fi
+
+          for PR in $PR_NUMBERS; do
+            BRANCH=$(gh pr view "$PR" --repo "$REPO" --json headRefName --jq '.headRefName')
+            echo "::group::PR #$PR ($BRANCH)"
+
+            git reset --hard
+            git fetch origin "$BRANCH"
+            git checkout -f -B "$BRANCH" "origin/$BRANCH"
+
+            if git merge-base --is-ancestor "$BASE_SHA" HEAD; then
+              echo "Branch already contains main ($BASE_SHA). Nothing to do."
+              echo "::endgroup::"
+              continue
+            fi
+
+            if ! git merge --no-edit origin/main; then
+              CONFLICTS=$(git diff --name-only --diff-filter=U)
+              if [ "$CONFLICTS" != "pixi.lock" ]; then
+                git merge --abort
+                echo "::warning::PR #$PR has conflicts outside pixi.lock, needs a human: $CONFLICTS"
+                BODY=$(printf '%s\n\n%s\n\n%s\n\n%s\n' \
+                  "$MARKER" \
+                  "This branch conflicts with \`main\` in files the sync workflow will not resolve automatically:" \
+                  "$(echo "$CONFLICTS" | sed 's/^/- `/;s/$/`/')" \
+                  "Merge \`main\` in manually, then run \`pixi lock\` to refresh \`pixi.lock\`. ([sync run]($RUN_URL))")
+                COMMENT_ID=$(gh api "repos/$REPO/issues/$PR/comments" \
+                  --jq ".[] | select(.body | contains(\"$MARKER\")) | .id" | head -1)
+                if [ -n "$COMMENT_ID" ]; then
+                  gh api "repos/$REPO/issues/comments/$COMMENT_ID" -X PATCH -f body="$BODY" >/dev/null
+                else
+                  gh pr comment "$PR" --repo "$REPO" --body "$BODY"
+                fi
+                echo "::endgroup::"
+                continue
+              fi
+
+              # pixi.lock is solver output, never hand-merged: take main's copy and
+              # let pixi re-resolve it against the merged pixi.toml below.
+              git checkout origin/main -- pixi.lock
+              git add pixi.lock
+              git merge --continue
+              echo "Resolved pixi.lock conflict from main; relocking."
+            fi
+
+            pixi lock
+            git add pixi.lock
+            git diff --cached --quiet || git commit -m "chore: relock pixi.lock after merging main"
+
+            git push origin "HEAD:refs/heads/$BRANCH"
+            echo "Synced PR #$PR with main."
+            echo "::endgroup::"
+          done
