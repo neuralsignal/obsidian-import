@@ -59,9 +59,8 @@ jobs:
             PR_NUMBERS="$PR_INPUT"
           else
             PR_NUMBERS=$(gh pr list --repo "$REPO" --state open --base main \
-              --json number,headRefName,isCrossRepository \
-              --jq '.[] | select(.isCrossRepository == false)
-                        | select(.headRefName | startswith("claude/")) | .number')
+              --json number,headRefName \
+              --jq '.[] | select(.headRefName | startswith("claude/")) | .number')
           fi
 
           if [ -z "$PR_NUMBERS" ]; then
@@ -70,8 +69,17 @@ jobs:
           fi
 
           for PR in $PR_NUMBERS; do
-            BRANCH=$(gh pr view "$PR" --repo "$REPO" --json headRefName --jq '.headRefName')
+            PR_JSON=$(gh pr view "$PR" --repo "$REPO" --json headRefName,isCrossRepository)
+            BRANCH=$(echo "$PR_JSON" | jq -r '.headRefName')
             echo "::group::PR #$PR ($BRANCH)"
+
+            # Guarded here rather than in the PR query so a manually dispatched
+            # fork PR number skips instead of failing on `git fetch origin`.
+            if [ "$(echo "$PR_JSON" | jq -r '.isCrossRepository')" = "true" ]; then
+              echo "Branch lives in a fork, not on origin. Skipping."
+              echo "::endgroup::"
+              continue
+            fi
 
             git reset --hard
             git fetch origin "$BRANCH"

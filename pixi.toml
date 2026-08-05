@@ -45,7 +45,7 @@ soupsieve = ">=2.8.4,<3"  # CVE-2026-49477/49476: ReDoS and memory exhaustion
 pygments = ">=2.20.0,<3"  # PYSEC-2026-2987: vulnerability fix
 
 [target.linux-64.pypi-dependencies]
-torch = ">=2.13.0"  # PYSEC-2025-194: deserialization/execution path vuln (transitive via docling; no osx-arm64 wheel for macOS <14)
+torch = ">=2.13.0,<3"  # PYSEC-2025-194: deserialization/execution path vuln (transitive via docling; no osx-arm64 wheel for macOS <14)
 
 [tasks]
 lint = "ruff check obsidian_import/ tests/"
