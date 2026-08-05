@@ -184,6 +184,8 @@ Stop and request human confirmation before:
 - Primary: pixi (conda-forge + PyPI)
 - Lockfile: pixi.lock
 - Audit: `pip audit` (run inside pixi shell)
+- Never hand-merge `pixi.lock` -- `.gitattributes` marks it unmergeable, so conflicts are whole-file. Take `main`'s copy and regenerate with `pixi lock`.
+- The PR Branch Sync workflow does this automatically for open `claude/*` PRs: merges `main`, resolves `pixi.lock` conflicts, relocks, and pushes.
 
 ### Security Standards
 

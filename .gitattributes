@@ -1,0 +1,4 @@
+# pixi.lock is solver output. Text-merging two resolutions produces a lockfile
+# that parses but no longer describes a solvable environment, so refuse the merge
+# and let it be regenerated with `pixi lock` instead.
+pixi.lock -merge linguist-generated=true
