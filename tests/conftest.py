@@ -5,9 +5,17 @@ import zipfile
 from pathlib import Path
 from unittest.mock import MagicMock
 
+import pytest
 from PIL import Image
 
 from obsidian_import.config import MediaConfig
+from obsidian_import.registry import reset_capability_gap_warnings
+
+
+@pytest.fixture(autouse=True)
+def _forget_capability_gap_warnings():
+    """Keep the once-per-config capability warning independent of test order."""
+    reset_capability_gap_warnings()
 
 
 def make_test_docx(path: Path, text: str) -> None:

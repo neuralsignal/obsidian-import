@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+### Features
+
+* add an `anydoc` backend and make it the default for document conversion (#297)
+  * PDF, DOCX, PPTX, XLSX, and CSV now convert through
+    [anydoc](https://github.com/firecrawl/anydoc), a required dependency, and
+    `backends.default` is `anydoc`, so `.doc`, `.xls`, `.ppt`, `.odt`, `.ods`,
+    `.odp`, `.rtf`, and `.epub` convert without extra configuration.
+  * JSON, YAML, and image files keep the native backends; HTML keeps markitdown.
+  * Two behavior changes for anydoc-backed formats: PDFs are extracted text
+    only (set `backends.pdf: native` to keep PDF image extraction, which also
+    keeps scanned PDFs from erroring), and `extraction.xlsx_max_rows_per_sheet`
+    no longer applies to `.xlsx` (set `backends.xlsx: native` to cap rows).
+  * Images embedded in Word, PowerPoint, Excel, OpenDocument, and EPUB files
+    are extracted and embedded at the end of the note; anydoc's markdown holds
+    no reference to an embedded image, so the wikilinks are not placed inline.
+
+### Bug Fixes
+
+* report a backend's ignored config options once per configuration instead of
+  once per file, so batch runs no longer repeat the same warning for every
+  document (#297)
+
 ### Security
 
 * pin soupsieve >=2.8.4 for CVE-2026-49477/49476: ReDoS and memory exhaustion (#266)

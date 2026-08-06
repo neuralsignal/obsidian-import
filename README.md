@@ -1,6 +1,6 @@
 # obsidian-import
 
-Extract files (PDF, DOCX, PPTX, XLSX, CSV, JSON, YAML, images) into Obsidian-flavored Markdown.
+Extract files (PDF, Word, PowerPoint, Excel, OpenDocument, RTF, EPUB, CSV, JSON, YAML, images) into Obsidian-flavored Markdown.
 
 The mirror of [obsidian-export](https://github.com/neuralsignal/obsidian-export): where obsidian-export converts Obsidian notes to PDF/DOCX, obsidian-import converts external documents into Obsidian-ready markdown with YAML frontmatter.
 
@@ -9,6 +9,10 @@ The mirror of [obsidian-export](https://github.com/neuralsignal/obsidian-export)
 ```bash
 pip install obsidian-import
 ```
+
+Document conversion runs on [anydoc](https://github.com/firecrawl/anydoc) by
+default; it is a required dependency, so no extra is needed for PDF, Word,
+PowerPoint, Excel, OpenDocument, RTF, EPUB, or CSV input.
 
 With optional backends:
 
@@ -130,16 +134,16 @@ output:
     - page_count
 
 backends:
-  pdf: native        # pdfplumber + pypdf
-  docx: native       # defusedxml
-  pptx: native       # python-pptx
-  xlsx: native       # openpyxl
-  csv: native        # stdlib csv -> GFM table
-  json: native       # stdlib json -> fenced code block
-  yaml: native       # PyYAML -> fenced code block
-  image: native      # Obsidian ![[wikilink]] embed
-  html: markitdown   # .html / .htm via markitdown (no native backend)
-  default: native    # fallback for unknown extensions
+  pdf: anydoc        # anydoc (text only for PDF; use native for PDF images)
+  docx: anydoc       # anydoc
+  pptx: anydoc       # anydoc
+  xlsx: anydoc       # anydoc (xlsx_max_rows_per_sheet does not apply)
+  csv: anydoc        # anydoc -> GFM table
+  json: native       # stdlib json -> fenced code block (no anydoc parser)
+  yaml: native       # PyYAML -> fenced code block (no anydoc parser)
+  image: native      # Obsidian ![[wikilink]] embed (no anydoc parser)
+  html: markitdown   # .html / .htm via markitdown (no anydoc parser)
+  default: anydoc    # fallback for unlisted extensions (.doc, .rtf, .odt, ...)
 
 extraction:
   timeout_seconds: 120
@@ -163,9 +167,26 @@ passthrough:
 
 | Backend | Extensions | Dependencies | Quality |
 |---------|-----------|--------------|---------|
-| `native` | .pdf, .docx, .pptx, .xlsx, .csv, .json, .yaml/.yml, images | Core (included) | Good for text-heavy documents |
+| `anydoc` (default) | .pdf, .doc/.docx, .ppt/.pptx, .xls/.xlsx, .odt/.ods/.odp, .rtf, .epub, .csv | Core (included) | Best all-round document conversion |
+| `native` | .pdf, .docx, .pptx, .xlsx, .csv, .json, .yaml/.yml, images | Core (included) | Good for text-heavy documents; the only backend that pulls images out of PDFs |
 | `markitdown` | Any | `[markitdown]` extra | Good fallback for HTML, etc. |
 | `docling` | Any | `[docling]` extra | Best for complex layouts, tables |
+
+The `anydoc` backend wraps [anydoc](https://github.com/firecrawl/anydoc), a Rust
+document converter that ships as a compiled wheel — no model downloads, no
+extra install step. Two differences from the native backends are worth knowing
+before you keep the defaults:
+
+- **PDFs come out text only.** anydoc converts PDF straight to Markdown and
+  exposes no image model for it. Set `pdf: native` to keep per-page image
+  extraction. Image-only (scanned) PDFs fail with an extraction error rather
+  than an empty note, because anydoc does no OCR.
+- **`extraction.xlsx_max_rows_per_sheet` does not apply to anydoc.** The option
+  is logged as ignored for `.xlsx` files; set `xlsx: native` to cap rows.
+
+Embedded images from Word, PowerPoint, Excel, OpenDocument, and EPUB inputs are
+extracted and embedded at the end of the note: anydoc's Markdown carries no
+reference to an embedded image, so the wikilinks cannot be placed inline.
 
 > **Security note (docling backend):** The `docling` extra depends on `torch`, which has a
 > known deserialization vulnerability ([PYSEC-2026-139](https://github.com/pytorch/pytorch))
@@ -174,6 +195,8 @@ passthrough:
 > trusted sources.
 
 ### Format-Specific Behavior
+
+Native backend output, for the formats it covers:
 
 | Format | Native Backend Output |
 |--------|----------------------|

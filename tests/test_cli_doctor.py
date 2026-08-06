@@ -20,6 +20,23 @@ class TestDoctorCommand:
         assert "native (docx)" in result.output
         assert "native (xlsx)" in result.output
 
+    def test_doctor_reports_anydoc(self):
+        runner = CliRunner()
+        result = runner.invoke(main, ["doctor"])
+        assert "anydoc" in result.output
+        assert "[OK]" in result.output
+
+    def test_doctor_missing_anydoc_exits_1(self):
+        runner = CliRunner()
+
+        def fake_check(backend, extension):
+            return (False, "not found") if backend == "anydoc" else (True, "ok")
+
+        with patch("obsidian_import.cli.check_backend_available", side_effect=fake_check):
+            result = runner.invoke(main, ["doctor"])
+        assert result.exit_code == 1
+        assert "Some required backends are missing" in result.output
+
     def test_doctor_native_unavailable_exits_1(self):
         runner = CliRunner()
         with patch(

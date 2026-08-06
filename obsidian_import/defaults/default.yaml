@@ -12,17 +12,24 @@ output:
     - extracted_at
     - page_count
 
+# anydoc is the default document converter: it handles PDF, Word, PowerPoint,
+# Excel, OpenDocument, RTF, EPUB, and CSV, and ships as a required dependency.
+# Formats it does not read (JSON, YAML, images) stay on the native backends,
+# and HTML stays on markitdown. Two anydoc trade-offs vs. the native backends:
+# PDFs come out text-only (anydoc exposes no image model for PDF), and
+# extraction.xlsx_max_rows_per_sheet does not apply. Set a key back to
+# `native` to get those behaviors for that format.
 backends:
-  pdf: native
-  docx: native
-  pptx: native
-  xlsx: native
-  csv: native
+  pdf: anydoc
+  docx: anydoc
+  pptx: anydoc
+  xlsx: anydoc
+  csv: anydoc
   json: native
   yaml: native
   image: native
   html: markitdown
-  default: native
+  default: anydoc
 
 extraction:
   timeout_seconds: 120

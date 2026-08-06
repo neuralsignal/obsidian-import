@@ -6,9 +6,34 @@ obsidian-import uses a backend system to handle different file formats. Each bac
 
 | Backend | Extensions | Dependencies | Quality |
 |---------|-----------|--------------|---------|
-| `native` | .pdf, .docx, .pptx, .xlsx, .csv, .json, .yaml, images | Core (included) | Good for text-heavy documents |
+| `anydoc` (default) | .pdf, .doc/.docx, .ppt/.pptx, .xls/.xlsx, .odt/.ods/.odp, .rtf, .epub, .csv | Core (included) | Best all-round document conversion |
+| `native` | .pdf, .docx, .pptx, .xlsx, .csv, .json, .yaml, images | Core (included) | Good for text-heavy documents; the only backend that pulls images out of PDFs |
 | `markitdown` | Any | `pip install obsidian-import[markitdown]` | Good fallback for HTML and other formats |
 | `docling` | Any | `pip install obsidian-import[docling]` | Best for complex layouts and tables |
+
+## anydoc (default)
+
+[anydoc](https://github.com/firecrawl/anydoc) is a Rust document converter that
+ships as a compiled wheel — no model downloads and no extra install step — and
+it is the default for every document format. It also covers formats no native
+backend reads: legacy Office files (`.doc`, `.xls`, `.ppt`), OpenDocument
+(`.odt`, `.ods`, `.odp`), `.rtf`, and `.epub`. Those extensions have no
+`backends` key of their own, so they are dispatched by `backends.default`.
+
+Two behaviors differ from the native backends:
+
+- **PDF extraction is text only.** anydoc converts PDF straight to Markdown and
+  exposes no image model for it, so `media.extract_images` has no effect on
+  PDFs. Set `pdf: native` to keep per-page image extraction. anydoc does no
+  OCR, so an image-only (scanned) PDF raises an extraction error instead of
+  producing an empty note.
+- **`extraction.xlsx_max_rows_per_sheet` does not apply.** The option is logged
+  as ignored for `.xlsx` files; set `xlsx: native` to cap rows per sheet.
+
+Embedded images in Word, PowerPoint, Excel, OpenDocument, and EPUB files are
+extracted into the note's media folder and embedded at the end of the note.
+anydoc's Markdown holds no reference to an embedded image, so the wikilinks
+cannot be placed at the position the image occupied in the source.
 
 ## Native Backends
 
@@ -72,11 +97,11 @@ Configure which backend to use per file type in `config.yaml`:
 
 ```yaml
 backends:
-  pdf: native
-  docx: native
-  pptx: native
-  xlsx: native
-  default: native
+  pdf: native      # keep pdfplumber page headings and PDF image extraction
+  docx: anydoc
+  pptx: anydoc
+  xlsx: anydoc
+  default: anydoc
 ```
 
 The `default` key specifies the fallback backend for file extensions not explicitly listed.

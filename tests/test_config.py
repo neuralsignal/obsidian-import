@@ -64,13 +64,19 @@ class TestDefaultConfig:
         config = default_config()
         assert isinstance(config, ImportConfig)
 
-    def test_default_backends_are_native(self):
+    def test_default_document_backends_are_anydoc(self):
         config = default_config()
-        assert config.backends.pdf == "native"
-        assert config.backends.docx == "native"
-        assert config.backends.pptx == "native"
-        assert config.backends.xlsx == "native"
-        assert config.backends.csv == "native"
+        assert config.backends.pdf == "anydoc"
+        assert config.backends.docx == "anydoc"
+        assert config.backends.pptx == "anydoc"
+        assert config.backends.xlsx == "anydoc"
+        assert config.backends.csv == "anydoc"
+        assert config.backends.default == "anydoc"
+
+    def test_formats_anydoc_cannot_read_stay_native(self):
+        # anydoc reads document formats only: JSON, YAML, and images have no
+        # anydoc parser, so those keys keep the native backends.
+        config = default_config()
         assert config.backends.json == "native"
         assert config.backends.yaml == "native"
         assert config.backends.image == "native"
@@ -445,11 +451,11 @@ backends:
         assert config.backends.image == "markitdown"
         assert config.backends.html == "native"
 
-    def test_new_backend_keys_default_to_native(self, tmp_path):
+    def test_new_backend_keys_take_bundled_defaults(self, tmp_path):
         config_file = tmp_path / "config.yaml"
         config_file.write_text("")
         config = load_config(config_file)
-        assert config.backends.csv == "native"
+        assert config.backends.csv == "anydoc"
         assert config.backends.json == "native"
         assert config.backends.yaml == "native"
         assert config.backends.image == "native"

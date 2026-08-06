@@ -6,6 +6,11 @@
 pip install obsidian-import
 ```
 
+This installs the default document backend,
+[anydoc](https://github.com/firecrawl/anydoc), which handles PDF, Word,
+PowerPoint, Excel, OpenDocument, RTF, EPUB, and CSV input. It ships as a
+compiled wheel, so there is nothing further to install for those formats.
+
 ### Optional backends
 
 Install extras for additional backend support:

@@ -37,7 +37,7 @@ class TestConfigFromOverrides:
     def test_backend_override(self) -> None:
         config = config_from_overrides({"backends": {"pdf": "markitdown"}})
         assert config.backends.pdf == "markitdown"
-        assert config.backends.docx == "native"
+        assert config.backends.docx == "anydoc"
 
     def test_invalid_overrides_raise_config_error(self) -> None:
         with pytest.raises(ConfigError):
