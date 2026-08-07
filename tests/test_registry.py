@@ -42,6 +42,21 @@ def _native_backends() -> BackendsConfig:
     )
 
 
+def _anydoc_backends() -> BackendsConfig:
+    return BackendsConfig(
+        pdf="anydoc",
+        docx="anydoc",
+        pptx="anydoc",
+        xlsx="anydoc",
+        csv="anydoc",
+        json="native",
+        yaml="native",
+        image="native",
+        html="markitdown",
+        default="anydoc",
+    )
+
+
 class TestGetBackendModule:
     def test_pdf_returns_native_pdf(self):
         module = get_backend_module(".pdf", _native_backends())
@@ -156,6 +171,18 @@ class TestGetBackendModule:
         with pytest.raises(UnsupportedFormatError, match="Unknown backend"):
             get_backend_module(".pdf", backends)
 
+    @pytest.mark.parametrize("extension", [".pdf", ".docx", ".pptx", ".xlsx", ".csv"])
+    def test_anydoc_serves_every_document_extension(self, extension):
+        module = get_backend_module(extension, _anydoc_backends())
+        assert module.__name__ == "obsidian_import.backends.anydoc"
+
+    @pytest.mark.parametrize("extension", [".rtf", ".epub", ".odt", ".doc", ".xls", ".ppt"])
+    def test_unregistered_extensions_reach_anydoc_via_default(self, extension):
+        # anydoc reads these formats and no config key names them, so the
+        # `default` backend is what makes them convertible.
+        module = get_backend_module(extension, _anydoc_backends())
+        assert module.__name__ == "obsidian_import.backends.anydoc"
+
 
 class TestExtractWithBackend:
     def _markitdown_backends(self) -> BackendsConfig:
@@ -196,6 +223,32 @@ class TestExtractWithBackend:
 
         assert result.markdown == "extracted"
         assert any("max_rows_per_sheet" in r.message for r in caplog.records)
+
+    def test_unsupported_kwarg_warns_once_per_configuration(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """A batch run must report a capability gap once, not once per file."""
+        fake_module = types.ModuleType("obsidian_import.backends.markitdown")
+        fake_module.extract = lambda path, timeout_seconds: "extracted"  # type: ignore[attr-defined]
+
+        import logging
+
+        ctx = ExtractionContext(
+            backends=self._markitdown_backends(),
+            timeout_seconds=30,
+            media_config=_TEST_MEDIA_CONFIG,
+            isolation="thread",
+        )
+        with (
+            patch("obsidian_import.registry.get_backend_module", return_value=fake_module),
+            caplog.at_level(logging.WARNING, logger="obsidian_import.registry"),
+        ):
+            for name in ("one.xlsx", "two.xlsx", "three.xlsx"):
+                sheet = tmp_path / name
+                sheet.write_bytes(b"fake")
+                extract_with_backend(sheet, ctx, max_rows_per_sheet=100)
+
+        assert sum("max_rows_per_sheet" in r.message for r in caplog.records) == 1
 
     def test_supported_kwarg_is_forwarded(self, tmp_path: Path) -> None:
         """max_rows_per_sheet must be forwarded when the backend accepts it."""
@@ -243,6 +296,11 @@ class TestCheckBackendAvailable:
     def test_native_pdf_available(self):
         available, message = check_backend_available("native", ".pdf")
         assert available is True
+
+    def test_anydoc_available(self):
+        available, message = check_backend_available("anydoc", ".pdf")
+        assert available is True
+        assert "anydoc backend available" in message
 
     def test_native_unknown_extension(self):
         available, message = check_backend_available("native", ".xyz")

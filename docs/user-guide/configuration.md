@@ -23,15 +23,16 @@ output:
     - page_count
 
 backends:
-  pdf: native        # pdfplumber + pypdf
-  docx: native       # defusedxml
-  pptx: native       # python-pptx
-  xlsx: native       # openpyxl
-  csv: native        # built-in csv module
+  pdf: native        # pdfplumber + pypdf (page headings, page_count, page images)
+  docx: anydoc       # anydoc
+  pptx: anydoc       # anydoc
+  xlsx: anydoc       # anydoc (xlsx_max_rows_per_sheet does not apply)
+  csv: anydoc        # anydoc
   json: native       # built-in json module
   yaml: native       # pyyaml
   image: native      # Pillow
-  default: native    # fallback for unlisted extensions
+  html: markitdown   # markitdown
+  default: anydoc    # fallback for unlisted extensions
 
 extraction:
   timeout_seconds: 120
@@ -88,7 +89,12 @@ Maps file extensions to extraction backends. See [Backends](backends.md) for det
 | `image` | string | Backend for image files (`.png`, `.jpg`, `.gif`, etc.) |
 | `default` | string | Fallback backend for unlisted extensions |
 
-Valid values: `native`, `markitdown`, `docling`.
+Valid values: `anydoc`, `native`, `markitdown`, `docling`.
+
+The bundled defaults use `anydoc` for `docx`, `pptx`, `xlsx`, `csv`, and
+`default`; `native` for `pdf`, `json`, `yaml`, and `image`; and `markitdown` for
+`html`. PDF stays on the native backend because anydoc cannot extract PDF images
+or page headings — see [Backends](backends.md).
 
 ### `extraction`
 

@@ -7,7 +7,8 @@ Python package for extracting files (PDF, DOCX, PPTX, XLSX) into Obsidian-flavor
 | Path | Purpose |
 |------|---------|
 | `obsidian_import/` | Source package |
-| `obsidian_import/backends/` | Extraction backends (native, markitdown, docling) |
+| `obsidian_import/backends/` | Extraction backends (anydoc, native, markitdown, docling) |
+| `obsidian_import/anydoc_placement.py` | Inline placement of anydoc media embeds |
 | `obsidian_import/config.py` | Config dataclasses + YAML loading |
 | `obsidian_import/cli.py` | CLI entry point |
 | `obsidian_import/registry.py` | Extension → backend dispatch |

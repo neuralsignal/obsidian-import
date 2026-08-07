@@ -1,14 +1,15 @@
 # obsidian-import
 
-Extract files (PDF, DOCX, PPTX, XLSX) into Obsidian-flavored Markdown.
+Extract files (PDF, Word, PowerPoint, Excel, OpenDocument, RTF, EPUB, CSV, JSON, YAML, images) into Obsidian-flavored Markdown.
 
 The mirror of [obsidian-export](https://github.com/neuralsignal/obsidian-export): where obsidian-export converts Obsidian notes to PDF/DOCX, obsidian-import converts external documents into Obsidian-ready markdown with YAML frontmatter.
 
 ## Features
 
+- **anydoc by default** for document conversion: Word, PowerPoint, Excel, OpenDocument, RTF, EPUB, and CSV, with no extra install (PDFs stay on the native backend, which extracts page images and page headings)
 - **Native backends** for PDF (pdfplumber + pypdf), DOCX (defusedxml), PPTX (python-pptx), XLSX (openpyxl), CSV, JSON, YAML, and image files
 - **Optional backends**: markitdown (fallback for HTML and other formats) and docling (high-quality ML-based extraction)
-- **Embedded media extraction**: images embedded in PDF, DOCX, and PPTX are extracted and linked as Obsidian wikilinks
+- **Embedded media extraction**: images embedded in documents are extracted and linked as Obsidian wikilinks
 - **Pass-through mode**: copy files as-is without extraction (configurable by extension, glob, or regex)
 - **Config-driven** backend selection per file type
 - **Glob-based file discovery** with exclude patterns
