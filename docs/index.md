@@ -6,7 +6,7 @@ The mirror of [obsidian-export](https://github.com/neuralsignal/obsidian-export)
 
 ## Features
 
-- **anydoc by default** for document conversion: PDF, Word, PowerPoint, Excel, OpenDocument, RTF, EPUB, and CSV, with no extra install
+- **anydoc by default** for document conversion: Word, PowerPoint, Excel, OpenDocument, RTF, EPUB, and CSV, with no extra install (PDFs stay on the native backend, which extracts page images and page headings)
 - **Native backends** for PDF (pdfplumber + pypdf), DOCX (defusedxml), PPTX (python-pptx), XLSX (openpyxl), CSV, JSON, YAML, and image files
 - **Optional backends**: markitdown (fallback for HTML and other formats) and docling (high-quality ML-based extraction)
 - **Embedded media extraction**: images embedded in documents are extracted and linked as Obsidian wikilinks

@@ -23,7 +23,7 @@ output:
     - page_count
 
 backends:
-  pdf: anydoc        # anydoc (text only for PDF)
+  pdf: native        # pdfplumber + pypdf (page headings, page_count, page images)
   docx: anydoc       # anydoc
   pptx: anydoc       # anydoc
   xlsx: anydoc       # anydoc (xlsx_max_rows_per_sheet does not apply)
@@ -91,9 +91,10 @@ Maps file extensions to extraction backends. See [Backends](backends.md) for det
 
 Valid values: `anydoc`, `native`, `markitdown`, `docling`.
 
-The bundled defaults use `anydoc` for `pdf`, `docx`, `pptx`, `xlsx`, `csv`, and
-`default`; `native` for `json`, `yaml`, and `image`; and `markitdown` for
-`html`. See [Backends](backends.md) for the trade-offs of the anydoc default.
+The bundled defaults use `anydoc` for `docx`, `pptx`, `xlsx`, `csv`, and
+`default`; `native` for `pdf`, `json`, `yaml`, and `image`; and `markitdown` for
+`html`. PDF stays on the native backend because anydoc cannot extract PDF images
+or page headings — see [Backends](backends.md).
 
 ### `extraction`
 

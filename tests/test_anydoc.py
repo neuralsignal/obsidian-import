@@ -58,35 +58,51 @@ def _png_bytes(color: str) -> bytes:
     return buf.getvalue()
 
 
-def _document_xml(text: str, image_count: int) -> str:
-    pictures = "".join(
-        f"""<w:p><w:r><w:drawing><wp:inline>
-        <wp:docPr id="{i}" name="Picture {i}" descr="figure {i}"/>
-        <a:graphic><a:graphicData><a:blip r:embed="rId{i}"/></a:graphicData></a:graphic>
-        </wp:inline></w:drawing></w:r></w:p>"""
-        for i in range(1, image_count + 1)
+def _paragraph_xml(text: str) -> str:
+    return f"<w:p><w:r><w:t>{text}</w:t></w:r></w:p>"
+
+
+def _picture_xml(image_number: int) -> str:
+    return (
+        f"<w:p><w:r><w:drawing><wp:inline>"
+        f'<wp:docPr id="{image_number}" name="Picture {image_number}"/>'
+        f'<a:graphic><a:graphicData><a:blip r:embed="rId{image_number}"/></a:graphicData></a:graphic>'
+        f"</wp:inline></w:drawing></w:r></w:p>"
     )
+
+
+def _document_xml(body: str) -> str:
     return f"""<?xml version="1.0" encoding="UTF-8"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
             xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
             xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
             xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
-  <w:body>
-    <w:p><w:r><w:t>{text}</w:t></w:r></w:p>
-    {pictures}
-  </w:body>
+  <w:body>{body}</w:body>
 </w:document>"""
 
 
-def _write_docx(path: Path, text: str, image_colors: tuple[str, ...]) -> Path:
-    """Write a valid OOXML package with one paragraph and one image per color."""
+def _write_docx(path: Path, items: tuple[tuple[str, str], ...]) -> Path:
+    """Write a valid OOXML package from ("text", value) and ("image", color) items, in order.
+
+    Repeating a color reuses that image part, the way a document that embeds the
+    same picture twice does.
+    """
+    body_parts: list[str] = []
+    part_numbers: dict[str, int] = {}
+    for kind, value in items:
+        if kind == "text":
+            body_parts.append(_paragraph_xml(value))
+        else:
+            part_numbers.setdefault(value, len(part_numbers) + 1)
+            body_parts.append(_picture_xml(part_numbers[value]))
+
     with zipfile.ZipFile(path, "w") as zf:
         zf.writestr("[Content_Types].xml", _CONTENT_TYPES)
         zf.writestr("_rels/.rels", _ROOT_RELS)
-        zf.writestr("word/_rels/document.xml.rels", _doc_rels(len(image_colors)))
-        zf.writestr("word/document.xml", _document_xml(text, len(image_colors)))
-        for i, color in enumerate(image_colors, 1):
-            zf.writestr(f"word/media/image{i}.png", _png_bytes(color))
+        zf.writestr("word/_rels/document.xml.rels", _doc_rels(len(part_numbers)))
+        zf.writestr("word/document.xml", _document_xml("".join(body_parts)))
+        for color, number in part_numbers.items():
+            zf.writestr(f"word/media/image{number}.png", _png_bytes(color))
     return path
 
 
@@ -118,7 +134,7 @@ def _write_pdf(path: Path, text: str) -> Path:
 
 class TestAnydocText:
     def test_extracts_docx_text(self, tmp_path):
-        docx = _write_docx(tmp_path / "report.docx", "Quarterly summary", ())
+        docx = _write_docx(tmp_path / "report.docx", (("text", "Quarterly summary"),))
 
         result = extract(docx, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG)
 
@@ -180,7 +196,7 @@ class TestAnydocText:
         assert "empty.csv" in result.markdown
 
     def test_extracts_under_process_isolation(self, tmp_path):
-        docx = _write_docx(tmp_path / "isolated.docx", "Runs in a child process", ())
+        docx = _write_docx(tmp_path / "isolated.docx", (("text", "Runs in a child process"),))
 
         result = extract(docx, timeout_seconds=120, isolation="process", media_config=_TEST_MEDIA_CONFIG)
 
@@ -189,7 +205,7 @@ class TestAnydocText:
 
 class TestAnydocMedia:
     def test_embedded_images_become_media_files(self, tmp_path):
-        docx = _write_docx(tmp_path / "deck.docx", "With figures", ("red", "blue"))
+        docx = _write_docx(tmp_path / "deck.docx", (("text", "With figures"), ("image", "red"), ("image", "blue")))
 
         result = extract(docx, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG)
 
@@ -199,8 +215,42 @@ class TestAnydocMedia:
             assert media_file.media_type == "image"
             assert media_file.source_path.read_bytes()
 
+    def test_images_are_embedded_where_they_sit_in_the_document(self, tmp_path):
+        docx = _write_docx(
+            tmp_path / "deck.docx",
+            (
+                ("text", "Text before the figure."),
+                ("image", "red"),
+                ("text", "Text between the figures."),
+                ("image", "blue"),
+                ("text", "Text after the figures."),
+            ),
+        )
+
+        result = extract(docx, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG)
+
+        assert result.markdown == (
+            "Text before the figure.\n\n"
+            "![[deck/asset_img1.png]]\n\n"
+            "Text between the figures.\n\n"
+            "![[deck/asset_img2.png]]\n\n"
+            "Text after the figures.\n"
+        )
+
+    def test_repeated_image_is_embedded_at_each_position(self, tmp_path):
+        # anydoc deduplicates assets by content: one media file, two embeds.
+        docx = _write_docx(
+            tmp_path / "deck.docx",
+            (("image", "red"), ("text", "Between the two copies."), ("image", "red")),
+        )
+
+        result = extract(docx, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG)
+
+        assert len(result.media_files) == 1
+        assert result.markdown == ("![[deck/asset_img1.png]]\n\nBetween the two copies.\n\n![[deck/asset_img1.png]]\n")
+
     def test_images_disabled_yields_text_only(self, tmp_path):
-        docx = _write_docx(tmp_path / "deck.docx", "With figures", ("red",))
+        docx = _write_docx(tmp_path / "deck.docx", (("text", "With figures"), ("image", "red")))
 
         result = extract(docx, timeout_seconds=30, isolation="thread", media_config=_NO_IMAGE_MEDIA_CONFIG)
 
@@ -210,7 +260,7 @@ class TestAnydocMedia:
     def test_unreadable_document_model_keeps_text(self, tmp_path, caplog):
         import anydoc
 
-        docx = _write_docx(tmp_path / "deck.docx", "Text survives", ("red",))
+        docx = _write_docx(tmp_path / "deck.docx", (("text", "Text survives"), ("image", "red")))
 
         with (
             patch("anydoc.to_document", side_effect=anydoc.MalformedError("unreadable part")),
@@ -223,7 +273,7 @@ class TestAnydocMedia:
         assert any("document model" in record.getMessage() for record in caplog.records)
 
     def test_unreadable_image_is_skipped_with_text_kept(self, tmp_path):
-        docx = _write_docx(tmp_path / "broken.docx", "Text survives", ("red",))
+        docx = _write_docx(tmp_path / "broken.docx", (("text", "Text survives"), ("image", "red")))
         tiny_pixel_config = dataclasses.replace(_TEST_MEDIA_CONFIG, image_max_pixels=1)
 
         result = extract(docx, timeout_seconds=30, isolation="thread", media_config=tiny_pixel_config)
@@ -263,7 +313,7 @@ class TestAnydocThroughDefaultConfig:
     """The shipped default config routes documents through anydoc."""
 
     def test_docx_extraction_embeds_images_in_the_note(self, tmp_path):
-        docx = _write_docx(tmp_path / "deck.docx", "With figures", ("red", "blue"))
+        docx = _write_docx(tmp_path / "deck.docx", (("text", "With figures"), ("image", "red"), ("image", "blue")))
 
         document = extract_file(docx, default_config())
 

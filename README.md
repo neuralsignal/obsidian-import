@@ -134,7 +134,7 @@ output:
     - page_count
 
 backends:
-  pdf: anydoc        # anydoc (text only for PDF; use native for PDF images)
+  pdf: native        # pdfplumber + pypdf: page headings, page_count, page images
   docx: anydoc       # anydoc
   pptx: anydoc       # anydoc
   xlsx: anydoc       # anydoc (xlsx_max_rows_per_sheet does not apply)
@@ -167,26 +167,29 @@ passthrough:
 
 | Backend | Extensions | Dependencies | Quality |
 |---------|-----------|--------------|---------|
-| `anydoc` (default) | .pdf, .doc/.docx, .ppt/.pptx, .xls/.xlsx, .odt/.ods/.odp, .rtf, .epub, .csv | Core (included) | Best all-round document conversion |
-| `native` | .pdf, .docx, .pptx, .xlsx, .csv, .json, .yaml/.yml, images | Core (included) | Good for text-heavy documents; the only backend that pulls images out of PDFs |
+| `anydoc` (default) | .doc/.docx, .ppt/.pptx, .xls/.xlsx, .odt/.ods/.odp, .rtf, .epub, .csv, .pdf (opt-in) | Core (included) | Best all-round document conversion |
+| `native` | .pdf (default), .docx, .pptx, .xlsx, .csv, .json, .yaml/.yml, images | Core (included) | Good for text-heavy documents; the only backend that pulls images out of PDFs |
 | `markitdown` | Any | `[markitdown]` extra | Good fallback for HTML, etc. |
 | `docling` | Any | `[docling]` extra | Best for complex layouts, tables |
 
 The `anydoc` backend wraps [anydoc](https://github.com/firecrawl/anydoc), a Rust
 document converter that ships as a compiled wheel — no model downloads, no
-extra install step. Two differences from the native backends are worth knowing
-before you keep the defaults:
+extra install step. Embedded images from Word, PowerPoint, Excel, OpenDocument,
+and EPUB input are extracted into the note's media folder and embedded as
+`![[note/asset_imgN.png]]` at the position they occupied in the source
+document.
 
-- **PDFs come out text only.** anydoc converts PDF straight to Markdown and
-  exposes no image model for it. Set `pdf: native` to keep per-page image
-  extraction. Image-only (scanned) PDFs fail with an extraction error rather
-  than an empty note, because anydoc does no OCR.
-- **`extraction.xlsx_max_rows_per_sheet` does not apply to anydoc.** The option
-  is logged as ignored for `.xlsx` files; set `xlsx: native` to cap rows.
+**PDF is the one document format anydoc is not the default for.** anydoc parses
+PDF straight to Markdown and exposes no document model for it, which costs three
+things the native PDF backend gives you: embedded page images, the `## Page N`
+headings, and the `page_count` frontmatter field derived from them. anydoc also
+does no OCR, so a scanned PDF fails with an extraction error instead of
+producing an empty note. Set `pdf: anydoc` if you would rather have anydoc's
+PDF text extraction than any of that.
 
-Embedded images from Word, PowerPoint, Excel, OpenDocument, and EPUB inputs are
-extracted and embedded at the end of the note: anydoc's Markdown carries no
-reference to an embedded image, so the wikilinks cannot be placed inline.
+One further difference: `extraction.xlsx_max_rows_per_sheet` does not apply to
+anydoc. The option is reported as ignored for `.xlsx`; set `xlsx: native` to cap
+rows per sheet.
 
 > **Security note (docling backend):** The `docling` extra depends on `torch`, which has a
 > known deserialization vulnerability ([PYSEC-2026-139](https://github.com/pytorch/pytorch))

@@ -66,12 +66,17 @@ class TestDefaultConfig:
 
     def test_default_document_backends_are_anydoc(self):
         config = default_config()
-        assert config.backends.pdf == "anydoc"
         assert config.backends.docx == "anydoc"
         assert config.backends.pptx == "anydoc"
         assert config.backends.xlsx == "anydoc"
         assert config.backends.csv == "anydoc"
         assert config.backends.default == "anydoc"
+
+    def test_default_pdf_backend_is_native(self):
+        # anydoc has no document model for PDF, so the native backend is the
+        # default there: it keeps page headings, page_count, and page images.
+        config = default_config()
+        assert config.backends.pdf == "native"
 
     def test_formats_anydoc_cannot_read_stay_native(self):
         # anydoc reads document formats only: JSON, YAML, and images have no

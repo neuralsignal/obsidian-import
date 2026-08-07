@@ -5,18 +5,23 @@
 ### Features
 
 * add an `anydoc` backend and make it the default for document conversion (#297)
-  * PDF, DOCX, PPTX, XLSX, and CSV now convert through
+  * DOCX, PPTX, XLSX, and CSV now convert through
     [anydoc](https://github.com/firecrawl/anydoc), a required dependency, and
     `backends.default` is `anydoc`, so `.doc`, `.xls`, `.ppt`, `.odt`, `.ods`,
     `.odp`, `.rtf`, and `.epub` convert without extra configuration.
+  * PDF stays on the native backend: anydoc exposes no document model for PDF,
+    so it cannot extract page images, `## Page N` headings, or the `page_count`
+    frontmatter derived from them, and it has no OCR for scanned PDFs. Set
+    `backends.pdf: anydoc` to use anydoc for PDFs anyway.
   * JSON, YAML, and image files keep the native backends; HTML keeps markitdown.
-  * Two behavior changes for anydoc-backed formats: PDFs are extracted text
-    only (set `backends.pdf: native` to keep PDF image extraction, which also
-    keeps scanned PDFs from erroring), and `extraction.xlsx_max_rows_per_sheet`
-    no longer applies to `.xlsx` (set `backends.xlsx: native` to cap rows).
-  * Images embedded in Word, PowerPoint, Excel, OpenDocument, and EPUB files
-    are extracted and embedded at the end of the note; anydoc's markdown holds
-    no reference to an embedded image, so the wikilinks are not placed inline.
+  * Images embedded in Word, PowerPoint, Excel, OpenDocument, and EPUB files are
+    extracted into the note's media folder and embedded as wikilinks at the
+    position they held in the source document. anydoc's markdown contains no
+    reference to an embedded image, so the embeds are spliced in by aligning its
+    markdown blocks with the document model that carries the images; if the two
+    stop lining up, the remaining images are embedded at the end of the note.
+  * `extraction.xlsx_max_rows_per_sheet` does not apply to anydoc; set
+    `backends.xlsx: native` to cap the rows read per sheet.
 
 ### Bug Fixes
 

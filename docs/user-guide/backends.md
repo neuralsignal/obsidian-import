@@ -6,7 +6,7 @@ obsidian-import uses a backend system to handle different file formats. Each bac
 
 | Backend | Extensions | Dependencies | Quality |
 |---------|-----------|--------------|---------|
-| `anydoc` (default) | .pdf, .doc/.docx, .ppt/.pptx, .xls/.xlsx, .odt/.ods/.odp, .rtf, .epub, .csv | Core (included) | Best all-round document conversion |
+| `anydoc` (default) | .doc/.docx, .ppt/.pptx, .xls/.xlsx, .odt/.ods/.odp, .rtf, .epub, .csv, .pdf (opt-in) | Core (included) | Best all-round document conversion |
 | `native` | .pdf, .docx, .pptx, .xlsx, .csv, .json, .yaml, images | Core (included) | Good for text-heavy documents; the only backend that pulls images out of PDFs |
 | `markitdown` | Any | `pip install obsidian-import[markitdown]` | Good fallback for HTML and other formats |
 | `docling` | Any | `pip install obsidian-import[docling]` | Best for complex layouts and tables |
@@ -15,25 +15,46 @@ obsidian-import uses a backend system to handle different file formats. Each bac
 
 [anydoc](https://github.com/firecrawl/anydoc) is a Rust document converter that
 ships as a compiled wheel — no model downloads and no extra install step — and
-it is the default for every document format. It also covers formats no native
-backend reads: legacy Office files (`.doc`, `.xls`, `.ppt`), OpenDocument
-(`.odt`, `.ods`, `.odp`), `.rtf`, and `.epub`. Those extensions have no
-`backends` key of their own, so they are dispatched by `backends.default`.
+it is the default for every document format except PDF (see below). It also
+covers formats no native backend reads: legacy Office files (`.doc`, `.xls`,
+`.ppt`), OpenDocument (`.odt`, `.ods`, `.odp`), `.rtf`, and `.epub`. Those
+extensions have no `backends` key of their own, so they are dispatched by
+`backends.default`.
 
-Two behaviors differ from the native backends:
+### Embedded images
 
-- **PDF extraction is text only.** anydoc converts PDF straight to Markdown and
-  exposes no image model for it, so `media.extract_images` has no effect on
-  PDFs. Set `pdf: native` to keep per-page image extraction. anydoc does no
-  OCR, so an image-only (scanned) PDF raises an extraction error instead of
-  producing an empty note.
-- **`extraction.xlsx_max_rows_per_sheet` does not apply.** The option is logged
-  as ignored for `.xlsx` files; set `xlsx: native` to cap rows per sheet.
+Images in Word, PowerPoint, Excel, OpenDocument, and EPUB files are extracted
+into the note's media folder and embedded as `![[note/asset_imgN.png]]` at the
+position they occupied in the source document, including images inside table
+cells, list items, and block quotes (those are embedded directly after the
+table, list, or quote that holds them).
 
-Embedded images in Word, PowerPoint, Excel, OpenDocument, and EPUB files are
-extracted into the note's media folder and embedded at the end of the note.
-anydoc's Markdown holds no reference to an embedded image, so the wikilinks
-cannot be placed at the position the image occupied in the source.
+anydoc renders an embedded image as its alt text — or as nothing when it has
+none — and has no option to emit an image reference, so there is nothing in its
+Markdown to rewrite into a wikilink. The embeds are instead spliced in by
+matching anydoc's Markdown blocks against the document model that carries the
+images, block by block. If the two ever stop lining up, placement stops there
+and the remaining images are embedded at the end of the note rather than at a
+guessed position.
+
+### PDF is not on anydoc by default
+
+anydoc parses PDF straight to Markdown and exposes no document model for it,
+which costs three things the native PDF backend provides:
+
+- embedded page images (`media.extract_images` has no effect on anydoc PDFs)
+- the `## Page N` headings
+- the `page_count` frontmatter field, which is derived from those headings
+
+anydoc also does no OCR, so an image-only (scanned) PDF raises an extraction
+error instead of producing an empty note. The bundled default is therefore
+`pdf: native`; set `pdf: anydoc` to convert PDFs with anydoc anyway.
+
+### xlsx row cap
+
+`extraction.xlsx_max_rows_per_sheet` does not apply to anydoc — it is reported
+as an ignored option for `.xlsx` files. Set `xlsx: native` to cap rows per
+sheet.
 
 ## Native Backends
 
