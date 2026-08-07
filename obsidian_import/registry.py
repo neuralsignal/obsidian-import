@@ -68,6 +68,7 @@ _BACKEND_MODULES: dict[str, str | dict[str, str]] = {
     },
     "markitdown": "obsidian_import.backends.markitdown",
     "docling": "obsidian_import.backends.docling",
+    "anydoc": "obsidian_import.backends.anydoc",
 }
 
 
@@ -86,7 +87,7 @@ def _resolve_module_path(backend_name: str, extension: str) -> str:
                 f"Supported native extensions: {', '.join(native_map.keys())}"
             )
         module_path = native_map[extension]
-    elif backend_name in ("markitdown", "docling"):
+    elif backend_name in ("markitdown", "docling", "anydoc"):
         module_path = _BACKEND_MODULES[backend_name]
         if not isinstance(module_path, str):
             raise UnsupportedFormatError(f"Internal: backend module path misconfigured for '{backend_name}'")

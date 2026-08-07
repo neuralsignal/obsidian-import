@@ -135,6 +135,7 @@ def doctor() -> None:
         ("native (json)", "native", ".json"),
         ("native (yaml)", "native", ".yaml"),
         ("native (image)", "native", ".png"),
+        ("anydoc", "anydoc", ".pdf"),
         ("markitdown", "markitdown", ".pdf"),
         ("docling", "docling", ".pdf"),
     ]
@@ -144,7 +145,7 @@ def doctor() -> None:
         available, message = check_backend_available(backend, ext)
         status = "OK" if available else "MISSING"
         click.echo(f"  {label:20s}  [{status}]  {message}")
-        if not available and backend == "native":
+        if not available and backend in ("native", "anydoc"):
             all_ok = False
 
     tools = {

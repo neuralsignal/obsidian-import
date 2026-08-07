@@ -10,11 +10,13 @@ The mirror of [obsidian-export](https://github.com/neuralsignal/obsidian-export)
 pip install obsidian-import
 ```
 
+The default backend is **anydoc** (included as a core dependency), a fast Rust-based document-to-Markdown converter.
+
 With optional backends:
 
 ```bash
 pip install obsidian-import[markitdown]    # fallback for HTML, etc.
-pip install obsidian-import[docling]       # high-quality ML-based extraction
+pip install obsidian-import[docling]       # high-quality ML-based extraction (requires torch)
 ```
 
 ## Quick Start
@@ -130,16 +132,16 @@ output:
     - page_count
 
 backends:
-  pdf: native        # pdfplumber + pypdf
-  docx: native       # defusedxml
-  pptx: native       # python-pptx
-  xlsx: native       # openpyxl
-  csv: native        # stdlib csv -> GFM table
+  pdf: anydoc        # default: fast Rust-based converter (firecrawl-anydoc)
+  docx: anydoc
+  pptx: anydoc
+  xlsx: anydoc
+  csv: anydoc
   json: native       # stdlib json -> fenced code block
   yaml: native       # PyYAML -> fenced code block
   image: native      # Obsidian ![[wikilink]] embed
   html: markitdown   # .html / .htm via markitdown (no native backend)
-  default: native    # fallback for unknown extensions
+  default: anydoc    # fallback for unknown extensions
 
 extraction:
   timeout_seconds: 120
@@ -163,9 +165,10 @@ passthrough:
 
 | Backend | Extensions | Dependencies | Quality |
 |---------|-----------|--------------|---------|
+| `anydoc` | .pdf, .docx, .pptx, .xlsx, .csv, .doc, .rtf, .epub, .odt, .ods, .odp, + more | Core (included) | **Default** — fast Rust-based, highest quality across formats |
 | `native` | .pdf, .docx, .pptx, .xlsx, .csv, .json, .yaml/.yml, images | Core (included) | Good for text-heavy documents |
 | `markitdown` | Any | `[markitdown]` extra | Good fallback for HTML, etc. |
-| `docling` | Any | `[docling]` extra | Best for complex layouts, tables |
+| `docling` | Any | `[docling]` extra | Best for complex layouts, tables (requires torch) |
 
 > **Security note (docling backend):** The `docling` extra depends on `torch`, which has a
 > known deserialization vulnerability ([PYSEC-2026-139](https://github.com/pytorch/pytorch))

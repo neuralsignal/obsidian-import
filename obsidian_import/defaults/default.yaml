@@ -13,16 +13,16 @@ output:
     - page_count
 
 backends:
-  pdf: native
-  docx: native
-  pptx: native
-  xlsx: native
-  csv: native
+  pdf: anydoc
+  docx: anydoc
+  pptx: anydoc
+  xlsx: anydoc
+  csv: anydoc
   json: native
   yaml: native
   image: native
   html: markitdown
-  default: native
+  default: anydoc
 
 extraction:
   timeout_seconds: 120
