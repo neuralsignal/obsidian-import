@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Features
+
+* add anydoc backend (firecrawl-anydoc) and make it the default for PDF, DOCX, PPTX, XLSX, CSV (#297)
+
 ### Security
 
 * pin soupsieve >=2.8.4 for CVE-2026-49477/49476: ReDoS and memory exhaustion (#266)

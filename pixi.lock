@@ -193,6 +193,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/d4/e0/c8a1f0c8f9ffdea4f5fe6dbab89b326cef4d85caf489dad39e209da89416/cuda_bindings-13.3.1-cp314-cp314-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/d6/54/da572c98c0b77626a91b5d3b89f0231d8bff5125c225420908632f8b342d/pymdown_extensions-11.0.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d9/4f/00be2196329ebbff56ce564aa94efb0fbc828d00de250b1980de1a34ab49/python_pptx-1.0.2-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/db/0b/d2943ee6b5eab1a673fe96333070b67232e819cc39728294a7034176006f/firecrawl_anydoc-0.1.6-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/db/3c/33bac158f8ab7f89b2e59426d5fe2e4f63f7ed25df84c036890172b412b5/cfgv-3.5.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/dc/9b/47798a6c91d8bdb567fe2698fe81e0c6b7cb7ef4d13da4114b41d239f65d/typing_inspection-0.4.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/dd/34/b6f19941adcdaf415b5e8a8d577499f5b6a76b59cbae37f9b125a9ffe9f2/polyfactory-3.3.0-py3-none-any.whl
@@ -356,6 +357,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/c4/8f/533075f00aaf19b07c5cd6aa6e5d89424b06b3b3f4583bfa9c640a079059/ruff-0.15.5-py3-none-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/c4/f7/5cc291d701094754a1d327b44d80a44971e13962881d9a400235726171da/hypothesis-6.151.9-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/c7/da/32c752228ae345f489e3a42499d817b6c3996da7e8a3bc7a04fc806b243b/pillow-12.3.0-cp314-cp314-macosx_11_0_arm64.whl
+      - pypi: https://files.pythonhosted.org/packages/ca/af/342a3fcaab2d6cc80ecf636cbab9e3b29205467c21cf1ec6dbf9e2a77814/firecrawl_anydoc-0.1.6-cp310-abi3-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d0/00/1e03a4989fa5795da308cd774f05b704ace555a70f9bf9d3be057b680bcf/python_docx-1.2.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d3/28/56e6d892b7b052236d67c95f1936b6a7cf7c3e2634bf27610b8cbd7f9c60/coverage-7.13.4-cp314-cp314-macosx_11_0_arm64.whl
@@ -1020,6 +1022,8 @@ packages:
   - python-pptx>=1.0,<2
   - openpyxl>=3.1,<4
   - pillow>=12.3.0,<13
+  - firecrawl-anydoc>=0.1.6,<0.2
+  - firecrawl-anydoc>=0.1.6,<0.2 ; extra == 'anydoc'
   - markitdown[all]>=0.1,<0.2 ; extra == 'markitdown'
   - docling>=2.0,<3 ; extra == 'docling'
   - pytest>=9.0.3,<10 ; extra == 'dev'
@@ -3653,6 +3657,11 @@ packages:
   - trove-classifiers>=2024.10.12 ; extra == 'tests'
   - defusedxml ; extra == 'xmp'
   requires_python: '>=3.10'
+- pypi: https://files.pythonhosted.org/packages/ca/af/342a3fcaab2d6cc80ecf636cbab9e3b29205467c21cf1ec6dbf9e2a77814/firecrawl_anydoc-0.1.6-cp310-abi3-macosx_11_0_arm64.whl
+  name: firecrawl-anydoc
+  version: 0.1.6
+  sha256: f102e87c004bcf6de979a1697776774454f814d85893e47fedc58fdf838a2f9b
+  requires_python: '>=3.10'
 - pypi: https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl
   name: iniconfig
   version: 2.3.0
@@ -3811,6 +3820,11 @@ packages:
   - lxml>=3.1.0
   - typing-extensions>=4.9.0
   requires_python: '>=3.8'
+- pypi: https://files.pythonhosted.org/packages/db/0b/d2943ee6b5eab1a673fe96333070b67232e819cc39728294a7034176006f/firecrawl_anydoc-0.1.6-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+  name: firecrawl-anydoc
+  version: 0.1.6
+  sha256: d3e65bbe6709a3a02dc4faf6af8b387016ac4ac2a5b38a70a9f950a8efa492d0
+  requires_python: '>=3.10'
 - pypi: https://files.pythonhosted.org/packages/db/3c/33bac158f8ab7f89b2e59426d5fe2e4f63f7ed25df84c036890172b412b5/cfgv-3.5.0-py2.py3-none-any.whl
   name: cfgv
   version: 3.5.0
