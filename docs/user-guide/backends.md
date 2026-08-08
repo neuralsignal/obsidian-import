@@ -37,6 +37,13 @@ images, block by block. If the two ever stop lining up, placement stops there
 and the remaining images are embedded at the end of the note rather than at a
 guessed position.
 
+Matching allows for the three ways anydoc's Markdown carries text its document
+model does not: list markers rendered into the item text (`1. `, `- c. `,
+`- iii. `), the blank line it puts before nested list items, and blocks with no
+model block of their own, such as the `<a id="..."></a>` it emits for a
+referenced footnote target. Up to two such unclaimed blocks in a row are
+skipped before alignment gives up.
+
 ### PDF is not on anydoc by default
 
 anydoc parses PDF straight to Markdown and exposes no document model for it,

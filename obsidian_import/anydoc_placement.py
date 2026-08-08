@@ -44,6 +44,16 @@ _MATCH_PREFIX_CHARS = 12
 # renders as `---` with no text of its own, and the container kinds always
 # render their children.
 _ALWAYS_RENDERED_KINDS = frozenset({"rule", "table", "list", "block_quote", "code_block"})
+# List markers anydoc adds to the text a list item carries: `3. ` for a decimal
+# list, and a bullet followed by the original marker (`- c. `, `- iii. `) for
+# the alphabetic and roman ones. They are absent from the block's own text, so
+# they are stripped from the rendering before the two are compared.
+_LIST_MARKER = re.compile(r"(?m)^[ \t]*(?:\d+[.)][ \t]+|[-*+][ \t]+(?:[0-9A-Za-z]+[.)][ \t]+)?)")
+# How many markdown blocks may be skipped to recover alignment. anydoc emits
+# blocks its document model does not carry — a referenced link target renders
+# as `<a id="..."></a>` of its own — so a block that does not match the block
+# under the cursor may still match one shortly after it.
+_MAX_RESYNC_SPANS = 2
 
 
 def place_media_embeds(
@@ -102,7 +112,23 @@ def _block_spans(markdown: str) -> list[tuple[int, int]]:
 
     if start is not None:
         spans.append((start, end))
-    return spans
+    return _merge_continuations(spans, markdown)
+
+
+def _merge_continuations(spans: list[tuple[int, int]], markdown: str) -> list[tuple[int, int]]:
+    """Join a span onto the previous one when it is an indented continuation of it.
+
+    A nested list is one block of the document model but anydoc renders it with
+    a blank line before the nested items (`1. Outer\\n\\n   1. Inner`), which
+    would otherwise split one block across two spans.
+    """
+    merged: list[tuple[int, int]] = []
+    for start, end in spans:
+        if merged and markdown[start] in " \t":
+            merged[-1] = (merged[-1][0], end)
+        else:
+            merged.append((start, end))
+    return merged
 
 
 def _plan_insertions(
@@ -125,7 +151,8 @@ def _plan_insertions(
                 insertions.append(_insertion_for_unrendered_block(cursor, spans, markdown, asset_ids))
             continue
 
-        if cursor >= len(spans) or not _matches(block, markdown[spans[cursor][0] : spans[cursor][1]]):
+        matched = _matching_span(block, spans, markdown, cursor)
+        if matched is None:
             if _remaining_asset_ids(document.blocks, block):
                 log.info(
                     "anydoc markdown no longer lines up with its document model at block %d; "
@@ -135,10 +162,27 @@ def _plan_insertions(
             break
 
         if asset_ids:
-            insertions.append((spans[cursor][1], False, asset_ids))
-        cursor += 1
+            insertions.append((spans[matched][1], False, asset_ids))
+        cursor = matched + 1
 
     return insertions
+
+
+def _matching_span(
+    block: Block,
+    spans: Sequence[tuple[int, int]],
+    markdown: str,
+    cursor: int,
+) -> int | None:
+    """Index of the markdown block this block renders to, or None if none matches.
+
+    Blocks anydoc emits without a document-model block of its own are skipped,
+    up to _MAX_RESYNC_SPANS of them, so one of them does not end the alignment.
+    """
+    for index in range(cursor, min(len(spans), cursor + _MAX_RESYNC_SPANS + 1)):
+        if _matches(block, markdown[spans[index][0] : spans[index][1]]):
+            return index
+    return None
 
 
 def _insertion_for_unrendered_block(
@@ -182,12 +226,14 @@ def _matches(block: Block, rendered: str) -> bool:
 
     Compared on alphanumeric characters only: anydoc wraps and escapes the text
     it renders (`## `, `- `, `|`, backslashes), none of which survive the
-    reduction, while the text itself does.
+    reduction, while the text itself does. List markers do survive it — `3. `
+    and `- c. ` reduce to digits and letters the block's own text never had —
+    so they are stripped from the rendering first.
     """
     expected = _reduce(_block_text(block))
     if not expected:
         return True
-    return _reduce(rendered).startswith(expected[:_MATCH_PREFIX_CHARS])
+    return _reduce(_LIST_MARKER.sub("", rendered)).startswith(expected[:_MATCH_PREFIX_CHARS])
 
 
 def _reduce(text: str) -> str:

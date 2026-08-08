@@ -106,6 +106,39 @@ def _write_docx(path: Path, items: tuple[tuple[str, str], ...]) -> Path:
     return path
 
 
+_CONTAINER_XML = """<?xml version="1.0"?>
+<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+  <rootfiles><rootfile full-path="content.opf" media-type="application/oebps-package+xml"/></rootfiles>
+</container>"""
+
+_PACKAGE_OPF = """<?xml version="1.0"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="pub-id">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:identifier id="pub-id">test</dc:identifier><dc:title>Doc</dc:title><dc:language>en</dc:language>
+  </metadata>
+  <manifest>
+    <item id="c1" href="c1.xhtml" media-type="application/xhtml+xml"/>
+    <item id="img" href="figure.png" media-type="image/png"/>
+  </manifest>
+  <spine><itemref idref="c1"/></spine>
+</package>"""
+
+
+def _write_epub(path: Path, body: str) -> Path:
+    """Write a minimal EPUB whose single chapter holds the given XHTML body."""
+    with zipfile.ZipFile(path, "w") as zf:
+        zf.writestr("mimetype", "application/epub+zip")
+        zf.writestr("META-INF/container.xml", _CONTAINER_XML)
+        zf.writestr("content.opf", _PACKAGE_OPF)
+        zf.writestr("figure.png", _png_bytes("red"))
+        zf.writestr(
+            "c1.xhtml",
+            '<?xml version="1.0"?><html xmlns="http://www.w3.org/1999/xhtml" '
+            f'xmlns:epub="http://www.idpf.org/2007/ops"><body>{body}</body></html>',
+        )
+    return path
+
+
 def _write_pdf(path: Path, text: str) -> Path:
     """Write a minimal single-page PDF holding one text run."""
     stream = f"BT /F1 24 Tf 20 100 Td ({text}) Tj ET".encode()
@@ -280,6 +313,68 @@ class TestAnydocMedia:
 
         assert result.media_files == ()
         assert "Text survives" in result.markdown
+
+
+class TestAnydocPlacementAgainstRealMarkdown:
+    """Constructs anydoc renders with no document-model counterpart.
+
+    Each of these once stopped block alignment, which left every image after it
+    appended at the end of the note instead of embedded where it belonged.
+    """
+
+    def _embed_position(self, path: Path) -> tuple[str, int, int]:
+        result = extract(path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG)
+        markdown = result.markdown
+        assert len(result.media_files) == 1
+        return markdown, markdown.index("![["), markdown.index("Tail paragraph.")
+
+    @pytest.mark.parametrize(
+        ("label", "list_html"),
+        [
+            ("decimal", "<ol><li>First item text</li><li>Second item text</li></ol>"),
+            ("lower_alpha", '<ol type="a"><li>Alpha item text</li><li>Beta item text</li></ol>'),
+            ("lower_roman", '<ol type="i"><li>Roman item text</li><li>Other item text</li></ol>'),
+            ("nested", "<ol><li>Outer one item<ol><li>Inner one item</li></ol></li></ol>"),
+        ],
+    )
+    def test_image_after_an_ordered_list_stays_inline(self, tmp_path, label, list_html):
+        # anydoc renders the list marker into the text (`1. `, `- c. `, `- iii. `),
+        # and puts a blank line before nested items, neither of which the
+        # document model's own text carries.
+        epub = _write_epub(
+            tmp_path / f"{label}.epub",
+            f'<p>Intro paragraph.</p>{list_html}<p><img src="figure.png" alt=""/></p><p>Tail paragraph.</p>',
+        )
+
+        markdown, embed_at, tail_at = self._embed_position(epub)
+
+        assert embed_at < tail_at, f"image was not embedded before the tail for {label}: {markdown!r}"
+
+    def test_image_after_a_referenced_link_target_stays_inline(self, tmp_path):
+        # A referenced footnote target renders as an `<a id="..."></a>` block of
+        # its own, which no document-model block accounts for.
+        epub = _write_epub(
+            tmp_path / "notes.epub",
+            '<p>Text with a note<a epub:type="noteref" href="#fn1">1</a>.</p>'
+            '<aside epub:type="footnote" id="fn1"><p>Note body</p></aside>'
+            '<p><img src="figure.png" alt=""/></p><p>Tail paragraph.</p>',
+        )
+
+        markdown, embed_at, tail_at = self._embed_position(epub)
+
+        assert embed_at < tail_at, f"image was not embedded before the tail: {markdown!r}"
+
+    def test_bullet_list_and_numeric_table_keep_placing(self, tmp_path):
+        epub = _write_epub(
+            tmp_path / "mixed.epub",
+            "<p>Intro paragraph.</p><ul><li>First item text</li></ul>"
+            "<table><tr><td>2024</td><td>3141</td></tr></table>"
+            '<p><img src="figure.png" alt=""/></p><p>Tail paragraph.</p>',
+        )
+
+        markdown, embed_at, tail_at = self._embed_position(epub)
+
+        assert embed_at < tail_at, f"image was not embedded before the tail: {markdown!r}"
 
 
 class TestAnydocFailures:
