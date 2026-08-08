@@ -1,5 +1,6 @@
 """Tests for extension dispatch and missing backend handling."""
 
+import importlib.util
 import types
 from pathlib import Path
 from unittest.mock import patch
@@ -301,6 +302,20 @@ class TestCheckBackendAvailable:
         available, message = check_backend_available("anydoc", ".pdf")
         assert available is True
         assert "anydoc backend available" in message
+
+    def test_uninstalled_dependency_is_reported_missing(self):
+        # The backend module imports its converter lazily, so it stays
+        # importable when the converter is gone; the dependency is what decides.
+        real_find_spec = importlib.util.find_spec
+
+        def missing_anydoc(name, *args, **kwargs):
+            return None if name == "anydoc" else real_find_spec(name, *args, **kwargs)
+
+        with patch("obsidian_import.registry.importlib.util.find_spec", side_effect=missing_anydoc):
+            available, message = check_backend_available("anydoc", ".pdf")
+
+        assert available is False
+        assert "anydoc is not installed" in message
 
     def test_native_unknown_extension(self):
         available, message = check_backend_available("native", ".xyz")

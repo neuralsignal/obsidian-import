@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import importlib.util
 import inspect
 import logging
 import types
@@ -188,7 +189,15 @@ def check_backend_available(backend_name: str, extension: str) -> tuple[bool, st
         return False, str(exc)
 
     try:
-        importlib.import_module(module_path)
-        return True, f"{backend_name} backend available"
+        module = importlib.import_module(module_path)
     except (ImportError, BackendNotAvailableError) as exc:
         return False, f"{backend_name} backend not available: {exc}"
+
+    # A backend that imports its converter lazily is importable whether or not
+    # the converter is installed, so the module names what it needs and the
+    # dependency itself is what gets probed.
+    dependency = getattr(module, "BACKEND_DEPENDENCY", None)
+    if dependency is not None and importlib.util.find_spec(dependency) is None:
+        return False, f"{backend_name} backend not available: {dependency} is not installed"
+
+    return True, f"{backend_name} backend available"

@@ -37,6 +37,8 @@ from obsidian_import.timeout import TimeoutContext, run_with_timeout
 
 log = logging.getLogger(__name__)
 
+BACKEND_DEPENDENCY = "anydoc"
+
 _ASSET_FILENAME_CONTEXT = "asset"
 _IMAGE_MEDIA_TYPE_PREFIX = "image/"
 _FORMATS_WITHOUT_DOCUMENT_MODEL = frozenset({"pdf"})
