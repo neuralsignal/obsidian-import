@@ -28,6 +28,16 @@
 * report a backend's ignored config options once per configuration instead of
   once per file, so batch runs no longer repeat the same warning for every
   document (#297)
+* keep anydoc images embedded inline after ordered lists, nested lists, and
+  referenced link targets. anydoc renders a list marker (`1. `, `- c. `,
+  `- iii. `) into text the document model does not carry, puts a blank line
+  before nested items, and emits an `<a id="..."></a>` block of its own for a
+  referenced footnote target. Each of those stopped block alignment, which left
+  every image after it appended at the end of the note (#297)
+* report a backend whose converter is not installed as missing. Backends import
+  their converter lazily, so `doctor` reported `anydoc`, `markitdown`, and
+  `docling` as available whenever the wrapper module imported — which it always
+  does. `doctor` now probes the dependency each backend declares (#297)
 
 ### Security
 

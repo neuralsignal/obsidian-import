@@ -60,7 +60,7 @@ Defines where to find files for batch extraction.
 |-------|------|-------------|
 | `directories` | list | List of directory entries to scan |
 | `directories[].path` | string | Absolute or relative path to scan |
-| `directories[].extensions` | list[string] | File extensions to include (e.g., `[".pdf", ".docx"]`) |
+| `directories[].extensions` | list[string] | File extensions to include (e.g., `[".pdf", ".docx"]`). Discovery only picks up what is listed, so the formats anydoc adds (`.doc`, `.xls`, `.ppt`, `.odt`, `.ods`, `.odp`, `.rtf`, `.epub`) need listing to be found |
 | `directories[].exclude` | list[string] | Glob patterns to exclude (e.g., `["*.tmp", "~$*"]`) |
 
 ### `output`

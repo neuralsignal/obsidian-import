@@ -11,8 +11,9 @@ pip install obsidian-import
 ```
 
 Document conversion runs on [anydoc](https://github.com/firecrawl/anydoc) by
-default; it is a required dependency, so no extra is needed for PDF, Word,
-PowerPoint, Excel, OpenDocument, RTF, EPUB, or CSV input.
+default; it is a required dependency, so no extra is needed for Word,
+PowerPoint, Excel, OpenDocument, RTF, EPUB, or CSV input. PDFs stay on the
+native backend by default — see [Backend Selection](#backend-selection) for why.
 
 With optional backends:
 
@@ -119,7 +120,10 @@ Create a `config.yaml`:
 input:
   directories:
     - path: /path/to/documents
-      extensions: [".pdf", ".docx", ".pptx", ".xlsx", ".csv", ".json", ".yaml", ".png", ".jpg"]
+      # Discovery only picks up the extensions listed here. The formats anydoc
+      # adds (.doc, .xls, .ppt, .odt, .ods, .odp, .rtf, .epub) need listing too.
+      extensions: [".pdf", ".docx", ".pptx", ".xlsx", ".csv", ".json", ".yaml", ".png", ".jpg",
+                   ".doc", ".xls", ".ppt", ".odt", ".ods", ".odp", ".rtf", ".epub"]
       exclude: ["*.tmp", "~$*"]
 
 output:
