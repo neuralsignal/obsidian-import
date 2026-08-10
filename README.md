@@ -1,6 +1,6 @@
 # obsidian-import
 
-Extract files (PDF, DOCX, PPTX, XLSX, CSV, JSON, YAML, images) into Obsidian-flavored Markdown.
+Extract files (PDF, Word, PowerPoint, Excel, OpenDocument, RTF, EPUB, CSV, JSON, YAML, images) into Obsidian-flavored Markdown.
 
 The mirror of [obsidian-export](https://github.com/neuralsignal/obsidian-export): where obsidian-export converts Obsidian notes to PDF/DOCX, obsidian-import converts external documents into Obsidian-ready markdown with YAML frontmatter.
 
@@ -9,6 +9,11 @@ The mirror of [obsidian-export](https://github.com/neuralsignal/obsidian-export)
 ```bash
 pip install obsidian-import
 ```
+
+Document conversion runs on [anydoc](https://github.com/firecrawl/anydoc) by
+default; it is a required dependency, so no extra is needed for Word,
+PowerPoint, Excel, OpenDocument, RTF, EPUB, or CSV input. PDFs stay on the
+native backend by default — see [Backend Selection](#backend-selection) for why.
 
 With optional backends:
 
@@ -115,7 +120,10 @@ Create a `config.yaml`:
 input:
   directories:
     - path: /path/to/documents
-      extensions: [".pdf", ".docx", ".pptx", ".xlsx", ".csv", ".json", ".yaml", ".png", ".jpg"]
+      # Discovery only picks up the extensions listed here. The formats anydoc
+      # adds (.doc, .xls, .ppt, .odt, .ods, .odp, .rtf, .epub) need listing too.
+      extensions: [".pdf", ".docx", ".pptx", ".xlsx", ".csv", ".json", ".yaml", ".png", ".jpg",
+                   ".doc", ".xls", ".ppt", ".odt", ".ods", ".odp", ".rtf", ".epub"]
       exclude: ["*.tmp", "~$*"]
 
 output:
@@ -130,16 +138,16 @@ output:
     - page_count
 
 backends:
-  pdf: native        # pdfplumber + pypdf
-  docx: native       # defusedxml
-  pptx: native       # python-pptx
-  xlsx: native       # openpyxl
-  csv: native        # stdlib csv -> GFM table
-  json: native       # stdlib json -> fenced code block
-  yaml: native       # PyYAML -> fenced code block
-  image: native      # Obsidian ![[wikilink]] embed
-  html: markitdown   # .html / .htm via markitdown (no native backend)
-  default: native    # fallback for unknown extensions
+  pdf: native        # pdfplumber + pypdf: page headings, page_count, page images
+  docx: anydoc       # anydoc
+  pptx: anydoc       # anydoc
+  xlsx: anydoc       # anydoc (xlsx_max_rows_per_sheet does not apply)
+  csv: anydoc        # anydoc -> GFM table
+  json: native       # stdlib json -> fenced code block (no anydoc parser)
+  yaml: native       # PyYAML -> fenced code block (no anydoc parser)
+  image: native      # Obsidian ![[wikilink]] embed (no anydoc parser)
+  html: markitdown   # .html / .htm via markitdown (no anydoc parser)
+  default: anydoc    # fallback for unlisted extensions (.doc, .rtf, .odt, ...)
 
 extraction:
   timeout_seconds: 120
@@ -163,9 +171,29 @@ passthrough:
 
 | Backend | Extensions | Dependencies | Quality |
 |---------|-----------|--------------|---------|
-| `native` | .pdf, .docx, .pptx, .xlsx, .csv, .json, .yaml/.yml, images | Core (included) | Good for text-heavy documents |
+| `anydoc` (default) | .doc/.docx, .ppt/.pptx, .xls/.xlsx, .odt/.ods/.odp, .rtf, .epub, .csv, .pdf (opt-in) | Core (included) | Best all-round document conversion |
+| `native` | .pdf (default), .docx, .pptx, .xlsx, .csv, .json, .yaml/.yml, images | Core (included) | Good for text-heavy documents; the only backend that pulls images out of PDFs |
 | `markitdown` | Any | `[markitdown]` extra | Good fallback for HTML, etc. |
 | `docling` | Any | `[docling]` extra | Best for complex layouts, tables |
+
+The `anydoc` backend wraps [anydoc](https://github.com/firecrawl/anydoc), a Rust
+document converter that ships as a compiled wheel — no model downloads, no
+extra install step. Embedded images from Word, PowerPoint, Excel, OpenDocument,
+and EPUB input are extracted into the note's media folder and embedded as
+`![[note/asset_imgN.png]]` at the position they occupied in the source
+document.
+
+**PDF is the one document format anydoc is not the default for.** anydoc parses
+PDF straight to Markdown and exposes no document model for it, which costs three
+things the native PDF backend gives you: embedded page images, the `## Page N`
+headings, and the `page_count` frontmatter field derived from them. anydoc also
+does no OCR, so a scanned PDF fails with an extraction error instead of
+producing an empty note. Set `pdf: anydoc` if you would rather have anydoc's
+PDF text extraction than any of that.
+
+One further difference: `extraction.xlsx_max_rows_per_sheet` does not apply to
+anydoc. The option is reported as ignored for `.xlsx`; set `xlsx: native` to cap
+rows per sheet.
 
 > **Security note (docling backend):** The `docling` extra depends on `torch`, which has a
 > known deserialization vulnerability ([PYSEC-2026-139](https://github.com/pytorch/pytorch))
@@ -174,6 +202,8 @@ passthrough:
 > trusted sources.
 
 ### Format-Specific Behavior
+
+Native backend output, for the formats it covers:
 
 | Format | Native Backend Output |
 |--------|----------------------|

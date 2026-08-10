@@ -38,6 +38,8 @@ from obsidian_import.timeout import TimeoutContext, run_with_timeout
 
 log = logging.getLogger(__name__)
 
+BACKEND_DEPENDENCY = "docling"
+
 
 def extract(path: Path, timeout_seconds: int, isolation: str, media_config: MediaConfig) -> ExtractionResult:
     """Extract text and images using docling for high-quality document conversion."""

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import importlib.util
 import inspect
 import logging
 import types
@@ -68,7 +69,10 @@ _BACKEND_MODULES: dict[str, str | dict[str, str]] = {
     },
     "markitdown": "obsidian_import.backends.markitdown",
     "docling": "obsidian_import.backends.docling",
+    "anydoc": "obsidian_import.backends.anydoc",
 }
+
+_SINGLE_MODULE_BACKENDS: tuple[str, ...] = ("markitdown", "docling", "anydoc")
 
 
 def _resolve_module_path(backend_name: str, extension: str) -> str:
@@ -86,7 +90,7 @@ def _resolve_module_path(backend_name: str, extension: str) -> str:
                 f"Supported native extensions: {', '.join(native_map.keys())}"
             )
         module_path = native_map[extension]
-    elif backend_name in ("markitdown", "docling"):
+    elif backend_name in _SINGLE_MODULE_BACKENDS:
         module_path = _BACKEND_MODULES[backend_name]
         if not isinstance(module_path, str):
             raise UnsupportedFormatError(f"Internal: backend module path misconfigured for '{backend_name}'")
@@ -112,6 +116,33 @@ def get_backend_module(extension: str, backends: BackendsConfig) -> types.Module
     return importlib.import_module(module_path)
 
 
+# Capability gaps already reported, as (backend, extension, options). A gap is
+# a property of the configuration, not of the file, so a batch run must report
+# each one once instead of once per file. Reset with
+# reset_capability_gap_warnings() when a process re-reads its config.
+_reported_capability_gaps: set[tuple[str, str, tuple[str, ...]]] = set()
+
+
+def reset_capability_gap_warnings() -> None:
+    """Forget which capability gaps have been reported, so they warn again."""
+    _reported_capability_gaps.clear()
+
+
+def _warn_capability_gap(backend_name: str, extension: str, unsupported: set[str]) -> None:
+    """Warn that a backend ignores config options, once per backend/extension/options."""
+    options = tuple(sorted(unsupported))
+    key = (backend_name, extension, options)
+    if key in _reported_capability_gaps:
+        return
+    _reported_capability_gaps.add(key)
+    log.warning(
+        "backend '%s' does not support %s for %s; these options are ignored",
+        backend_name,
+        list(options),
+        extension,
+    )
+
+
 def extract_with_backend(
     path: Path,
     context: ExtractionContext,
@@ -133,13 +164,7 @@ def extract_with_backend(
     accepted = set(sig.parameters.keys()) - {"path", "timeout_seconds", "media_config", "isolation"}
     unsupported = {k for k in kwargs if k not in accepted}
     if unsupported:
-        backend_name = module.__name__.split(".")[-1]
-        log.warning(
-            "backend '%s' does not support %s for %s; these options are ignored",
-            backend_name,
-            sorted(unsupported),
-            extension,
-        )
+        _warn_capability_gap(module.__name__.split(".")[-1], extension, unsupported)
     call_kwargs = {k: v for k, v in kwargs.items() if k not in unsupported}
     if "media_config" in sig.parameters:
         call_kwargs["media_config"] = context.media_config
@@ -164,7 +189,15 @@ def check_backend_available(backend_name: str, extension: str) -> tuple[bool, st
         return False, str(exc)
 
     try:
-        importlib.import_module(module_path)
-        return True, f"{backend_name} backend available"
+        module = importlib.import_module(module_path)
     except (ImportError, BackendNotAvailableError) as exc:
         return False, f"{backend_name} backend not available: {exc}"
+
+    # A backend that imports its converter lazily is importable whether or not
+    # the converter is installed, so the module names what it needs and the
+    # dependency itself is what gets probed.
+    dependency = getattr(module, "BACKEND_DEPENDENCY", None)
+    if dependency is not None and importlib.util.find_spec(dependency) is None:
+        return False, f"{backend_name} backend not available: {dependency} is not installed"
+
+    return True, f"{backend_name} backend available"

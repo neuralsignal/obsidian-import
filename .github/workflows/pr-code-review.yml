@@ -24,7 +24,7 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           claude_args: |
             --model claude-sonnet-4-6
-            --max-turns 12
+            --max-turns 30
             --allowedTools Read,Glob,Grep,Bash
           prompt: |
             Review the changes in this pull request. Read CLAUDE.md for project standards.

@@ -2,6 +2,44 @@
 
 ## Unreleased
 
+### Features
+
+* add an `anydoc` backend and make it the default for document conversion (#297)
+  * DOCX, PPTX, XLSX, and CSV now convert through
+    [anydoc](https://github.com/firecrawl/anydoc), a required dependency, and
+    `backends.default` is `anydoc`, so `.doc`, `.xls`, `.ppt`, `.odt`, `.ods`,
+    `.odp`, `.rtf`, and `.epub` convert without extra configuration.
+  * PDF stays on the native backend: anydoc exposes no document model for PDF,
+    so it cannot extract page images, `## Page N` headings, or the `page_count`
+    frontmatter derived from them, and it has no OCR for scanned PDFs. Set
+    `backends.pdf: anydoc` to use anydoc for PDFs anyway.
+  * JSON, YAML, and image files keep the native backends; HTML keeps markitdown.
+  * Images embedded in Word, PowerPoint, Excel, OpenDocument, and EPUB files are
+    extracted into the note's media folder and embedded as wikilinks at the
+    position they held in the source document. anydoc's markdown contains no
+    reference to an embedded image, so the embeds are spliced in by aligning its
+    markdown blocks with the document model that carries the images; if the two
+    stop lining up, the remaining images are embedded at the end of the note.
+  * `extraction.xlsx_max_rows_per_sheet` applies to the native xlsx backend
+    only. anydoc reads every row and the option is reported as ignored; set
+    `backends.xlsx: native` to cap the rows read per sheet.
+
+### Bug Fixes
+
+* report a backend's ignored config options once per configuration instead of
+  once per file, so batch runs no longer repeat the same warning for every
+  document (#297)
+* keep anydoc images embedded inline after ordered lists, nested lists, and
+  referenced link targets. anydoc renders a list marker (`1. `, `- c. `,
+  `- iii. `) into text the document model does not carry, puts a blank line
+  before nested items, and emits an `<a id="..."></a>` block of its own for a
+  referenced footnote target. Each of those stopped block alignment, which left
+  every image after it appended at the end of the note (#297)
+* report a backend whose converter is not installed as missing. Backends import
+  their converter lazily, so `doctor` reported `anydoc`, `markitdown`, and
+  `docling` as available whenever the wrapper module imported — which it always
+  does. `doctor` now probes the dependency each backend declares (#297)
+
 ### Security
 
 * pin soupsieve >=2.8.4 for CVE-2026-49477/49476: ReDoS and memory exhaustion (#266)

@@ -10,6 +10,8 @@ from pathlib import Path
 from obsidian_import.exceptions import BackendNotAvailableError
 from obsidian_import.timeout import TimeoutContext, run_with_timeout
 
+BACKEND_DEPENDENCY = "markitdown"
+
 
 def extract(path: Path, timeout_seconds: int, isolation: str) -> str:
     """Extract text using markitdown as a fallback converter."""
