@@ -42,6 +42,7 @@
 
 ### Security
 
+* upgrade cryptography &gt;=50.0.0 and pyopenssl &lt;28 for PYSEC-2026-3552/3553/3554 (#300)
 * pin soupsieve >=2.8.4 for CVE-2026-49477/49476: ReDoS and memory exhaustion (#266)
 
 ## [1.2.2](https://github.com/neuralsignal/obsidian-import/compare/v1.2.1...v1.2.2) (2026-08-05)
