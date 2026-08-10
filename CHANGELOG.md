@@ -20,7 +20,8 @@
     reference to an embedded image, so the embeds are spliced in by aligning its
     markdown blocks with the document model that carries the images; if the two
     stop lining up, the remaining images are embedded at the end of the note.
-  * `extraction.xlsx_max_rows_per_sheet` does not apply to anydoc; set
+  * `extraction.xlsx_max_rows_per_sheet` applies to the native xlsx backend
+    only. anydoc reads every row and the option is reported as ignored; set
     `backends.xlsx: native` to cap the rows read per sheet.
 
 ### Bug Fixes

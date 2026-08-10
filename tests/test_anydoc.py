@@ -106,6 +106,45 @@ def _write_docx(path: Path, items: tuple[tuple[str, str], ...]) -> Path:
     return path
 
 
+_FOOTNOTE_CONTENT_TYPES = _CONTENT_TYPES.replace(
+    "</Types>",
+    '  <Override PartName="/word/footnotes.xml" ContentType="application/vnd.openxmlformats-'
+    'officedocument.wordprocessingml.footnotes+xml"/>\n</Types>',
+)
+
+_FOOTNOTE_DOC_RELS = (
+    '<?xml version="1.0" encoding="UTF-8"?>'
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+    '<Relationship Id="rId5" '
+    'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footnotes" '
+    'Target="footnotes.xml"/>' + _IMAGE_REL.format(index=1) + "</Relationships>"
+)
+
+
+def _write_docx_with_footnote_image(path: Path) -> Path:
+    """Write a DOCX whose footnote body holds the only embedded image."""
+    body = '<w:p><w:r><w:t>Body text here</w:t></w:r><w:r><w:footnoteReference w:id="2"/></w:r></w:p>' + _paragraph_xml(
+        "Tail paragraph"
+    )
+    footnotes = (
+        _document_xml("")
+        .replace("w:document", "w:footnotes")
+        .replace(
+            "<w:body></w:body>",
+            f'<w:footnote w:id="2">{_paragraph_xml("Footnote body text")}{_picture_xml(1)}</w:footnote>',
+        )
+    )
+
+    with zipfile.ZipFile(path, "w") as zf:
+        zf.writestr("[Content_Types].xml", _FOOTNOTE_CONTENT_TYPES)
+        zf.writestr("_rels/.rels", _ROOT_RELS)
+        zf.writestr("word/_rels/document.xml.rels", _FOOTNOTE_DOC_RELS)
+        zf.writestr("word/document.xml", _document_xml(body))
+        zf.writestr("word/footnotes.xml", footnotes)
+        zf.writestr("word/media/image1.png", _png_bytes("red"))
+    return path
+
+
 _CONTAINER_XML = """<?xml version="1.0"?>
 <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
   <rootfiles><rootfile full-path="content.opf" media-type="application/oebps-package+xml"/></rootfiles>
@@ -305,6 +344,20 @@ class TestAnydocMedia:
         assert "Text survives" in result.markdown
         assert any("document model" in record.getMessage() for record in caplog.records)
 
+    def test_footnote_image_is_not_surfaced_as_an_asset(self, tmp_path):
+        # anydoc records footnote bodies on Document.notes, which placement does
+        # not walk. That costs nothing today because anydoc drops images inside
+        # a footnote part rather than exposing them as assets, so there is no
+        # media file to position. If a future anydoc surfaces them, this fails
+        # and placement needs to walk notes too.
+        docx = _write_docx_with_footnote_image(tmp_path / "noted.docx")
+
+        result = extract(docx, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG)
+
+        assert result.media_files == ()
+        assert "Body text here" in result.markdown
+        assert "Footnote body text" in result.markdown
+
     def test_unreadable_image_is_skipped_with_text_kept(self, tmp_path):
         docx = _write_docx(tmp_path / "broken.docx", (("text", "Text survives"), ("image", "red")))
         tiny_pixel_config = dataclasses.replace(_TEST_MEDIA_CONFIG, image_max_pixels=1)
@@ -416,6 +469,22 @@ class TestAnydocThroughDefaultConfig:
         assert len(document.media_files) == 2
         for media_file in document.media_files:
             assert f"![[deck/{media_file.filename}]]" in document.markdown
+
+    def test_xlsx_row_cap_is_reported_as_ignored(self, tmp_path, caplog):
+        # The shipped default is `xlsx: anydoc`, which reads every row, so
+        # extraction.xlsx_max_rows_per_sheet does not apply on the default path.
+        # It stays configured for `xlsx: native`, and the gap is reported rather
+        # than passing silently.
+        sheet = tmp_path / "rows.xlsx"
+        sheet.write_bytes(b"not a real workbook")
+
+        with (
+            caplog.at_level(logging.WARNING, logger="obsidian_import.registry"),
+            pytest.raises(ExtractionError),
+        ):
+            extract_file(sheet, default_config())
+
+        assert any("max_rows_per_sheet" in record.getMessage() for record in caplog.records)
 
     @pytest.mark.parametrize("stem", ["book.epub", "memo.rtf", "sheet.ods"])
     def test_formats_without_a_config_key_reach_anydoc(self, tmp_path, stem):

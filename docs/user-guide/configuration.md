@@ -104,7 +104,7 @@ Controls extraction behavior.
 |-------|------|-------------|
 | `timeout_seconds` | int | Maximum seconds per file extraction |
 | `max_file_size_mb` | int | Maximum file size in megabytes |
-| `xlsx_max_rows_per_sheet` | int | Maximum rows to extract per Excel sheet |
+| `xlsx_max_rows_per_sheet` | int | Maximum rows to extract per Excel sheet. Applies to the `native` xlsx backend only; anydoc reads every row and reports the option as ignored. Set `backends.xlsx: native` to cap rows |
 
 ### `media`
 
