@@ -42,8 +42,26 @@
 
 ### Security
 
-* upgrade cryptography &gt;=50.0.0 and pyopenssl &lt;28 for PYSEC-2026-3552/3553/3554 (#300)
 * pin soupsieve >=2.8.4 for CVE-2026-49477/49476: ReDoS and memory exhaustion (#266)
+
+## [1.3.0](https://github.com/neuralsignal/obsidian-import/compare/v1.2.2...v1.3.0) (2026-08-10)
+
+
+### Features
+
+* default document conversion to the anydoc backend ([a7e0d25](https://github.com/neuralsignal/obsidian-import/commit/a7e0d25455685210b571b3b27562fbcf05f9e5d7))
+* embed anydoc images inline and keep PDFs on the native backend ([d5d3ce9](https://github.com/neuralsignal/obsidian-import/commit/d5d3ce9b0e55283cfb40eca305e54f3a6cc1f686))
+
+
+### Bug Fixes
+
+* keep anydoc images inline across lists and renderer-only blocks ([4a41d4b](https://github.com/neuralsignal/obsidian-import/commit/4a41d4b84c42a1c112b8f4662458361a5b07a6d8))
+* report a backend whose converter is not installed as missing ([747f222](https://github.com/neuralsignal/obsidian-import/commit/747f2224c4cbb875a96e2c30aa23eb7481eb45a9))
+
+
+### Documentation
+
+* list the formats anydoc adds and record the placement fixes ([7c10811](https://github.com/neuralsignal/obsidian-import/commit/7c108115693ba99e5a3999d2dad7292ff476ed42))
 
 ## [1.2.2](https://github.com/neuralsignal/obsidian-import/compare/v1.2.1...v1.2.2) (2026-08-05)
 
