@@ -6,7 +6,8 @@ from types import SimpleNamespace
 from hypothesis import given
 from hypothesis import strategies as st
 
-from obsidian_import.anydoc_placement import _block_spans, place_media_embeds
+from obsidian_import.anydoc_placement import place_media_embeds
+from obsidian_import.anydoc_spans import block_spans
 from obsidian_import.extraction_result import MediaFile
 
 
@@ -49,14 +50,14 @@ class TestBlockSpans:
     def test_splits_on_blank_lines(self):
         markdown = "First block\n\nSecond block\n"
 
-        spans = _block_spans(markdown)
+        spans = block_spans(markdown)
 
         assert [markdown[start:end] for start, end in spans] == ["First block", "Second block"]
 
     def test_keeps_fenced_code_whole(self):
         markdown = "Intro\n\n```python\na = 1\n\nb = 2\n```\n\nOutro\n"
 
-        spans = _block_spans(markdown)
+        spans = block_spans(markdown)
 
         assert [markdown[start:end] for start, end in spans] == [
             "Intro",
@@ -67,7 +68,7 @@ class TestBlockSpans:
     def test_multiline_table_is_one_block(self):
         markdown = "| a | b |\n| --- | --- |\n| 1 | 2 |\n"
 
-        spans = _block_spans(markdown)
+        spans = block_spans(markdown)
 
         assert len(spans) == 1
 
@@ -81,7 +82,7 @@ class TestBlockSpans:
     def test_spans_reconstruct_the_paragraphs(self, paragraphs):
         markdown = "\n\n".join(paragraphs) + "\n"
 
-        spans = _block_spans(markdown)
+        spans = block_spans(markdown)
 
         assert [markdown[start:end] for start, end in spans] == paragraphs
 
