@@ -51,6 +51,14 @@ class TimeoutContext:
 _TERMINATE_GRACE_SECONDS = 5
 
 
+@dataclass(frozen=True)
+class _WorkerHandle:
+    """Groups the connection and process for a spawned worker."""
+
+    parent_conn: Connection
+    process: multiprocessing.process.BaseProcess
+
+
 def validated_isolation(value: object) -> str:
     """Validate an isolation mode against the modes run_with_timeout supports.
 
@@ -193,8 +201,7 @@ def _reap_process(process: multiprocessing.process.BaseProcess) -> None:
 
 
 def _recv_with_watchdog(
-    parent_conn: Connection,
-    process: multiprocessing.process.BaseProcess,
+    handle: _WorkerHandle,
     deadline: float,
     timeout_seconds: int,
     label: str,
@@ -205,9 +212,9 @@ def _recv_with_watchdog(
 
     def _enforce_deadline() -> None:
         timed_out.set()
-        _kill_process(process)
+        _kill_process(handle.process)
 
-    if not parent_conn.poll(timeout_seconds):
+    if not handle.parent_conn.poll(timeout_seconds):
         raise _timeout_error(timeout_seconds, label, path)
 
     # poll() only guarantees the first bytes arrived; recv() blocks until the
@@ -216,7 +223,7 @@ def _recv_with_watchdog(
     watchdog = threading.Timer(max(deadline - time.monotonic(), 0.0), _enforce_deadline)
     watchdog.start()
     try:
-        return _recv_result(parent_conn, label, path)
+        return _recv_result(handle.parent_conn, label, path)
     except EOFError as exc:
         if timed_out.is_set():
             raise _timeout_error(timeout_seconds, label, path) from exc
@@ -258,8 +265,9 @@ def _run_in_process[T](
     process.start()
     child_conn.close()
 
+    handle = _WorkerHandle(parent_conn=parent_conn, process=process)
     try:
-        status, payload = _recv_with_watchdog(parent_conn, process, deadline, timeout_seconds, label, path)
+        status, payload = _recv_with_watchdog(handle, deadline, timeout_seconds, label, path)
     except BaseException:
         if process.is_alive():
             _kill_process(process)
