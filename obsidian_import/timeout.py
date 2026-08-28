@@ -175,7 +175,7 @@ def _recv_result(parent_conn: Connection, label: str, path: Path) -> tuple[str, 
         raise
     except ExtractionError:
         raise
-    except Exception as exc:
+    except (json.JSONDecodeError, ValueError, TypeError) as exc:
         raise ExtractionError(f"{label} extraction result for {path} failed to decode: {exc!r}") from exc
 
 
