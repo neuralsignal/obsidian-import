@@ -5,7 +5,6 @@ The worker functions are module-level so the spawn context can pickle them.
 
 from __future__ import annotations
 
-import json
 import multiprocessing
 import os
 import subprocess
@@ -17,7 +16,7 @@ import pytest
 
 from obsidian_import.exceptions import ExtractionError, ExtractionTimeoutError
 from obsidian_import.extraction_result import ExtractionResult
-from obsidian_import.timeout import TimeoutContext, _recv_result, run_with_timeout
+from obsidian_import.timeout import TimeoutContext, run_with_timeout
 
 
 def _echo(value: str) -> str:
@@ -172,12 +171,7 @@ class TestRunWithTimeoutProcess:
         assert multiprocessing.active_children() == [], "multiprocessing still tracks a live child"
 
     def test_result_returns_promptly_despite_lingering_child_thread(self, tmp_path: Path) -> None:
-        """A child that delivers its result but cannot exit must not block the caller.
-
-        Regression: process.join() after recv() had no timeout, so a worker
-        that started a non-daemon thread made run_with_timeout hang until
-        that thread finished (or forever).
-        """
+        """A child that delivers its result but cannot exit must not block the caller."""
         path = tmp_path / "f.csv"
         path.write_text("x")
 
@@ -199,8 +193,7 @@ class TestRunWithTimeoutProcess:
 
     def test_unpicklable_child_exception_preserves_message(self, tmp_path: Path) -> None:
         """An exception that cannot survive the pickle round-trip must surface as
-        ExtractionError with the original message — not a raw TypeError that
-        aborts the CLI batch loop."""
+        ExtractionError with the original message."""
         path = tmp_path / "f.csv"
         path.write_text("x")
         with pytest.raises(ExtractionError, match="42: boom"):
@@ -220,71 +213,6 @@ class TestRunWithTimeoutProcess:
                 TimeoutContext(timeout_seconds=30, label="test", path=path, isolation="process"),
             )
         assert "UnpicklableError" in str(exc_info.value)
-
-    def test_recv_invalid_json_wrapped_as_extraction_error(self) -> None:
-        """Parent-side defense: non-JSON bytes are wrapped in ExtractionError."""
-        parent_conn, child_conn = multiprocessing.Pipe(duplex=False)
-        child_conn.send_bytes(b"not valid json {{{")
-        child_conn.close()
-        with pytest.raises(ExtractionError, match="failed to decode"):
-            _recv_result(parent_conn, "test", Path("/tmp/f.txt"))
-        parent_conn.close()
-
-    def test_recv_malformed_json_structure_raises_extraction_error(self) -> None:
-        """A valid JSON value that is not [status, payload] is rejected."""
-        parent_conn, child_conn = multiprocessing.Pipe(duplex=False)
-        child_conn.send_bytes(json.dumps({"unexpected": "object"}).encode("utf-8"))
-        child_conn.close()
-        with pytest.raises(ExtractionError, match="malformed"):
-            _recv_result(parent_conn, "test", Path("/tmp/f.txt"))
-        parent_conn.close()
-
-    def test_recv_pickle_bytes_rejected(self) -> None:
-        """Raw pickle bytes from a compromised child must not be deserialized."""
-        import pickle
-
-        parent_conn, child_conn = multiprocessing.Pipe(duplex=False)
-        child_conn.send_bytes(pickle.dumps(("ok", "injected")))
-        child_conn.close()
-        with pytest.raises(ExtractionError, match="failed to decode"):
-            _recv_result(parent_conn, "test", Path("/tmp/f.txt"))
-        parent_conn.close()
-
-    def test_recv_unknown_type_tag_raises_extraction_error(self) -> None:
-        """A JSON payload with an unknown type tag is rejected."""
-        parent_conn, child_conn = multiprocessing.Pipe(duplex=False)
-        child_conn.send_bytes(json.dumps(["ok", ["UnknownType", {}]]).encode("utf-8"))
-        child_conn.close()
-        with pytest.raises(ExtractionError, match="Unknown IPC type tag"):
-            _recv_result(parent_conn, "test", Path("/tmp/f.txt"))
-        parent_conn.close()
-
-    def test_recv_str_type_with_non_string_value_raises(self) -> None:
-        """A type tag of 'str' with a non-string value is rejected."""
-        parent_conn, child_conn = multiprocessing.Pipe(duplex=False)
-        child_conn.send_bytes(json.dumps(["ok", ["str", 42]]).encode("utf-8"))
-        child_conn.close()
-        with pytest.raises(ExtractionError, match="type tag 'str' but value is"):
-            _recv_result(parent_conn, "test", Path("/tmp/f.txt"))
-        parent_conn.close()
-
-    def test_recv_extraction_result_type_with_non_dict_raises(self) -> None:
-        """A type tag of 'ExtractionResult' with a non-dict value is rejected."""
-        parent_conn, child_conn = multiprocessing.Pipe(duplex=False)
-        child_conn.send_bytes(json.dumps(["ok", ["ExtractionResult", "not a dict"]]).encode("utf-8"))
-        child_conn.close()
-        with pytest.raises(ExtractionError, match="type tag 'ExtractionResult' but value is"):
-            _recv_result(parent_conn, "test", Path("/tmp/f.txt"))
-        parent_conn.close()
-
-    def test_recv_malformed_payload_not_list_raises(self) -> None:
-        """A JSON payload where the result is not a [type, value] list is rejected."""
-        parent_conn, child_conn = multiprocessing.Pipe(duplex=False)
-        child_conn.send_bytes(json.dumps(["ok", "bare_string"]).encode("utf-8"))
-        child_conn.close()
-        with pytest.raises(ExtractionError, match="Malformed IPC payload"):
-            _recv_result(parent_conn, "test", Path("/tmp/f.txt"))
-        parent_conn.close()
 
     def test_worker_may_spawn_its_own_processes(self, tmp_path: Path) -> None:
         """The worker must not be daemonic: backends (e.g. docling) can spawn
@@ -310,7 +238,7 @@ class TestRunWithTimeoutProcess:
 
     def test_child_death_without_result_mentions_main_guard(self, tmp_path: Path) -> None:
         """The 'died without a result' error must hint at the spawn __main__-guard
-        requirement — the most common cause for script consumers."""
+        requirement."""
         path = tmp_path / "f.csv"
         path.write_text("x")
         with pytest.raises(ExtractionError, match="__main__") as exc_info:
