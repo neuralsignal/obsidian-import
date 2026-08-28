@@ -110,28 +110,31 @@ def _extract_page_content(
     """
     page_sections: list[str] = [f"\n## Page {page_number}\n"]
 
-    _append_table_sections(page, page_sections)
+    page_sections.extend(_table_sections(page))
 
     text = page.extract_text()  # type: ignore[attr-defined]
     if text:
         page_sections.append(text.strip())
 
-    media_files = _page_image_sections(reader, page_number, path, media_config, page_sections)
+    image_sections, media_files = _page_image_sections(reader, page_number, path, media_config)
+    page_sections.extend(image_sections)
 
     if len(page_sections) > 1:
         return "\n".join(page_sections), media_files
     return "", media_files
 
 
-def _append_table_sections(page: object, page_sections: list[str]) -> None:
-    """Extract tables from a page and append rendered markdown to page_sections."""
+def _table_sections(page: object) -> list[str]:
+    """Extract tables from a page and return rendered markdown sections."""
+    sections: list[str] = []
     tables = page.extract_tables()  # type: ignore[attr-defined]
     if tables:
         for table in tables:
             if not table or not table[0]:
                 continue
             cleaned = [[str(cell or "").strip() for cell in row] for row in table]
-            page_sections.append(render_markdown_table(cleaned))
+            sections.append(render_markdown_table(cleaned))
+    return sections
 
 
 def _page_image_sections(
@@ -139,16 +142,16 @@ def _page_image_sections(
     page_number: int,
     path: Path,
     media_config: MediaConfig,
-    page_sections: list[str],
-) -> list[MediaFile]:
-    """Extract images from a page, appending wikilinks to page_sections."""
+) -> tuple[list[str], list[MediaFile]]:
+    """Extract images from a page, returning wikilink sections and media files."""
+    sections: list[str] = []
     media_files: list[MediaFile] = []
     if media_config.extract_images:
         page_images = _extract_page_images(reader, page_number - 1, path, media_config)
         for mf in page_images:
             media_files.append(mf)
-            page_sections.append(make_media_wikilink(path.stem, mf.filename))
-    return media_files
+            sections.append(make_media_wikilink(path.stem, mf.filename))
+    return sections, media_files
 
 
 def _get_page_xobjects(reader: PdfReader, page_index: int) -> dict | None:
