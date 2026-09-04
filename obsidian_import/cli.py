@@ -12,7 +12,7 @@ from obsidian_import import discover_files, extract_file
 from obsidian_import.config import ImportConfig, default_config, load_config
 from obsidian_import.exceptions import ObsidianImportError
 from obsidian_import.media import copy_media_files
-from obsidian_import.output import format_output, media_dir_for, output_path_for
+from obsidian_import.output import ExtractedDocument, format_output, media_dir_for, output_path_for
 from obsidian_import.passthrough import copy_passthrough, matches_passthrough
 from obsidian_import.registry import check_backend_available
 
@@ -50,11 +50,7 @@ def convert(path: str, output_path: str | None, config_path: str | None) -> None
     if output_path:
         out = Path(output_path)
         out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(formatted, encoding="utf-8")
-        _copy_associated_files(doc.associated_files, out.parent)
-        if doc.media_files:
-            media_dir = media_dir_for(source, out.parent)
-            copy_media_files(doc.media_files, media_dir)
+        _write_document(doc, formatted, source, out)
         click.echo(f"Extracted: {source} -> {out}")
     else:
         if doc.media_files:
@@ -113,11 +109,7 @@ def batch(config_path: str, output_dir: str | None) -> None:
             source_root = Path(discovered.source_directory)
             out_path = output_path_for(discovered.path, target_dir, source_root)
             out_path.parent.mkdir(parents=True, exist_ok=True)
-            out_path.write_text(formatted, encoding="utf-8")
-            _copy_associated_files(doc.associated_files, out_path.parent)
-            if doc.media_files:
-                media_dir = media_dir_for(discovered.path, out_path.parent)
-                copy_media_files(doc.media_files, media_dir)
+            _write_document(doc, formatted, discovered.path, out_path)
             click.echo(f"  OK  {discovered.path} -> {out_path}")
             success += 1
         except ObsidianImportError as exc:
@@ -174,6 +166,20 @@ def doctor() -> None:
     else:
         click.echo("\nSome required backends are missing.")
         raise SystemExit(1)
+
+
+def _write_document(
+    doc: ExtractedDocument,
+    formatted: str,
+    source: Path,
+    out_path: Path,
+) -> None:
+    """Write formatted markdown and copy associated and media files."""
+    out_path.write_text(formatted, encoding="utf-8")
+    _copy_associated_files(doc.associated_files, out_path.parent)
+    if doc.media_files:
+        media_dir = media_dir_for(source, out_path.parent)
+        copy_media_files(doc.media_files, media_dir)
 
 
 def _copy_associated_files(files: tuple[Path, ...], dest_dir: Path) -> None:
