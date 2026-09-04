@@ -227,6 +227,16 @@ def _local_name(element: Element) -> str:
     return tag
 
 
+def _parse_heading_level(style_val: str) -> int:
+    """Parse a DOCX paragraph style value into a heading level (0 if not a heading)."""
+    if not style_val.startswith("Heading"):
+        return 0
+    try:
+        return min(int(style_val.replace("Heading", "")), 6)
+    except ValueError:
+        return 0
+
+
 def _extract_paragraph(para: Element) -> str:
     """Extract text from a w:p element, applying heading styles."""
     ppr = para.find(f"{{{_NS['w']}}}pPr")
@@ -234,12 +244,7 @@ def _extract_paragraph(para: Element) -> str:
     if ppr is not None:
         pstyle = ppr.find(f"{{{_NS['w']}}}pStyle")
         if pstyle is not None:
-            style_val = pstyle.get(f"{{{_NS['w']}}}val", "")
-            if style_val.startswith("Heading"):
-                try:
-                    heading_level = min(int(style_val.replace("Heading", "")), 6)
-                except ValueError:
-                    heading_level = 0
+            heading_level = _parse_heading_level(pstyle.get(f"{{{_NS['w']}}}val", ""))
 
     texts: list[str] = []
     for run in para.iter(f"{{{_NS['w']}}}r"):
