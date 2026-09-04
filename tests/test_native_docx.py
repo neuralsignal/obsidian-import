@@ -16,6 +16,7 @@ from obsidian_import.backends.native_docx import (
     _extract_paragraph,
     _extract_table,
     _local_name,
+    _parse_heading_level,
     extract,
 )
 from obsidian_import.exceptions import ExtractionError
@@ -297,3 +298,32 @@ class TestDecompressionBombGuard:
             docx, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG, max_file_size_mb=50
         )
         assert "Hello World" in result.markdown
+
+
+class TestParseHeadingLevel:
+    def test_non_heading_style_returns_zero(self):
+        assert _parse_heading_level("Normal") == 0
+
+    def test_empty_string_returns_zero(self):
+        assert _parse_heading_level("") == 0
+
+    def test_non_numeric_suffix_returns_zero(self):
+        assert _parse_heading_level("HeadingCustom") == 0
+
+    def test_valid_heading_level(self):
+        assert _parse_heading_level("Heading2") == 2
+
+    def test_heading_level_capped_at_six(self):
+        assert _parse_heading_level("Heading99") == 6
+
+    @given(level=st.integers(min_value=1, max_value=6))
+    def test_valid_levels_returned(self, level):
+        assert _parse_heading_level(f"Heading{level}") == level
+
+    @given(level=st.integers(min_value=7, max_value=999_999_999))
+    def test_levels_above_six_clamped(self, level):
+        assert _parse_heading_level(f"Heading{level}") == 6
+
+    @given(suffix=st.text(min_size=1).filter(lambda s: not s.lstrip("-").isdigit()))
+    def test_non_numeric_suffix_returns_zero_property(self, suffix):
+        assert _parse_heading_level(f"Heading{suffix}") == 0
