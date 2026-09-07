@@ -44,6 +44,13 @@
 
 * pin soupsieve >=2.8.4 for CVE-2026-49477/49476: ReDoS and memory exhaustion (#266)
 
+## [1.3.2](https://github.com/neuralsignal/obsidian-import/compare/v1.3.1...v1.3.2) (2026-09-07)
+
+
+### Bug Fixes
+
+* bump pypdf minimum to &gt;=6.16.1 for CVE-2026-84309/84310/84311 ([#333](https://github.com/neuralsignal/obsidian-import/issues/333)) ([09fb303](https://github.com/neuralsignal/obsidian-import/commit/09fb3030e3f74f76d11f289a5293d25cf34a50c2))
+
 ## [1.3.1](https://github.com/neuralsignal/obsidian-import/compare/v1.3.0...v1.3.1) (2026-08-28)
 
 
