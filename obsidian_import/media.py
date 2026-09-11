@@ -22,6 +22,7 @@ from obsidian_import.extraction_result import MediaFile
 log = logging.getLogger(__name__)
 
 _pixel_limit_lock = threading.Lock()
+_PILLOW_MISSING_MSG = "Pillow is required for image extraction. Install with: pip install Pillow"
 
 
 def generate_media_filename(context: str, index: int, extension: str) -> str:
@@ -101,7 +102,7 @@ def _open_image_safely(image_bytes: bytes, media_config: MediaConfig) -> Image.I
     try:
         from PIL import Image
     except ImportError as exc:
-        raise ExtractionError("Pillow is required for image extraction. Install with: pip install Pillow") from exc
+        raise ExtractionError(_PILLOW_MISSING_MSG) from exc
 
     try:
         img = Image.open(io.BytesIO(image_bytes))
@@ -169,7 +170,7 @@ def _process_image_bytes(image_bytes: bytes, media_config: MediaConfig) -> bytes
     try:
         from PIL import Image
     except ImportError as exc:
-        raise ExtractionError("Pillow is required for image extraction. Install with: pip install Pillow") from exc
+        raise ExtractionError(_PILLOW_MISSING_MSG) from exc
 
     with _pixel_limit_lock:
         old_limit = Image.MAX_IMAGE_PIXELS
