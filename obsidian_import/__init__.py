@@ -97,10 +97,10 @@ def extract_file(path: Path, config: ImportConfig) -> ExtractedDocument:
     doc_stem = path.stem
     markdown = result.markdown
     if result.media_files:
-        for mf in result.media_files:
-            wikilink = make_media_wikilink(doc_stem, mf.filename)
-            if wikilink not in markdown:
-                markdown += f"\n\n{wikilink}"
+        wikilinks = [make_media_wikilink(doc_stem, mf.filename) for mf in result.media_files]
+        orphans = [w for w in wikilinks if w not in markdown]
+        if orphans:
+            markdown = markdown + "\n\n" + "\n\n".join(orphans)
 
     return ExtractedDocument(
         source_path=path,
