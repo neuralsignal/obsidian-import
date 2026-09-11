@@ -44,6 +44,13 @@
 
 * pin soupsieve >=2.8.4 for CVE-2026-49477/49476: ReDoS and memory exhaustion (#266)
 
+## [1.3.3](https://github.com/neuralsignal/obsidian-import/compare/v1.3.2...v1.3.3) (2026-09-11)
+
+
+### Bug Fixes
+
+* replace O(n²) wikilink deduplication loop with single-pass collect-and-join ([#339](https://github.com/neuralsignal/obsidian-import/issues/339)) ([37100d4](https://github.com/neuralsignal/obsidian-import/commit/37100d4f102aebc0a27fa3fdd54f1cc96d38d00b))
+
 ## [1.3.2](https://github.com/neuralsignal/obsidian-import/compare/v1.3.1...v1.3.2) (2026-09-07)
 
 
