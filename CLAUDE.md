@@ -222,3 +222,8 @@ No additional system dependencies required (unlike obsidian-export, no pandoc/te
 ```
 discover → extract → format → output (Obsidian .md)
 ```
+
+## TL;DR section
+
+End every reply with a `## TL;DR` section: one or two lines carrying the decision — the
+verdict, the recommendation, or what the reader now has to decide. Not a recap of the work.
