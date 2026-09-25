@@ -7,7 +7,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
-from obsidian_import.config import ImportConfig
+from obsidian_import.config import DirectoryConfig, ExtractionConfig, ImportConfig
 
 
 @dataclass(frozen=True)
@@ -33,32 +33,37 @@ def discover_files(config: ImportConfig) -> Iterator[DiscoveredFile]:
         base_resolved = directory.resolve()
 
         for file_path in directory.rglob("*"):
-            if file_path.is_symlink():
-                continue
-
-            if not file_path.is_file():
-                continue
-
-            if not file_path.resolve().is_relative_to(base_resolved):
+            if not _should_yield(file_path, base_resolved, dir_config, config.extraction):
                 continue
 
             extension = file_path.suffix.lower()
-            if extension not in dir_config.extensions:
-                continue
-
-            if _is_excluded(file_path, directory, dir_config.exclude):
-                continue
-
             size = file_path.stat().st_size
-            if config.extraction.exceeds_max_file_size(size):
-                continue
-
             yield DiscoveredFile(
                 path=file_path,
                 extension=extension,
                 size_bytes=size,
                 source_directory=str(dir_config.path),
             )
+
+
+def _should_yield(
+    file_path: Path,
+    base_resolved: Path,
+    dir_config: DirectoryConfig,
+    extraction_config: ExtractionConfig,
+) -> bool:
+    """Per-file acceptance predicate for discover_files."""
+    if file_path.is_symlink():
+        return False
+    if not file_path.is_file():
+        return False
+    if not file_path.resolve().is_relative_to(base_resolved):
+        return False
+    if file_path.suffix.lower() not in dir_config.extensions:
+        return False
+    if _is_excluded(file_path, Path(dir_config.path), dir_config.exclude):
+        return False
+    return not extraction_config.exceeds_max_file_size(file_path.stat().st_size)
 
 
 def _is_excluded(path: Path, base_dir: Path, exclude_patterns: tuple[str, ...]) -> bool:
