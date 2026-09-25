@@ -21,12 +21,11 @@ from __future__ import annotations
 
 import importlib.util
 import logging
-from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from anydoc import Asset, Document
+    from anydoc import Document
 
 from obsidian_import.anydoc_placement import place_media_embeds
 from obsidian_import.config import MediaConfig
@@ -120,7 +119,7 @@ def _extract_assets(document: Document, path: Path, media_config: MediaConfig) -
     for index, asset in enumerate(image_assets, 1):
         filename = generate_media_filename(_ASSET_FILENAME_CONTEXT, index, f".{media_config.image_format}")
         media_file = attempt_save_image(
-            _make_asset_reader(asset),
+            lambda _a=asset: _a.data,
             filename,
             media_config,
             f"asset {asset.id} ({asset.media_type}) from {path} via anydoc",
@@ -129,12 +128,3 @@ def _extract_assets(document: Document, path: Path, media_config: MediaConfig) -
             media_by_asset_id[asset.id] = media_file
 
     return media_by_asset_id
-
-
-def _make_asset_reader(asset: Asset) -> Callable[[], bytes | None]:
-    """Return a callable yielding the raw bytes of an anydoc asset."""
-
-    def _read() -> bytes | None:
-        return asset.data
-
-    return _read

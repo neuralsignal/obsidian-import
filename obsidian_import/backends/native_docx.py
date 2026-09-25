@@ -8,7 +8,6 @@ Extracts embedded images from word/media/ when media extraction is enabled.
 from __future__ import annotations
 
 import zipfile
-from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -200,7 +199,7 @@ def _extract_docx_images(
             orig_ext = Path(media_path).suffix
             filename = generate_media_filename("doc", image_index, orig_ext)
             mf = attempt_save_image(
-                _make_bytes_reader(img_bytes),
+                lambda _b=img_bytes: _b,
                 filename,
                 media_config,
                 f"{media_path} from {zip_ctx.path}",
@@ -208,15 +207,6 @@ def _extract_docx_images(
             if mf is not None:
                 media_files.append(mf)
     return media_files, image_index
-
-
-def _make_bytes_reader(img_bytes: bytes) -> Callable[[], bytes]:
-    """Return a callable that returns pre-read image bytes."""
-
-    def _read() -> bytes:
-        return img_bytes
-
-    return _read
 
 
 def _local_name(element: Element) -> str:
