@@ -13,7 +13,7 @@ from obsidian_import.config import (
     OutputConfig,
     PassthroughConfig,
 )
-from obsidian_import.discovery import DiscoveredFile, _is_excluded, discover_files
+from obsidian_import.discovery import DiscoveredFile, _is_excluded, _should_yield, discover_files
 
 
 def _make_config(directories: tuple[DirectoryConfig, ...]) -> ImportConfig:
@@ -181,6 +181,55 @@ class TestDiscoverFiles:
 
         names = {f.path.name for f in files}
         assert "escaped.pdf" not in names
+
+
+class TestShouldYield:
+    def _extraction_config(self, max_mb: int) -> ExtractionConfig:
+        return ExtractionConfig(
+            timeout_seconds=120,
+            isolation="thread",
+            max_file_size_mb=max_mb,
+            xlsx_max_rows_per_sheet=500,
+        )
+
+    def test_accepts_valid_file(self, tmp_path):
+        (tmp_path / "doc.pdf").write_bytes(b"pdf")
+        dir_config = DirectoryConfig(path=str(tmp_path), extensions=(".pdf",), exclude=())
+        assert _should_yield(tmp_path / "doc.pdf", tmp_path.resolve(), dir_config, self._extraction_config(100)) is True
+
+    def test_rejects_symlink(self, tmp_path):
+        (tmp_path / "real.pdf").write_bytes(b"pdf")
+        (tmp_path / "link.pdf").symlink_to(tmp_path / "real.pdf")
+        dir_config = DirectoryConfig(path=str(tmp_path), extensions=(".pdf",), exclude=())
+        assert (
+            _should_yield(tmp_path / "link.pdf", tmp_path.resolve(), dir_config, self._extraction_config(100)) is False
+        )
+
+    def test_rejects_directory(self, tmp_path):
+        subdir = tmp_path / "subdir"
+        subdir.mkdir()
+        dir_config = DirectoryConfig(path=str(tmp_path), extensions=(".pdf",), exclude=())
+        assert _should_yield(subdir, tmp_path.resolve(), dir_config, self._extraction_config(100)) is False
+
+    def test_rejects_wrong_extension(self, tmp_path):
+        (tmp_path / "readme.txt").write_text("text")
+        dir_config = DirectoryConfig(path=str(tmp_path), extensions=(".pdf",), exclude=())
+        assert (
+            _should_yield(tmp_path / "readme.txt", tmp_path.resolve(), dir_config, self._extraction_config(100))
+            is False
+        )
+
+    def test_rejects_excluded_file(self, tmp_path):
+        (tmp_path / "bad.pdf").write_bytes(b"pdf")
+        dir_config = DirectoryConfig(path=str(tmp_path), extensions=(".pdf",), exclude=("bad.*",))
+        assert (
+            _should_yield(tmp_path / "bad.pdf", tmp_path.resolve(), dir_config, self._extraction_config(100)) is False
+        )
+
+    def test_rejects_oversized_file(self, tmp_path):
+        (tmp_path / "huge.pdf").write_bytes(b"x" * (2 * 1024 * 1024))
+        dir_config = DirectoryConfig(path=str(tmp_path), extensions=(".pdf",), exclude=())
+        assert _should_yield(tmp_path / "huge.pdf", tmp_path.resolve(), dir_config, self._extraction_config(1)) is False
 
 
 class TestIsExcluded:
