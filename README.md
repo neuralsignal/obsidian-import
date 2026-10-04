@@ -197,7 +197,9 @@ rows per sheet.
 
 > **Security note (docling backend):** The `docling` extra depends on `torch`, which has a
 > known deserialization vulnerability ([PYSEC-2026-139](https://github.com/pytorch/pytorch))
-> in the pt2 loading handler. No upstream fix is available as of 2026-05-25. Do not load
+> in the pt2 loading handler. Additionally, `accelerate` (transitive via docling) has a path
+> traversal and DoS vulnerability ([CVE-2026-69112](https://github.com/huggingface/accelerate))
+> in sharded checkpoint loading. No upstream fixes are available as of 2026-09-28. Do not load
 > untrusted model checkpoints when using the docling backend. Only use models from verified,
 > trusted sources.
 
