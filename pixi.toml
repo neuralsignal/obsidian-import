@@ -45,6 +45,7 @@ requests = ">=2.33.0,<3"  # PYSEC-2026-2275: moderate-high severity, fix availab
 soupsieve = ">=2.9.0,<3"  # CVE-2026-85999/86000: ReDoS fixes (upgrade from 2.8.4)
 pygments = ">=2.20.0,<3"  # PYSEC-2026-2987: vulnerability fix
 anyio = ">=4.14.2,<5"  # CVE-2026-63374/64847/63349: TLS bypass, pipe deadlock, privilege-drop fix
+virtualenv = ">=21.7.13,<22"  # PYSEC-2026-4011/4012/4013/4014: command injection, config injection, integrity check
 
 [target.linux-64.pypi-dependencies]
 torch = ">=2.13.0"  # PYSEC-2025-194: deserialization/execution path vuln (transitive via docling; no osx-arm64 wheel for macOS <14)
