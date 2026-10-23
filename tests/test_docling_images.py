@@ -53,62 +53,75 @@ class TestExtractDoclingImages:
     def test_empty_pictures_list(self) -> None:
         doc = MagicMock()
         doc.pictures = []
-        result = _extract_docling_images(doc, Path("test.pdf"), _TEST_MEDIA_CONFIG)
-        assert result == []
+        media_files, ref_to_media = _extract_docling_images(doc, Path("test.pdf"), _TEST_MEDIA_CONFIG)
+        assert media_files == []
+        assert ref_to_media == {}
 
     def test_no_pictures_attribute(self) -> None:
         doc = MagicMock()
         doc.pictures = None
-        result = _extract_docling_images(doc, Path("test.pdf"), _TEST_MEDIA_CONFIG)
-        assert result == []
+        media_files, ref_to_media = _extract_docling_images(doc, Path("test.pdf"), _TEST_MEDIA_CONFIG)
+        assert media_files == []
+        assert ref_to_media == {}
 
     def test_successful_extraction(self) -> None:
         pil_img = make_pil_image(20, 20, "green")
         pic = MagicMock()
         pic.get_image.return_value = pil_img
+        pic.self_ref = "#/pictures/0"
 
         doc = MagicMock()
         doc.pictures = [pic]
 
-        result = _extract_docling_images(doc, Path("report.pdf"), _TEST_MEDIA_CONFIG)
-        assert len(result) == 1
-        assert result[0].media_type == "image"
-        assert "fig" in result[0].filename
-        assert result[0].source_path.exists()
+        media_files, ref_to_media = _extract_docling_images(doc, Path("report.pdf"), _TEST_MEDIA_CONFIG)
+        assert len(media_files) == 1
+        assert media_files[0].media_type == "image"
+        assert "fig" in media_files[0].filename
+        assert media_files[0].source_path.exists()
+        assert "#/pictures/0" in ref_to_media
+        assert ref_to_media["#/pictures/0"] is media_files[0]
 
 
 class TestReplaceImageRefsWithWikilinks:
     def test_replaces_single_image_ref(self) -> None:
-        media_files = [MediaFile(source_path=Path("/tmp/img.png"), filename="fig_img1.png", media_type="image")]
+        mf = MediaFile(source_path=Path("/tmp/img.png"), filename="fig_img1.png", media_type="image")
+        ref_to_media = {"path/to/img.png": mf}
         text = "Before ![alt](path/to/img.png) after"
-        result = _replace_image_refs_with_wikilinks(text, list(media_files), "report")
+        result = _replace_image_refs_with_wikilinks(text, ref_to_media, "report")
         assert "![[report/fig_img1.png]]" in result
         assert "Before" in result
         assert "after" in result
 
     def test_replaces_multiple_image_refs(self) -> None:
-        media_files = [
-            MediaFile(source_path=Path("/tmp/a.png"), filename="a.png", media_type="image"),
-            MediaFile(source_path=Path("/tmp/b.png"), filename="b.png", media_type="image"),
-        ]
+        mf_a = MediaFile(source_path=Path("/tmp/a.png"), filename="a.png", media_type="image")
+        mf_b = MediaFile(source_path=Path("/tmp/b.png"), filename="b.png", media_type="image")
+        ref_to_media = {"x.png": mf_a, "y.png": mf_b}
         text = "![first](x.png) text ![second](y.png)"
-        result = _replace_image_refs_with_wikilinks(text, list(media_files), "doc")
+        result = _replace_image_refs_with_wikilinks(text, ref_to_media, "doc")
         assert "![[doc/a.png]]" in result
         assert "![[doc/b.png]]" in result
 
     def test_no_media_files_preserves_original(self) -> None:
         text = "![alt](path.png)"
-        result = _replace_image_refs_with_wikilinks(text, [], "doc")
+        result = _replace_image_refs_with_wikilinks(text, {}, "doc")
         assert result == text
 
-    def test_more_refs_than_files(self) -> None:
-        media_files = [
-            MediaFile(source_path=Path("/tmp/a.png"), filename="a.png", media_type="image"),
-        ]
+    def test_unmatched_ref_preserves_original(self) -> None:
+        mf = MediaFile(source_path=Path("/tmp/a.png"), filename="a.png", media_type="image")
+        ref_to_media = {"x.png": mf}
         text = "![img1](x.png) ![img2](y.png)"
-        result = _replace_image_refs_with_wikilinks(text, list(media_files), "doc")
+        result = _replace_image_refs_with_wikilinks(text, ref_to_media, "doc")
         assert "![[doc/a.png]]" in result
         assert "![img2](y.png)" in result
+
+    def test_out_of_order_refs_matched_correctly(self) -> None:
+        """URL-based lookup resolves correctly regardless of reference order."""
+        mf_a = MediaFile(source_path=Path("/tmp/a.png"), filename="a.png", media_type="image")
+        mf_b = MediaFile(source_path=Path("/tmp/b.png"), filename="b.png", media_type="image")
+        ref_to_media = {"#/pictures/0": mf_a, "#/pictures/1": mf_b}
+        text = "![second](#/pictures/1) then ![first](#/pictures/0)"
+        result = _replace_image_refs_with_wikilinks(text, ref_to_media, "doc")
+        assert result == "![[doc/b.png]] then ![[doc/a.png]]"
 
 
 class TestReplaceImageRefsProperties:
@@ -120,22 +133,23 @@ class TestReplaceImageRefsProperties:
     )
     @settings(max_examples=50)
     def test_replacement_contains_doc_stem(self, doc_stem: str, filename: str) -> None:
-        media_files = [MediaFile(source_path=Path("/tmp/x.png"), filename=filename, media_type="image")]
+        mf = MediaFile(source_path=Path("/tmp/x.png"), filename=filename, media_type="image")
+        ref_to_media = {"ref.png": mf}
         text = "![alt](ref.png)"
-        result = _replace_image_refs_with_wikilinks(text, list(media_files), doc_stem)
+        result = _replace_image_refs_with_wikilinks(text, ref_to_media, doc_stem)
         assert f"![[{doc_stem}/{filename}]]" in result
 
     @given(
-        n_files=st.integers(min_value=0, max_value=5),
-        n_refs=st.integers(min_value=0, max_value=5),
+        n_matched=st.integers(min_value=0, max_value=5),
+        n_extra_refs=st.integers(min_value=0, max_value=5),
     )
     @settings(max_examples=50)
-    def test_replacement_count_matches_min_of_files_and_refs(self, n_files: int, n_refs: int) -> None:
-        media_files = [
-            MediaFile(source_path=Path(f"/tmp/{i}.png"), filename=f"img{i}.png", media_type="image")
-            for i in range(n_files)
-        ]
+    def test_replacement_count_matches_mapped_refs(self, n_matched: int, n_extra_refs: int) -> None:
+        ref_to_media = {
+            f"ref{i}.png": MediaFile(source_path=Path(f"/tmp/{i}.png"), filename=f"img{i}.png", media_type="image")
+            for i in range(n_matched)
+        }
+        n_refs = n_matched + n_extra_refs
         refs = " ".join(f"![alt{i}](ref{i}.png)" for i in range(n_refs))
-        result = _replace_image_refs_with_wikilinks(refs, list(media_files), "doc")
-        expected_replacements = min(n_files, n_refs)
-        assert result.count("![[doc/") == expected_replacements
+        result = _replace_image_refs_with_wikilinks(refs, ref_to_media, "doc")
+        assert result.count("![[doc/") == n_matched
