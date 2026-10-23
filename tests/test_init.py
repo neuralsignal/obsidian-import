@@ -1,4 +1,4 @@
-"""Tests for obsidian_import public API: extract_file, extract_text, _estimate_page_count."""
+"""Tests for extraction orchestration: extract_file, extract_text, _estimate_page_count."""
 
 from __future__ import annotations
 
@@ -8,8 +8,8 @@ from unittest.mock import patch
 from hypothesis import given
 from hypothesis import strategies as st
 
-from obsidian_import import _estimate_page_count, extract_file, extract_text
 from obsidian_import.config import ImportConfig, default_config
+from obsidian_import.extraction import _estimate_page_count, extract_file, extract_text
 from obsidian_import.extraction_result import ExtractionResult, MediaFile
 
 
@@ -56,7 +56,7 @@ class TestExtractFile:
         config = _config()
         fake_result = ExtractionResult(markdown="table data", media_files=())
 
-        with patch("obsidian_import.extract_with_backend", return_value=fake_result) as mock:
+        with patch("obsidian_import.extraction.extract_with_backend", return_value=fake_result) as mock:
             doc = extract_file(_touch(tmp_path, "sheet.xlsx"), config)
             call_kwargs = mock.call_args
             assert call_kwargs.kwargs["max_rows_per_sheet"] == config.extraction.xlsx_max_rows_per_sheet
@@ -66,7 +66,7 @@ class TestExtractFile:
         config = _config()
         fake_result = ExtractionResult(markdown="text", media_files=())
 
-        with patch("obsidian_import.extract_with_backend", return_value=fake_result) as mock:
+        with patch("obsidian_import.extraction.extract_with_backend", return_value=fake_result) as mock:
             extract_file(_touch(tmp_path, "report.pdf"), config)
             context = mock.call_args.args[1]
             assert context.isolation == config.extraction.isolation
@@ -76,7 +76,7 @@ class TestExtractFile:
         fake_result = ExtractionResult(markdown="![img](data)", media_files=())
         path = _touch(tmp_path, "photo.png")
 
-        with patch("obsidian_import.extract_with_backend", return_value=fake_result):
+        with patch("obsidian_import.extraction.extract_with_backend", return_value=fake_result):
             doc = extract_file(path, config)
             assert doc.associated_files == (path,)
 
@@ -84,7 +84,7 @@ class TestExtractFile:
         config = _config()
         fake_result = ExtractionResult(markdown="text", media_files=())
 
-        with patch("obsidian_import.extract_with_backend", return_value=fake_result):
+        with patch("obsidian_import.extraction.extract_with_backend", return_value=fake_result):
             doc = extract_file(_touch(tmp_path, "report.pdf"), config)
             assert doc.associated_files == ()
 
@@ -93,7 +93,7 @@ class TestExtractFile:
         mf = MediaFile(source_path=Path("/tmp/img.png"), filename="img.png", media_type="image/png")
         fake_result = ExtractionResult(markdown="content", media_files=(mf,))
 
-        with patch("obsidian_import.extract_with_backend", return_value=fake_result):
+        with patch("obsidian_import.extraction.extract_with_backend", return_value=fake_result):
             doc = extract_file(_touch(tmp_path, "report.pdf"), config)
             assert "![[report/img.png]]" in doc.markdown
 
@@ -103,7 +103,7 @@ class TestExtractFile:
         existing_md = "content\n\n![[report/img.png]]"
         fake_result = ExtractionResult(markdown=existing_md, media_files=(mf,))
 
-        with patch("obsidian_import.extract_with_backend", return_value=fake_result):
+        with patch("obsidian_import.extraction.extract_with_backend", return_value=fake_result):
             doc = extract_file(_touch(tmp_path, "report.pdf"), config)
             assert doc.markdown.count("![[report/img.png]]") == 1
 
@@ -118,7 +118,7 @@ class TestExtractText:
         config = _config()
         fake_result = ExtractionResult(markdown="hello world", media_files=())
 
-        with patch("obsidian_import.extract_with_backend", return_value=fake_result):
+        with patch("obsidian_import.extraction.extract_with_backend", return_value=fake_result):
             text = extract_text(_touch(tmp_path, "doc.pdf"), config)
             assert text == "hello world"
 
@@ -126,6 +126,6 @@ class TestExtractText:
         config = _config()
         fake_result = ExtractionResult(markdown="table", media_files=())
 
-        with patch("obsidian_import.extract_with_backend", return_value=fake_result) as mock:
+        with patch("obsidian_import.extraction.extract_with_backend", return_value=fake_result) as mock:
             extract_text(_touch(tmp_path, "sheet.xlsx"), config)
             assert mock.call_args.kwargs["max_rows_per_sheet"] == config.extraction.xlsx_max_rows_per_sheet
