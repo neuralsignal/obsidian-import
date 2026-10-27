@@ -123,6 +123,7 @@ class TestDoclingExtract:
 
         mock_picture = MagicMock()
         mock_picture.get_image.return_value = pil_img
+        mock_picture.self_ref = "image_ref_1.png"
 
         markdown_text = "# Title\n\n![Figure 1](image_ref_1.png)\n\nSome text."
         doc = _mock_docling_document(markdown_text, pictures=[mock_picture])
@@ -144,10 +145,12 @@ class TestDoclingExtract:
         pdf_path = tmp_path / "multi.pdf"
         pdf_path.write_bytes(b"%PDF-1.4 fake")
 
+        urls = ["a.png", "b.png", "c.png"]
         pictures = []
-        for color in ("red", "green", "blue"):
+        for color, url in zip(("red", "green", "blue"), urls, strict=True):
             pic = MagicMock()
             pic.get_image.return_value = make_pil_image(10, 10, color)
+            pic.self_ref = url
             pictures.append(pic)
 
         markdown_text = "![img1](a.png)\n\n![img2](b.png)\n\n![img3](c.png)"
@@ -169,9 +172,11 @@ class TestDoclingExtract:
 
         good_pic = MagicMock()
         good_pic.get_image.return_value = make_pil_image(10, 10, "red")
+        good_pic.self_ref = "b.png"
 
         bad_pic = MagicMock()
         bad_pic.get_image.side_effect = AttributeError("no image data")
+        bad_pic.self_ref = "a.png"
 
         markdown_text = "![fig1](a.png)\n![fig2](b.png)"
         doc = _mock_docling_document(markdown_text, pictures=[bad_pic, good_pic])
@@ -191,6 +196,7 @@ class TestDoclingExtract:
 
         pic = MagicMock()
         pic.get_image.return_value = None
+        pic.self_ref = "a.png"
 
         doc = _mock_docling_document("![fig](a.png)", pictures=[pic])
         conv_result = _mock_converter_result(doc)

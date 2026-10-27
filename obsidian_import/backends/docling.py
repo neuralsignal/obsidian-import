@@ -65,8 +65,9 @@ def _extract_docling(path: Path, media_config: MediaConfig) -> ExtractionResult:
     doc = doc_result.document
 
     media_files: list[MediaFile] = []
+    ref_to_media: dict[str, MediaFile] = {}
     if media_config.extract_images:
-        media_files = _extract_docling_images(doc, path, media_config)
+        media_files, ref_to_media = _extract_docling_images(doc, path, media_config)
 
     text = doc.export_to_markdown()
     if not text or not text.strip():
@@ -74,7 +75,7 @@ def _extract_docling(path: Path, media_config: MediaConfig) -> ExtractionResult:
 
     result_media = tuple(media_files)
     if media_files:
-        text = _replace_image_refs_with_wikilinks(text, media_files, path.stem)
+        text = _replace_image_refs_with_wikilinks(text, ref_to_media, path.stem)
 
     return ExtractionResult(markdown=text, media_files=result_media)
 
@@ -105,13 +106,20 @@ def _build_converter(media_config: MediaConfig) -> DocumentConverter:
         return DocumentConverter()
 
 
-def _extract_docling_images(doc: DoclingDocument, path: Path, media_config: MediaConfig) -> list[MediaFile]:
-    """Extract images from a docling Document object."""
+def _extract_docling_images(
+    doc: DoclingDocument, path: Path, media_config: MediaConfig
+) -> tuple[list[MediaFile], dict[str, MediaFile]]:
+    """Extract images from a docling Document object.
+
+    Returns the list of extracted media files and a mapping from
+    picture reference URLs to their corresponding MediaFile objects.
+    """
     media_files: list[MediaFile] = []
+    ref_to_media: dict[str, MediaFile] = {}
 
     pictures = getattr(doc, "pictures", None)
     if not pictures:
-        return media_files
+        return media_files, ref_to_media
 
     for i, picture in enumerate(pictures, 1):
         filename = generate_media_filename("fig", i, ".png")
@@ -123,8 +131,17 @@ def _extract_docling_images(doc: DoclingDocument, path: Path, media_config: Medi
         )
         if mf is not None:
             media_files.append(mf)
+            ref = getattr(picture, "self_ref", None)
+            if ref is not None:
+                ref_to_media[str(ref)] = mf
+            else:
+                log.warning(
+                    "Docling picture %d from %s has no self_ref; cannot map to markdown image reference",
+                    i,
+                    path,
+                )
 
-    return media_files
+    return media_files, ref_to_media
 
 
 def _make_docling_picture_reader(picture: object, doc: DoclingDocument, index: int) -> Callable[[], bytes | None]:
@@ -144,14 +161,19 @@ def _make_docling_picture_reader(picture: object, doc: DoclingDocument, index: i
     return _read
 
 
-def _replace_image_refs_with_wikilinks(markdown: str, media_files: list[MediaFile], doc_stem: str) -> str:
-    """Replace standard markdown image references with Obsidian wikilinks."""
-    media_iter = iter(media_files)
+def _replace_image_refs_with_wikilinks(markdown: str, ref_to_media: dict[str, MediaFile], doc_stem: str) -> str:
+    """Replace standard markdown image references with Obsidian wikilinks.
+
+    Uses URL-based lookup to match each image reference to its
+    corresponding MediaFile, avoiding fragile positional assumptions.
+    """
 
     def _match_image_ref(match: re.Match[str]) -> str:
-        mf = next(media_iter, None)
+        url = match.group(2)
+        mf = ref_to_media.get(url)
         if mf is not None:
             return make_media_wikilink(doc_stem, mf.filename)
+        log.warning("Image reference URL %r does not match any extracted media file", url)
         return match.group(0)
 
-    return re.sub(r"!\[([^\]]*)\]\([^)]+\)", _match_image_ref, markdown)
+    return re.sub(r"!\[([^\]]*)\]\(([^)]+)\)", _match_image_ref, markdown)

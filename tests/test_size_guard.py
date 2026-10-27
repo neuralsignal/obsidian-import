@@ -16,9 +16,9 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from obsidian_import import extract_file, extract_text
 from obsidian_import.config import ImportConfig, config_from_overrides
 from obsidian_import.exceptions import ExtractionError
+from obsidian_import.extraction import extract_file, extract_text
 from obsidian_import.extraction_result import ExtractionResult
 
 _ONE_MB = 1024 * 1024
@@ -39,7 +39,7 @@ class TestSizeGuard:
         _write_file(oversized, 2 * _ONE_MB)
 
         with (
-            patch("obsidian_import.extract_with_backend") as mock_backend,
+            patch("obsidian_import.extraction.extract_with_backend") as mock_backend,
             pytest.raises(ExtractionError) as exc_info,
         ):
             extract_file(oversized, config)
@@ -56,7 +56,7 @@ class TestSizeGuard:
         _write_file(oversized, 2 * _ONE_MB)
 
         with (
-            patch("obsidian_import.extract_with_backend") as mock_backend,
+            patch("obsidian_import.extraction.extract_with_backend") as mock_backend,
             pytest.raises(ExtractionError) as exc_info,
         ):
             extract_text(oversized, config)
@@ -70,7 +70,7 @@ class TestSizeGuard:
         _write_file(small, 1024)
 
         fake_result = ExtractionResult(markdown="ok", media_files=())
-        with patch("obsidian_import.extract_with_backend", return_value=fake_result):
+        with patch("obsidian_import.extraction.extract_with_backend", return_value=fake_result):
             assert extract_text(small, config) == "ok"
 
     def test_extract_file_missing_file_raises_extraction_error(self, tmp_path: Path) -> None:
@@ -98,7 +98,7 @@ class TestSizeGuard:
             assert target.stat().st_size == size
 
             fake_result = ExtractionResult(markdown="ok", media_files=())
-            with patch("obsidian_import.extract_with_backend", return_value=fake_result):
+            with patch("obsidian_import.extraction.extract_with_backend", return_value=fake_result):
                 if delta > 0:
                     with pytest.raises(ExtractionError):
                         extract_text(target, config)
