@@ -44,6 +44,18 @@
 
 * pin soupsieve >=2.8.4 for CVE-2026-49477/49476: ReDoS and memory exhaustion (#266)
 
+## [1.3.4](https://github.com/neuralsignal/obsidian-import/compare/v1.3.3...v1.3.4) (2026-10-27)
+
+
+### Bug Fixes
+
+* replace positional image matching with URL-based lookup in docling backend ([#376](https://github.com/neuralsignal/obsidian-import/issues/376)) ([#380](https://github.com/neuralsignal/obsidian-import/issues/380)) ([7bec948](https://github.com/neuralsignal/obsidian-import/commit/7bec94898af333470ae7475116e2778a7b349df4))
+
+
+### Documentation
+
+* end every reply with a TL;DR section ([#351](https://github.com/neuralsignal/obsidian-import/issues/351)) ([c88955c](https://github.com/neuralsignal/obsidian-import/commit/c88955c0b0e4178a4c6eba463b17f4f74ad81c9e))
+
 ## [1.3.3](https://github.com/neuralsignal/obsidian-import/compare/v1.3.2...v1.3.3) (2026-09-11)
 
 
