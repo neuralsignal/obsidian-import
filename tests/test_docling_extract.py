@@ -1,5 +1,6 @@
 """Tests for docling backend extraction and converter building."""
 
+import logging
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -235,6 +236,32 @@ class TestDoclingExtract:
             result = extract(pdf_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG)
 
         assert result.media_files == ()
+
+    def test_picture_without_self_ref_warns_and_skips_mapping(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        pdf_path = tmp_path / "noref.pdf"
+        pdf_path.write_bytes(b"%PDF-1.4 fake")
+
+        pic = MagicMock(spec=[])
+        pic.get_image = MagicMock(return_value=make_pil_image(10, 10, "red"))
+
+        markdown_text = "![fig](someurl.png)"
+        doc = _mock_docling_document(markdown_text, pictures=[pic])
+        conv_result = _mock_converter_result(doc)
+
+        mock_converter = MagicMock()
+        mock_converter.convert.return_value = conv_result
+
+        with (
+            patch("obsidian_import.backends.docling._build_converter", return_value=mock_converter),
+            caplog.at_level(logging.WARNING, logger="obsidian_import.backends.docling"),
+        ):
+            result = extract(pdf_path, timeout_seconds=30, isolation="thread", media_config=_TEST_MEDIA_CONFIG)
+
+        assert len(result.media_files) == 1
+        assert "has no self_ref" in caplog.text
+        assert "someurl.png" not in {mf.filename for mf in result.media_files}
 
 
 class TestBuildConverter:
