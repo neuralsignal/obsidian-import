@@ -9,7 +9,7 @@ python = ">=3.12,<3.15"
 python-build = ">=1.4.0,<2"
 hatchling = ">=1.28.0,<2"
 pip = ">=26.2,<27"  # PYSEC-2026-3721: doubly-encoded URL path traversal fix in 26.2; build-only dep
-setuptools = ">=84.1.0,<85"  # PYSEC-2026-3447 (>=83.0.0); GHSA-xmj3-9gf7-h52w (>=84.1.0)
+setuptools = ">=84.1.0,<85"  # PYSEC-2026-3447 (fix >=83.0.0); GHSA-xmj3-9gf7-h52w (fix >=84.1.0)
 
 [pypi-dependencies]
 obsidian-import = {path = ".", editable = true}
