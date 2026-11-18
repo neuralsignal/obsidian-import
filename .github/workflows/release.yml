@@ -30,7 +30,7 @@ jobs:
           ref: ${{ needs.release-please.outputs.pr-branch }}
           token: ${{ secrets.FACTORY_PAT }}
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.11.3
         with:
           locked: false
 
