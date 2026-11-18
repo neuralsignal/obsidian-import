@@ -1,0 +1,22 @@
+name: Dependabot review and merge
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions: {}
+
+jobs:
+  dependabot:
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: write
+    uses: neuralsignal/agentic-engineering-kit/.github/workflows/dependabot-review.yml@06425d6e5704ee6958fc5d6f113e3ca56088f21d
+    with:
+      ci-workflow: ci.yml
+      required-jobs: '["lint","test"]'
+    secrets:
+      claude-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      publisher-token: ${{ secrets.FACTORY_PAT }}
