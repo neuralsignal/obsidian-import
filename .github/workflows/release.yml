@@ -15,7 +15,7 @@ jobs:
       pr: ${{ steps.rp.outputs.pr }}
       pr-branch: ${{ steps.rp.outputs.prs_created == 'true' && fromJSON(steps.rp.outputs.pr).headBranchName || '' }}
     steps:
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@v5
         id: rp
         with:
           token: ${{ secrets.FACTORY_PAT }}
