@@ -18,3 +18,5 @@ Retire `code-quality.yml`, `dep-audit.yml`, `docs-freshness.yml`, `docs-update.y
 Dependabot refreshes GitHub Actions weekly. Pixi remains authoritative for Python dependencies. Review and commit `pixi.toml` and `pixi.lock` together when they change.
 
 For rollback, restore the preceding Claude workflow revision and re-enable the previously active legacy workflows that are needed. Confirm that the CI and release workflow states still match the pre-pilot record.
+
+- Close disposable smoke issues and PRs after verification.
