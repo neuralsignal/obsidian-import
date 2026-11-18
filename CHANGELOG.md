@@ -44,6 +44,13 @@
 
 * pin soupsieve >=2.8.4 for CVE-2026-49477/49476: ReDoS and memory exhaustion (#266)
 
+## [1.4.0](https://github.com/neuralsignal/obsidian-import/compare/v1.3.4...v1.4.0) (2026-11-18)
+
+
+### Features
+
+* review and merge Dependabot updates ([#409](https://github.com/neuralsignal/obsidian-import/issues/409)) ([60a8910](https://github.com/neuralsignal/obsidian-import/commit/60a891037c0484ee3e9e462072944ff78ab2011d))
+
 ## [1.3.4](https://github.com/neuralsignal/obsidian-import/compare/v1.3.3...v1.3.4) (2026-11-07)
 
 
