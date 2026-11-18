@@ -133,33 +133,11 @@ Stop and request human confirmation before:
 - Never edit files outside the repository (no cross-repo side effects)
 - Never auto-send, auto-deploy, or auto-publish without explicit instruction
 
-## Dark Factory Agent Context
+## Maintainer automation
 
-### Label Taxonomy
-
-| Label | Purpose |
-|-------|---------|
-| `type:bug` | Bug report |
-| `type:feat` | Feature request |
-| `type:chore` | Maintenance / improvement |
-| `priority:1` | Urgent -- implement immediately |
-| `priority:2` | Normal (default) |
-| `priority:3` | Backlog |
-| `claude:implement` | Trigger Claude to implement this issue |
-| `status:triaged` | Issue has been triaged |
-| `status:in-progress` | Claude is working on this |
-| `status:pr-created` | PR created, awaiting review |
-| `status:pr-draft` | Draft PR created, CI pending |
-| `status:blocked` | Implementation blocked (see comments) |
-| `autofix:1` | First auto-fix attempt |
-| `autofix:2` | Second auto-fix attempt |
-| `autofix:3` | Third (final) auto-fix attempt |
-| `source:dep-audit` | Created by dependency audit agent |
-| `source:security-scan` | Created by security scan agent |
-| `source:code-quality` | Created by code quality agent |
-| `source:test-coverage` | Created by test coverage agent |
-| `source:docs-freshness` | Created by docs freshness agent |
-| `source:workflow-upgrade` | Created by workflow upgrade agent |
+Comment `@claude` on an issue or a same-repository PR to request help. Ask for a draft PR
+when you want an implementation. Continue in that PR's conversation to reuse its branch.
+See [FACTORY.md](FACTORY.md) for verification and rollback.
 
 ### Build & Test
 
@@ -186,7 +164,7 @@ Stop and request human confirmation before:
 - Lockfile: pixi.lock
 - Audit: `pip audit` (run inside pixi shell)
 - Never hand-merge `pixi.lock` -- `.gitattributes` marks it unmergeable, so conflicts are whole-file. Take `main`'s copy and regenerate with `pixi lock`.
-- The PR Branch Sync workflow does this automatically for open `claude/*` PRs: merges `main`, resolves `pixi.lock` conflicts, relocks, and pushes.
+- Resolve lockfile conflicts on the PR branch and run the project's CI checks.
 
 ### Security Standards
 
